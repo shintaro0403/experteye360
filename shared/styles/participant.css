@@ -1,0 +1,354 @@
+/* @deprecated — 旧 ee-* テーマ。React / lite 最終版は participant-app.css（p-*）を使用。 */
+
+/* 受講者 iframe 専用（3DVista 25% 帯）。帯内スクロールなし。 */
+
+.ee-participant {
+  --strip-base: var(--font-base);
+  --strip-chip: var(--font-sm);
+  --strip-ui: var(--font-ui);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.ee-participant--preview {
+  background: var(--bg);
+}
+
+.ee-preview-vista {
+  flex: 3 1 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: linear-gradient(165deg, #c5d4e4 0%, #8fa8c4 50%, #6b8aab 100%);
+  color: #fff;
+  text-align: center;
+}
+
+.ee-preview-vista p {
+  margin: 0.25rem 0;
+  font-size: 0.95rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.ee-preview-vista small {
+  opacity: 0.9;
+  font-size: 0.8rem;
+}
+
+.ee-strip {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 3px solid var(--accent);
+  box-shadow: 0 -4px 20px rgba(13, 110, 140, 0.08);
+}
+
+.ee-participant--preview .ee-strip {
+  flex: 1 1 0;
+}
+
+.ee-strip__head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.4rem 0.65rem;
+  background: linear-gradient(180deg, var(--surface-muted) 0%, var(--surface) 100%);
+  border-bottom: 1px solid var(--border);
+}
+
+.ee-strip__brand {
+  font-size: var(--strip-ui);
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.ee-strip__steps {
+  display: flex;
+  gap: 0.2rem;
+  flex-shrink: 0;
+}
+
+.ee-step {
+  width: clamp(1.6rem, 4.2vmin, 1.9rem);
+  height: clamp(1.6rem, 4.2vmin, 1.9rem);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: var(--strip-ui);
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.ee-step--active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+.ee-step--done {
+  background: var(--success-soft);
+  border-color: #9fd4b8;
+  color: var(--success);
+}
+
+.ee-step:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.ee-strip__caption {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: var(--strip-base);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ee-strip__caption-n {
+  font-weight: 800;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.ee-strip__caption-label {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ee-strip__caption--done {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.ee-strip__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.45rem 0.65rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.ee-form {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  overflow: hidden;
+}
+
+.ee-form--center {
+  justify-content: center;
+  text-align: center;
+}
+
+.ee-form__title {
+  margin: 0;
+  font-size: var(--strip-base);
+  font-weight: 700;
+  line-height: 1.25;
+  flex-shrink: 0;
+}
+
+.ee-form__title-sub {
+  font-size: clamp(0.72rem, min(0.88vw, 0.14vh + 0.58rem), 0.8rem);
+  font-weight: 500;
+  color: var(--muted);
+  margin-left: 0.35rem;
+}
+
+.ee-meta {
+  margin: 0;
+  font-size: var(--strip-sm, var(--font-sm));
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.ee-chips {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 6.75rem), 1fr));
+  gap: 0.28rem;
+  align-content: start;
+  overflow: hidden;
+  padding: 1px;
+}
+
+.ee-chip {
+  font-size: var(--strip-chip);
+  padding: 0.38rem 0.45rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--text);
+  cursor: pointer;
+  line-height: 1.25;
+  text-align: center;
+  min-height: 2.3em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
+}
+
+.ee-chip:hover {
+  border-color: var(--border-strong);
+}
+
+.ee-chip--on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(13, 110, 140, 0.2);
+}
+
+.ee-order {
+  flex: 0 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0.3rem 0 0;
+  list-style: none;
+  font-size: var(--strip-base);
+  overflow: hidden;
+}
+
+.ee-order:not(.ee-order--empty) {
+  max-height: min(5.5rem, 36%);
+  border-top: 1px dashed var(--border);
+}
+
+.ee-order li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  padding: 0.12rem 0;
+}
+
+.ee-order__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ee-order__placeholder {
+  color: var(--muted);
+  font-size: var(--font-sm);
+}
+
+.ee-order__btns button {
+  min-width: 1.75rem;
+  min-height: 1.55rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-size: var(--strip-ui);
+}
+
+.ee-confidence {
+  display: flex;
+  gap: 0.28rem;
+  flex-shrink: 0;
+}
+
+.ee-confidence__btn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 2.35rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--text);
+  font-size: var(--strip-ui);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ee-confidence__btn--on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.ee-confidence__label {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.ee-summary {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(3.5rem, auto) 1fr;
+  gap: 0.12rem 0.55rem;
+  font-size: clamp(0.72rem, min(0.9vw, 0.14vh + 0.58rem), 0.82rem);
+  align-content: start;
+  overflow: hidden;
+}
+
+.ee-summary dt {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.ee-summary dd {
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.ee-form__actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.35rem;
+}
+
+.ee-done-title {
+  color: var(--success);
+}
+
+.ee-done-text {
+  margin: 0;
+  font-size: var(--strip-base);
+  color: var(--muted);
+}
+
+.ee-field-note textarea {
+  resize: none;
+  min-height: 2.3em;
+  max-height: 2.3em;
+}

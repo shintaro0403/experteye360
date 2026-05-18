@@ -1,0 +1,951 @@
+/* 受講者 UI — 3DVista 受講者 iframe 専用（内部スクロールなし）
+ * レイアウト基準 = iframe 要素に割り当てられた 100%×100%（.p-shell）。
+ * 25% は 3DVista 側のフレーム比率。アプリ内で vh/25vh/固定 px で組まない。
+ * サイズは .p-shell の container query（cqh/cqw）のみ。clamp の rem 下限は極小に。 */
+
+:root {
+  --navy: #1a2f5a;
+  --navy-dark: #0f1f3d;
+  --navy-mid: #2d4a7c;
+  --navy-light: #dce6f5;
+  --navy-xlight: #f0f4fa;
+  --white: #ffffff;
+  --gray-50: #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd5e1;
+  --gray-500: #64748b;
+  --text: #1e293b;
+  --text-muted: #64748b;
+  --success: #166534;
+  --success-bg: #dcfce7;
+  --warn: #92400e;
+  --warn-bg: #fff7ed;
+  --shadow-sm: 0 1px 2px rgba(15, 31, 61, 0.06);
+  --shadow-md: 0 4px 14px rgba(15, 31, 61, 0.08);
+  --radius: 8px;
+  --radius-sm: 6px;
+  --font: "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--white);
+  color: var(--text);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* iframe 全体 = 研修帯。高さは親 iframe の実サイズに従い、cqh/cqw で帯内に収める */
+.p-shell {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--white);
+  container-type: size;
+  container-name: embed;
+  --p-font-lg: clamp(0.55rem, 6.5cqh, 1.65rem);
+  --p-font-chip: clamp(0.55rem, 6.5cqh, 1.45rem);
+  /* 記載欄: 2行分＋padding が収まる高さ（cqh 連動、帯が狭いときは em で下限） */
+  --p-note-min-h: max(26cqh, calc(2.7em + 6cqh));
+  --p-note-h: clamp(26cqh, 34cqh, 5.5rem);
+
+  /*
+   * レイアウト調整（ここだけ変更）
+   * 単位 cqh = 埋め込み帯（.p-shell）の高さに対する %
+   * 中身のテキスト量では決めない。固定した行高さ＋余白行。
+   */
+  --p-nav-h: 25cqh;
+  --p-nav-pad-block: 4cqh;
+  --p-nav-btn-h: calc(var(--p-nav-h) - 2 * var(--p-nav-pad-block));
+  --p-nav-bottom-gap: clamp(0.3rem, 3.5cqh, 0.55rem);
+  --p-intro-gap: 8cqh;
+  --p-intro-card-h: 52cqh;
+  --p-intro-card-w: 88%;
+  --p-intro-field-h: 36%;
+  --p-note-gap: 7cqh;
+  --p-note-block-h: 42cqh;
+  --p-content-gap: 6cqh;
+  --base: clamp(0.45rem, 3.6cqh, 0.82rem);
+  --sm: clamp(0.42rem, 3.2cqh, 0.78rem);
+  --ui: clamp(0.44rem, 3.4cqh, 0.8rem);
+}
+
+.p-strip {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--white);
+}
+
+/* === Header === */
+.p-strip__head {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: clamp(0.25rem, 2cqw, 0.55rem);
+  padding: clamp(0.28rem, 5cqh, 0.45rem) clamp(0.4rem, 2.5cqw, 0.7rem);
+  background: linear-gradient(180deg, var(--navy) 0%, var(--navy-dark) 100%);
+  color: var(--white);
+}
+
+.p-brand {
+  font-size: clamp(0.58rem, 3.2cqh, 0.75rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0.92;
+}
+
+.p-progress {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 0 0.15rem;
+}
+
+.p-progress__seg {
+  flex: 1 1 0;
+  min-width: 0;
+  height: clamp(3px, 2.8cqh, 6px);
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s, height 0.15s;
+}
+
+.p-progress__seg:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.p-progress__seg--active {
+  height: clamp(4px, 3.8cqh, 8px);
+  background: var(--white);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.p-progress__seg--done {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.p-progress__seg:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.p-caption {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: var(--sm);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.p-caption__n {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.85em;
+}
+
+.p-caption__label {
+  font-weight: 600;
+  color: var(--white);
+}
+
+.p-caption__done {
+  font-weight: 700;
+  color: #86efac;
+}
+
+/* === Body === */
+.p-body {
+  --p-body-pad-top: clamp(0.28rem, 4cqh, 0.5rem);
+  --p-body-pad-inline: clamp(0.38rem, 2.5cqw, 0.65rem);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: var(--p-body-pad-top) var(--p-body-pad-inline) var(--p-nav-bottom-gap);
+  display: flex;
+  flex-direction: column;
+  background: var(--gray-50);
+}
+
+/* step0: 上だけ詰める。ナビ下の余白は設問と同じ --p-nav-bottom-gap */
+.p-body:has(.p-form--intro) {
+  padding-top: 0;
+}
+
+.p-form {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.15rem, 2.5cqh, 0.35rem);
+  overflow: hidden;
+}
+
+/* ナビあり（step0 以外）: 最下行を intro と同じ --p-nav-h で確保 */
+.p-form:has(.p-nav-bar):not(.p-form--intro) {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: minmax(0, 1fr) var(--p-nav-h);
+  gap: 0;
+  height: 100%;
+}
+
+.p-form:has(.p-nav-bar):not(.p-form--intro) .p-nav-bar {
+  grid-row: 2;
+  margin-top: 0;
+  align-self: stretch;
+  justify-self: stretch;
+}
+
+.p-form:has(.p-chips):not(.p-form--intro) .p-chips {
+  grid-row: 1;
+  flex: none;
+  align-self: stretch;
+  padding-block: var(--p-content-gap);
+  box-sizing: border-box;
+}
+
+/* 一言メモ・確信度: 上下余白 + 記載ブロック固定高 + ナビ */
+.p-form.p-form--note:has(.p-nav-bar) {
+  grid-template-rows:
+    minmax(var(--p-note-gap), 1fr)
+    var(--p-note-block-h)
+    minmax(var(--p-note-gap), 1fr)
+    var(--p-nav-h);
+}
+
+.p-form.p-form--note:has(.p-nav-bar) .p-field--note {
+  grid-row: 2;
+  height: 100%;
+  width: 80%;
+  max-width: 80%;
+  align-self: stretch;
+  justify-self: center;
+}
+
+.p-form.p-form--note:has(.p-nav-bar) .p-conf,
+.p-form.p-form--note:has(.p-nav-bar) .p-confirm-text {
+  grid-row: 2;
+  height: 100%;
+  align-self: center;
+  justify-self: center;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.p-form.p-form--note:has(.p-nav-bar) .p-nav-bar {
+  grid-row: 4;
+}
+
+.p-form--done {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.55rem;
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 0.75rem;
+}
+
+/* === 一言メモ / 確信度（ナビなし時のみ flex） === */
+.p-form--note:not(:has(.p-nav-bar)) {
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+}
+
+.p-form--note .p-field--note {
+  min-height: 0;
+  width: 80%;
+  max-width: 80%;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  font-size: var(--p-font-lg);
+}
+
+.p-form--note .p-field--note .p-field__label {
+  flex: 0 0 auto;
+  font-size: 0.92em;
+  font-weight: 700;
+  margin-bottom: clamp(0.12rem, 2cqh, 0.3rem);
+}
+
+.p-form--note .p-field--note .p-field__input {
+  flex: 1 1 0;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  padding: clamp(0.35rem, 3.5cqh, 0.85rem) clamp(0.5rem, 2.5cqw, 1rem);
+  font-size: 1em;
+  line-height: 1.35;
+  resize: none;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.p-form--note .p-field--note .p-field__input::placeholder {
+  font-size: 1em;
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.p-form--note .p-conf {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80%;
+  max-width: 80%;
+  align-self: center;
+}
+
+.p-form--note .p-confirm-text {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  width: 80%;
+  align-self: center;
+  font-size: var(--p-font-lg);
+  font-weight: 600;
+  color: var(--navy);
+  text-align: center;
+}
+
+/*
+ * step0 グリッド（4 行・高さはすべて変数）
+ *   行1 … 上余白（--p-intro-gap 以上、余りは 1fr で上下均等）
+ *   行2 … 白枠（--p-intro-card-h 固定）
+ *   行3 … 下余白（行1と同じ）
+ *   行4 … ナビ（--p-nav-h 固定）
+ */
+.p-form--intro {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows:
+    minmax(var(--p-intro-gap), 1fr)
+    var(--p-intro-card-h)
+    minmax(var(--p-intro-gap), 1fr)
+    var(--p-nav-h);
+  justify-items: center;
+  align-content: stretch;
+  padding: 0;
+  gap: 0;
+}
+
+.p-form--intro .p-intro-card {
+  grid-row: 2;
+  align-self: stretch;
+}
+
+.p-form--intro .p-nav-bar {
+  grid-row: 4;
+  align-self: stretch;
+  margin-top: 0;
+}
+
+.p-intro-card {
+  box-sizing: border-box;
+  display: flex;
+  align-items: stretch;
+  gap: clamp(0.2rem, 3cqw, 0.75rem);
+  width: var(--p-intro-card-w);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: clamp(0.35rem, 5cqh, 1rem) clamp(0.5rem, 3.5cqw, 1rem);
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  font-size: var(--p-font-lg);
+}
+
+.p-field--compact {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+}
+
+.p-field--scene {
+  flex: 1.4 1 0;
+}
+
+.p-intro-card .p-field--compact {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
+}
+
+.p-intro-card .p-field--compact .p-field__label {
+  flex: 0 0 auto;
+  font-size: 0.92em;
+  line-height: 1.25;
+  margin-bottom: clamp(0.12rem, 2cqh, 0.35rem);
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.p-intro-card .p-field--compact .p-field__input {
+  flex: 0 0 var(--p-intro-field-h);
+  min-height: 0;
+  height: var(--p-intro-field-h);
+  padding: clamp(0.25rem, 3cqh, 0.9rem) clamp(0.5rem, 2.5cqw, 1rem);
+  font-size: 1em;
+  line-height: 1.35;
+  border-radius: var(--radius-sm);
+}
+
+.p-intro-card .p-field--compact select.p-field__input {
+  font-size: 1em;
+  font-family: inherit;
+}
+
+.p-field {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+.p-field--note {
+  flex: 0 0 auto;
+}
+
+.p-field__label {
+  font-size: var(--sm);
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 0.15rem;
+}
+
+.p-field__input {
+  padding: 0.42rem 0.55rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-300);
+  background: var(--white);
+  color: var(--text);
+  font-size: var(--base);
+  font-family: inherit;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.p-field__input:focus {
+  outline: none;
+  border-color: var(--navy-mid);
+  box-shadow: 0 0 0 3px rgba(26, 47, 90, 0.12);
+}
+
+.p-field--note .p-field__input {
+  resize: none;
+  line-height: 1.35;
+}
+
+/* === 選択カード（横長・5枚で幅いっぱい） === */
+.p-chips {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: stretch;
+  align-items: stretch;
+  gap: clamp(0.2rem, 1.2cqw, 0.55rem);
+  overflow: hidden;
+  padding: clamp(0.12rem, 2cqh, 0.35rem) clamp(0.15rem, 1cqw, 0.35rem);
+  width: 100%;
+}
+
+.p-chip {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.p-chip:hover {
+  transform: translateY(-2px);
+  z-index: 2;
+}
+
+.p-chip:focus-visible {
+  outline: none;
+}
+
+.p-chip:focus-visible .p-chip__frame {
+  box-shadow: 0 0 0 2px var(--navy-mid);
+}
+
+.p-chip__frame {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: clamp(2px, 0.6cqh, 4px);
+  border-radius: clamp(6px, 1.2cqh, 10px);
+  background: var(--gray-200);
+  border: 1px solid var(--gray-300);
+  box-shadow: var(--shadow-sm);
+  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.p-chip__inner {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  border-radius: clamp(4px, 1cqh, 8px);
+  border: clamp(1.5px, 0.35cqh, 2.5px) solid var(--navy);
+  overflow: hidden;
+  background: var(--white);
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.p-chip__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(0.2rem, 2.5cqh, 0.5rem) clamp(0.25rem, 1.5cqw, 0.55rem);
+  background: var(--white);
+  font-size: var(--p-font-chip);
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1.25;
+  text-align: center;
+  overflow: hidden;
+  word-break: break-word;
+  transition: background 0.12s, color 0.12s;
+}
+
+.p-chip:not(.p-chip--on):hover .p-chip__frame,
+.p-chip--on:hover .p-chip__frame {
+  background: var(--navy-dark);
+  border-color: var(--navy);
+}
+
+.p-chip:not(.p-chip--on):hover .p-chip__inner,
+.p-chip--on:hover .p-chip__inner {
+  background: var(--navy);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.p-chip:not(.p-chip--on):hover .p-chip__name,
+.p-chip--on:hover .p-chip__name {
+  background: transparent;
+  color: var(--white);
+}
+
+/* 未選択カードをホバー中は、選択済みを一旦通常色に（反転は1枚だけ） */
+.p-chips:has(.p-chip:not(.p-chip--on):hover) .p-chip--on:not(:hover) .p-chip__frame {
+  background: var(--gray-200);
+  border-color: var(--gray-300);
+  box-shadow: var(--shadow-sm);
+}
+
+.p-chips:has(.p-chip:not(.p-chip--on):hover) .p-chip--on:not(:hover) .p-chip__inner {
+  border-width: clamp(1.5px, 0.35cqh, 2.5px);
+  border-color: var(--navy);
+  background: var(--white);
+}
+
+.p-chips:has(.p-chip:not(.p-chip--on):hover) .p-chip--on:not(:hover) .p-chip__name {
+  background: var(--white);
+  color: var(--navy);
+  font-weight: 700;
+}
+
+.p-chip--on {
+  transform: translateY(-2px);
+  z-index: 3;
+}
+
+.p-chip--on .p-chip__frame {
+  background: var(--navy-dark);
+  border-color: var(--navy);
+  box-shadow: 0 2px 10px rgba(26, 47, 90, 0.22);
+}
+
+.p-chip--on .p-chip__inner {
+  border-width: clamp(2px, 0.4cqh, 3px);
+  border-color: rgba(255, 255, 255, 0.35);
+  background: var(--navy);
+}
+
+.p-chip--on .p-chip__name {
+  background: transparent;
+  color: var(--white);
+  font-weight: 800;
+}
+
+.p-chip--on:hover .p-chip__inner {
+  background: var(--navy-mid);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p-chip,
+  .p-chip--on {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* === Order === */
+.p-order {
+  flex: 0 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0.35rem 0 0;
+  list-style: none;
+  font-size: var(--sm);
+  overflow: hidden;
+  background: var(--white);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200);
+}
+
+.p-order:not(.p-order--empty) {
+  max-height: min(4.25rem, 30cqh);
+}
+
+.p-order li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  padding: 0.28rem 0.5rem;
+  border-bottom: 1px solid var(--gray-100);
+  line-height: 1.3;
+}
+
+.p-order li:last-child {
+  border-bottom: none;
+}
+
+.p-order__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.p-order__hint {
+  color: var(--text-muted);
+  padding: 0.4rem 0.5rem;
+  border: none;
+}
+
+.p-order__btns {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.p-order__btns button {
+  padding: 0.15rem 0.4rem;
+  min-width: 1.75rem;
+  min-height: 1.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--gray-300);
+  background: var(--gray-50);
+  color: var(--text);
+  cursor: pointer;
+  font-size: var(--ui);
+  font-family: inherit;
+}
+
+.p-order__btns button:hover:not(:disabled) {
+  background: var(--navy-xlight);
+  border-color: var(--navy-mid);
+}
+
+/* === Confidence === */
+.p-conf {
+  display: flex;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.p-conf__btn {
+  flex: 1 1 0;
+  min-height: min(2.35rem, 15cqh);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-300);
+  background: var(--white);
+  color: var(--text);
+  font-size: var(--ui);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.p-conf__btn:hover {
+  border-color: var(--navy-mid);
+  background: var(--navy-xlight);
+}
+
+.p-conf__btn--on {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: var(--white);
+  box-shadow: 0 2px 8px rgba(26, 47, 90, 0.28);
+}
+
+.p-conf__label {
+  margin: 0;
+  font-size: var(--sm);
+  color: var(--text-muted);
+  flex-shrink: 0;
+  padding: 0.15rem 0.1rem;
+}
+
+/* === Summary === */
+.p-summary {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: clamp(0.3rem, 3cqh, 0.45rem) clamp(0.38rem, 2cqw, 0.55rem);
+  display: grid;
+  grid-template-columns: minmax(2.75rem, auto) 1fr;
+  gap: 0.1rem 0.45rem;
+  font-size: clamp(0.62rem, 2.8cqw, 0.84rem);
+  align-content: start;
+  overflow: hidden;
+  background: var(--white);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200);
+}
+
+.p-summary dt {
+  margin: 0;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.p-summary dd {
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+/* === Nav（全 step 共通・高さは --p-nav-h 固定。中身では伸びない） === */
+.p-nav-bar {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--p-nav-h);
+  min-height: var(--p-nav-h);
+  max-height: var(--p-nav-h);
+  margin-top: auto;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: var(--p-nav-pad-block) clamp(0.45rem, 2.5cqw, 0.85rem);
+  background: linear-gradient(180deg, var(--navy) 0%, var(--navy-dark) 100%);
+}
+
+.p-nav-bar .p-nav {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: center;
+  gap: clamp(0.35rem, 2.5cqw, 0.65rem);
+  margin: 0;
+  padding: 0;
+  width: auto;
+}
+
+.p-nav-bar .p-btn {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  height: var(--p-nav-btn-h);
+  min-height: var(--p-nav-btn-h);
+  max-height: var(--p-nav-btn-h);
+  padding: 0 clamp(0.85rem, 4.5cqw, 1.5rem);
+  font-size: clamp(0.9rem, 5.5cqh, 1.35rem);
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+}
+
+.p-nav-bar .p-btn--ghost {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.55);
+  color: var(--white);
+}
+
+.p-nav-bar .p-btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--white);
+}
+
+.p-nav-bar .p-btn--primary {
+  background: var(--white);
+  border-color: var(--white);
+  color: var(--navy);
+  box-shadow: var(--shadow-sm);
+}
+
+.p-nav-bar .p-btn--primary:hover {
+  background: var(--navy-xlight);
+  border-color: var(--navy-xlight);
+}
+
+.p-nav {
+  flex-shrink: 0;
+  display: flex;
+  gap: clamp(0.35rem, 2.5cqw, 0.65rem);
+}
+
+.p-nav--center {
+  justify-content: center;
+  width: 100%;
+}
+
+.p-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(0.3rem, 2.5cqh, 0.45rem) clamp(0.65rem, 3.5cqw, 1rem);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-size: var(--ui);
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  min-height: min(2.25rem, 14cqh);
+  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+
+.p-btn--primary {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: var(--white);
+  box-shadow: var(--shadow-sm);
+}
+
+.p-btn--primary:hover {
+  background: var(--navy-dark);
+  box-shadow: var(--shadow-md);
+}
+
+.p-btn--ghost {
+  background: var(--white);
+  border-color: var(--gray-300);
+  color: var(--text);
+}
+
+.p-btn--ghost:hover {
+  background: var(--gray-100);
+  border-color: var(--gray-500);
+}
+
+/* === Done === */
+.p-done-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--success-bg);
+  color: var(--success);
+  font-size: 1.35rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.p-form--done .p-form__title {
+  margin: 0;
+  font-size: var(--base);
+  font-weight: 700;
+  color: var(--success);
+}
+
+.p-done-text {
+  margin: 0;
+  font-size: var(--sm);
+  color: var(--text-muted);
+  max-width: 22rem;
+}
+
+.warn,
+.p-warn {
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: var(--sm);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid #fed7aa;
+}
+
+/* container queries 非対応時のみ viewport 比例（アプリ本体は .p-shell の cqh を使う） */
+@supports not (container-type: size) {
+  .p-chip__name {
+    font-size: clamp(0.55rem, 2.8vmin, 1.45rem);
+  }
+
+  .p-nav-bar .p-btn {
+    font-size: clamp(0.55rem, 2.6vmin, 1.35rem);
+    height: var(--p-nav-btn-h);
+    min-height: var(--p-nav-btn-h);
+    max-height: var(--p-nav-btn-h);
+  }
+}

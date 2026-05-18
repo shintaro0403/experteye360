@@ -1,0 +1,270 @@
+/* 管理者 iframe 専用（受講者ツアーとは別埋め込み） */
+
+.ee-admin {
+  min-height: 100%;
+  background: var(--bg);
+}
+
+.ee-admin__inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 1.25rem clamp(0.85rem, 2.5vw, 1.75rem) 2rem;
+}
+
+.ee-admin__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.ee-admin__title {
+  margin: 0;
+  font-size: clamp(1.25rem, 2.5vw, 1.55rem);
+  font-weight: 750;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.ee-admin__sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+  max-width: 52ch;
+}
+
+.ee-admin__eyebrow {
+  margin: 0 0 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.ee-admin__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ee-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  padding: 0.25rem;
+  background: var(--surface-muted);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.ee-tab {
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ee-tab--on {
+  background: var(--surface);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.ee-admin .panel {
+  margin-bottom: 0;
+}
+
+.ee-admin .panel h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.ee-admin .panel h3 {
+  margin: 1rem 0 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.ee-admin label {
+  display: block;
+  margin-top: 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.ee-admin label input,
+.ee-admin label textarea {
+  display: block;
+  width: 100%;
+  margin-top: 0.2rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.88rem;
+}
+
+.ee-admin label input:focus,
+.ee-admin label textarea:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(13, 110, 140, 0.12);
+}
+
+.ee-grid-2 {
+  display: grid;
+  gap: 1.25rem;
+}
+
+@media (min-width: 860px) {
+  .ee-grid-2 {
+    grid-template-columns: 240px 1fr;
+  }
+}
+
+.ee-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.ee-row.spread {
+  justify-content: space-between;
+}
+
+.ee-grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.ee-scene-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+
+.ee-scene-list li {
+  margin-bottom: 0.35rem;
+}
+
+.ee-scene-pill {
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 500;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.ee-scene-pill:hover {
+  border-color: var(--border-strong);
+}
+
+.ee-scene-pill--on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+  font-weight: 600;
+}
+
+.ee-resp-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.ee-resp-item {
+  width: 100%;
+  text-align: left;
+  padding: 0.55rem 0.65rem;
+  margin-bottom: 0.35rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  display: grid;
+  gap: 0.12rem;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.ee-resp-item:hover {
+  border-color: var(--border-strong);
+}
+
+.ee-resp-item--on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(13, 110, 140, 0.12);
+}
+
+.ee-resp-date {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.ee-resp-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.ee-resp-scene {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.ee-diff h3 {
+  font-size: 0.82rem;
+  margin: 0.85rem 0 0.25rem;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.ee-diff ul {
+  margin: 0;
+  padding-left: 1.15rem;
+  font-size: 0.85rem;
+}
+
+.ee-diff p {
+  font-size: 0.85rem;
+  margin: 0.25rem 0 0;
+  color: var(--text);
+}
+
+.ee-json-pre {
+  font-size: 0.68rem;
+  overflow: auto;
+  max-height: 220px;
+  background: var(--surface-muted);
+  padding: 0.55rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  margin-top: 0.5rem;
+}
+
+.ee-admin .actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}

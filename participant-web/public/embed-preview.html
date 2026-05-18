@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3DVista 埋め込み確認（外側モック 25vh × iframe 100%）</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      body {
+        font-family: system-ui, sans-serif;
+        background: #1a2f5a;
+        color: #fff;
+      }
+      .host {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .pano {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(165deg, #0f1f3d, #2d4a7c);
+      }
+      .embed {
+        flex: 0 0 25vh;
+        width: 100%;
+        min-height: 0;
+        border-top: 3px solid #0f1f3d;
+        background: #fff;
+      }
+      .embed iframe {
+        display: block;
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="host">
+      <div class="pano">360° パノラマ（3DVista・モック・75%）</div>
+      <div class="embed">
+        <iframe src="/participant/" title="受講者 Web（iframe 内は width/height 100%。外側 25vh は 3DVista モックのみ）"></iframe>
+      </div>
+    </div>
+  </body>
+</html>
