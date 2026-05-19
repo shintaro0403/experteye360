@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { limitChoices } from "@shared/choices";
+import { getSceneQuestionCards } from "@shared/sceneQuestions";
 import {
   createEmptyRounds,
   JUDGMENT_ROUND_COUNT,
@@ -266,19 +267,6 @@ export function ParticipantPage() {
 
   const scene = settings.scenes[0] ?? null;
 
-  const awarenessChoices = useMemo(
-    () => (scene ? limitChoices(scene.awarenessCards) : []),
-    [scene],
-  );
-  const criteriaChoices = useMemo(
-    () => (scene ? limitChoices(scene.criteriaCards) : []),
-    [scene],
-  );
-  const actionChoices = useMemo(
-    () => (scene ? limitChoices(scene.actionCards) : []),
-    [scene],
-  );
-
   const goBack = () => {
     setFieldWarn(null);
     setStep((s) => Math.max(STEP_INTRO, s - 1));
@@ -424,7 +412,7 @@ export function ParticipantPage() {
             <ChipStep
               title="気づきカード"
               round={rp.round}
-              choices={awarenessChoices}
+              choices={limitChoices(getSceneQuestionCards(scene, rp.round).awarenessCards)}
               selected={rounds[rp.round].awarenessSelection}
               onSelect={(l) => {
                 updateRound(rp.round, {
@@ -442,7 +430,7 @@ export function ParticipantPage() {
             <ChipStep
               title="共有・行動カード"
               round={rp.round}
-              choices={actionChoices}
+              choices={limitChoices(getSceneQuestionCards(scene, rp.round).actionCards)}
               selected={rounds[rp.round].actionSelection}
               onSelect={(l) => {
                 updateRound(rp.round, {
@@ -460,7 +448,7 @@ export function ParticipantPage() {
             <ChipStep
               title="判断基準カード"
               round={rp.round}
-              choices={criteriaChoices}
+              choices={limitChoices(getSceneQuestionCards(scene, rp.round).criteriaCards)}
               selected={rounds[rp.round].criteriaOrdered}
               onSelect={(l) => {
                 updateRound(rp.round, {

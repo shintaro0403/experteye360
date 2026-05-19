@@ -1,3 +1,4 @@
+import { normalizeSettings } from "./sceneQuestions";
 import { DEFAULT_SETTINGS } from "./seed";
 import type { AppSettings, ParticipantSubmission } from "./types";
 
@@ -22,7 +23,7 @@ export function loadSettings(): AppSettings {
       saveSettings(d);
       return d;
     }
-    return parsed;
+    return normalizeSettings(parsed);
   } catch {
     const d = freshDefaults();
     saveSettings(d);
@@ -31,7 +32,7 @@ export function loadSettings(): AppSettings {
 }
 
 export function saveSettings(s: AppSettings): void {
-  localStorage.setItem(KEY_SETTINGS, JSON.stringify(s));
+  localStorage.setItem(KEY_SETTINGS, JSON.stringify(normalizeSettings(s)));
   window.dispatchEvent(new Event("expertEye360-storage"));
 }
 

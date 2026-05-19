@@ -1,3 +1,10 @@
+/** 1 設問分のカード選択肢（各タイプ最大 5 枚） */
+export type SceneQuestionCards = {
+  awarenessCards: string[];
+  criteriaCards: string[];
+  actionCards: string[];
+};
+
 /** 3DVista シーンに紐づく研修設定（ExpertEye360 が保持） */
 export type Scene = {
   id: string;
@@ -8,9 +15,12 @@ export type Scene = {
   processArea: string;
   trainingTheme: string;
   attentionLabels: string[];
-  awarenessCards: string[];
-  criteriaCards: string[];
-  actionCards: string[];
+  /** 設問 1〜5 それぞれのカード（受講者の 5 問フローに対応） */
+  questionCards: SceneQuestionCards[];
+  /** @deprecated 読み取り互換。新規は questionCards を使用 */
+  awarenessCards?: string[];
+  criteriaCards?: string[];
+  actionCards?: string[];
   veteranTemplate: VeteranTemplate;
 };
 
