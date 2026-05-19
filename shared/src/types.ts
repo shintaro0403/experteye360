@@ -26,6 +26,14 @@ export type VeteranTemplate = {
   ojtChecklist: string[];
 };
 
+/** 1 設問（気づき→共有→判断基準→一言メモ）分の回答 */
+export type JudgmentRound = {
+  awarenessSelection: string[];
+  actionSelection: string[];
+  criteriaOrdered: string[];
+  roundNote: string;
+};
+
 export type ParticipantSubmission = {
   id: string;
   createdAt: string;
@@ -33,17 +41,19 @@ export type ParticipantSubmission = {
   /** 所属（受講者入力） */
   affiliation?: string;
   sceneId: string;
-  attentionSelected: string[];
-  /** 一問目（注目）選択後の一言メモ */
-  attentionNote: string;
-  awarenessSelections: string[];
-  awarenessNote: string;
-  criteriaOrdered: string[];
-  criteriaNote: string;
-  actionsSelected: string[];
-  actionsNote: string;
+  /** 5 設問分（各 4 画面サイクル） */
+  rounds: JudgmentRound[];
   /** 1〜5（1=かなり不安 … 5=強く自信あり） */
   confidenceLevel: number;
+  /** 旧形式（互換・差分用に submit 時にも冗長保存） */
+  attentionSelected?: string[];
+  attentionNote?: string;
+  awarenessSelections?: string[];
+  awarenessNote?: string;
+  criteriaOrdered?: string[];
+  criteriaNote?: string;
+  actionsSelected?: string[];
+  actionsNote?: string;
 };
 
 export type AppSettings = {

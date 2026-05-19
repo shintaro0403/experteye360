@@ -1,5 +1,15 @@
 import { useMemo, useState } from "react";
 import { limitChoices } from "@shared/choices";
+import {
+  createEmptyRounds,
+  JUDGMENT_ROUND_COUNT,
+  stepToRoundPhase,
+  STEP_CONFIRM,
+  STEP_CONFIDENCE,
+  STEP_DONE,
+  STEP_INTRO,
+} from "@shared/judgmentFlow";
+import type { JudgmentRound } from "@shared/types";
 import { useAppData } from "../hooks/useAppData";
 
 const CONFIDENCE_LABELS = [
@@ -10,8 +20,50 @@ const CONFIDENCE_LABELS = [
   "強く自信あり",
 ] as const;
 
+const NOTE_PLACEHOLDERS = [
+  "例：ラベル位置が通常と違う",
+  "例：異音の原因を考えた",
+  "例：安全側に判断した",
+  "例：次班に共有したい",
+  "例：記録を残してから進めたい",
+] as const;
+
 function uid() {
   return crypto.randomUUID();
+}
+
+function IntroFieldIcon({ kind }: { kind: "person" | "building" }) {
+  if (kind === "person") {
+    return (
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <circle cx="12" cy="8" r="3.5" fill="none" stroke="currentColor" strokeWidth="1.75" />
+        <path
+          d="M5.5 19.5c.6-3.2 3.2-5 6.5-5s5.9 1.8 6.5 5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <path
+        d="M5 20V6.5L12 3l7 3.5V20H5z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M9.5 10h1.25M9.5 13.25h1.25M13.25 10H14.5M13.25 13.25H14.5M9.5 16.5h5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
 }
 
 function ChoiceCard({
@@ -40,59 +92,91 @@ function ChoiceCard({
 }
 
 function Nav({
-  back,
-  next,
+  showBack,
+  showNext,
   onBack,
   onNext,
   submitLabel = "next",
+  round,
+  title,
+  titleRequired,
+  titleOptional,
+  warn,
 }: {
-  back?: number;
-  next?: number | "submit";
-  onBack: (step: number) => void;
-  onNext: (target: number | "submit") => void;
+  showBack: boolean;
+  showNext: boolean;
+  onBack: () => void;
+  onNext: () => void;
   submitLabel?: string;
+  round?: number;
+  title?: string;
+  titleRequired?: boolean;
+  titleOptional?: boolean;
+  warn?: string | null;
 }) {
   return (
-    <div className="p-nav-bar">
-      <div className="p-nav">
-        {back !== undefined && (
-          <button type="button" className="p-btn p-btn--ghost" onClick={() => onBack(back)}>
-            back
-          </button>
+    <div className={`p-nav-bar${warn ? " p-nav-bar--warn" : ""}`}>
+      {warn && (
+        <p className="p-nav-warn" role="alert">
+          {warn}
+        </p>
+      )}
+      <div className={`p-nav${title ? " p-nav--with-meta" : ""}`}>
+        {title && (
+          <p className="p-step-meta" aria-live="polite">
+            {round !== undefined && (
+              <>
+                <span className="p-step-meta__round">
+                  設問 {round + 1}/{JUDGMENT_ROUND_COUNT}
+                </span>
+                <span className="p-step-meta__sep" aria-hidden="true">
+                  ·
+                </span>
+              </>
+            )}
+            <span className="p-step-meta__title">{title}</span>
+            {titleRequired && <span className="p-step-meta__badge p-step-meta__badge--required">（必須）</span>}
+            {titleOptional && <span className="p-step-meta__badge p-step-meta__badge--optional">（任意）</span>}
+          </p>
         )}
-        {next === "submit" ? (
-          <button type="button" className="p-btn p-btn--primary" onClick={() => onNext("submit")}>
-            {submitLabel}
-          </button>
-        ) : next !== undefined ? (
-          <button type="button" className="p-btn p-btn--primary" onClick={() => onNext(next)}>
-            next
-          </button>
-        ) : null}
+        <div className="p-nav__actions">
+          {showBack && (
+            <button type="button" className="p-btn p-btn--ghost" onClick={onBack}>
+              back
+            </button>
+          )}
+          {showNext && (
+            <button type="button" className="p-btn p-btn--primary" onClick={onNext}>
+              {submitLabel}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
 function ChipStep({
+  title,
+  round,
   choices,
   selected,
   onSelect,
-  back,
-  next,
   onBack,
   onNext,
+  warn,
 }: {
+  title: string;
+  round: number;
   choices: string[];
   selected: string[];
   onSelect: (label: string) => void;
-  back: number;
-  next: number;
-  onBack: (step: number) => void;
-  onNext: (target: number) => void;
+  onBack: () => void;
+  onNext: () => void;
+  warn?: string | null;
 }) {
   return (
-    <div className="p-form">
+    <div className="p-form p-form--chips">
       <div className="p-chips">
         {choices.map((l) => (
           <ChoiceCard
@@ -103,32 +187,42 @@ function ChipStep({
           />
         ))}
       </div>
-      <Nav back={back} next={next} onBack={onBack} onNext={onNext} />
+      <Nav
+        showBack
+        showNext
+        round={round}
+        title={title}
+        titleRequired
+        onBack={onBack}
+        onNext={onNext}
+        warn={warn}
+      />
     </div>
   );
 }
 
 function NoteStep({
+  round,
   value,
   onChange,
   placeholder,
-  back,
-  next,
   onBack,
   onNext,
 }: {
+  round: number;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
-  back: number;
-  next: number | "submit";
-  onBack: (step: number) => void;
-  onNext: (target: number | "submit") => void;
+  onBack: () => void;
+  onNext: () => void;
 }) {
   return (
     <div className="p-form p-form--note">
       <label className="p-field p-field--note">
-        <span className="p-field__label">一言メモ</span>
+        <span className="p-field__label">
+          一言メモ
+          <span className="p-field__label-optional">（任意）</span>
+        </span>
         <textarea
           className="p-field__input"
           value={value}
@@ -136,32 +230,42 @@ function NoteStep({
           placeholder={placeholder}
         />
       </label>
-      <Nav back={back} next={next} onBack={onBack} onNext={onNext} />
+      <Nav
+        showBack
+        showNext
+        round={round}
+        title="一言メモ"
+        titleOptional
+        onBack={onBack}
+        onNext={onNext}
+      />
     </div>
   );
 }
 
+function patchRound(
+  rounds: JudgmentRound[],
+  roundIdx: number,
+  patch: Partial<JudgmentRound>,
+): JudgmentRound[] {
+  return rounds.map((r, i) => (i === roundIdx ? { ...r, ...patch } : r));
+}
+
+function selectSingle(list: string[], v: string): string[] {
+  return list.includes(v) ? [] : [v];
+}
+
 export function ParticipantPage() {
   const { settings, addResponse } = useAppData();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(STEP_INTRO);
   const [participantName, setParticipantName] = useState("");
   const [affiliation, setAffiliation] = useState("");
-  const [attention, setAttention] = useState<string[]>([]);
-  const [attentionNote, setAttentionNote] = useState("");
-  const [awareness, setAwareness] = useState<string[]>([]);
-  const [awarenessNote, setAwarenessNote] = useState("");
-  const [criteriaOrder, setCriteriaOrder] = useState<string[]>([]);
-  const [criteriaNote, setCriteriaNote] = useState("");
-  const [actions, setActions] = useState<string[]>([]);
-  const [actionsNote, setActionsNote] = useState("");
+  const [rounds, setRounds] = useState<JudgmentRound[]>(createEmptyRounds);
   const [confidence, setConfidence] = useState(3);
+  const [fieldWarn, setFieldWarn] = useState<string | null>(null);
 
   const scene = settings.scenes[0] ?? null;
 
-  const attentionChoices = useMemo(
-    () => (scene ? limitChoices(scene.attentionLabels) : []),
-    [scene],
-  );
   const awarenessChoices = useMemo(
     () => (scene ? limitChoices(scene.awarenessCards) : []),
     [scene],
@@ -175,51 +279,88 @@ export function ParticipantPage() {
     [scene],
   );
 
-  const selectSingle = (list: string[], v: string, set: (n: string[]) => void) => {
-    set(list.includes(v) ? [] : [v]);
+  const goBack = () => {
+    setFieldWarn(null);
+    setStep((s) => Math.max(STEP_INTRO, s - 1));
   };
 
-  const goBack = (target: number) => setStep(target);
-  const goNext = (target: number | "submit") => {
-    if (target === "submit") submit();
-    else setStep(target);
+  const advanceStep = () => {
+    if (step === STEP_CONFIRM) submit();
+    else setStep((s) => s + 1);
+  };
+
+  const validateStep = (): string | null => {
+    if (step === STEP_INTRO) {
+      if (!participantName.trim()) return "名前を入力してください";
+      if (!affiliation.trim()) return "所属を入力してください";
+      return null;
+    }
+    const phase = stepToRoundPhase(step);
+    if (!phase) return null;
+    const roundData = rounds[phase.round];
+    if (phase.phase === "awareness" && roundData.awarenessSelection.length === 0) {
+      return "気づきカードを1つ選んでください";
+    }
+    if (phase.phase === "action" && roundData.actionSelection.length === 0) {
+      return "共有・行動カードを1つ選んでください";
+    }
+    if (phase.phase === "criteria" && roundData.criteriaOrdered.length === 0) {
+      return "判断基準カードを1つ選んでください";
+    }
+    return null;
+  };
+
+  const tryNext = () => {
+    const msg = validateStep();
+    if (msg) {
+      setFieldWarn(msg);
+      return;
+    }
+    setFieldWarn(null);
+    advanceStep();
+  };
+
+  const updateRound = (roundIdx: number, patch: Partial<JudgmentRound>) => {
+    setRounds((prev) => patchRound(prev, roundIdx, patch));
   };
 
   const resetForm = () => {
-    setStep(0);
+    setStep(STEP_INTRO);
     setParticipantName("");
     setAffiliation("");
-    setAttention([]);
-    setAttentionNote("");
-    setAwareness([]);
-    setAwarenessNote("");
-    setCriteriaOrder([]);
-    setCriteriaNote("");
-    setActions([]);
-    setActionsNote("");
+    setRounds(createEmptyRounds());
     setConfidence(3);
+    setFieldWarn(null);
   };
 
   const submit = () => {
     if (!scene) return;
+    const awarenessNote = rounds
+      .map((r, i) => (r.roundNote.trim() ? `【設問${i + 1}】${r.roundNote.trim()}` : ""))
+      .filter(Boolean)
+      .join("\n");
+
     addResponse({
       id: uid(),
       createdAt: new Date().toISOString(),
-      participantName: participantName.trim() || "（無記名）",
+      participantName: participantName.trim(),
       affiliation: affiliation.trim(),
       sceneId: scene.id,
-      attentionSelected: attention,
-      attentionNote,
-      awarenessSelections: awareness,
-      awarenessNote,
-      criteriaOrdered: criteriaOrder,
-      criteriaNote,
-      actionsSelected: actions,
-      actionsNote,
+      rounds,
       confidenceLevel: confidence,
+      attentionSelected: [],
+      attentionNote: "",
+      awarenessSelections: rounds.flatMap((r) => r.awarenessSelection),
+      awarenessNote,
+      criteriaOrdered: rounds.flatMap((r) => r.criteriaOrdered),
+      criteriaNote: "",
+      actionsSelected: rounds.flatMap((r) => r.actionSelection),
+      actionsNote: "",
     });
-    setStep(11);
+    setStep(STEP_DONE);
   };
+
+  const rp = stepToRoundPhase(step);
 
   return (
     <div className="p-shell">
@@ -229,135 +370,122 @@ export function ParticipantPage() {
             <p className="p-warn">シーンが未設定です。管理者 iframe で登録してください。</p>
           )}
 
-          {scene && step === 0 && (
+          {scene && step === STEP_INTRO && (
             <div className="p-form p-form--intro">
               <div className="p-intro-card">
                 <label className="p-field p-field--compact">
-                  <span className="p-field__label">名前</span>
+                  <span className="p-field__head">
+                    <span className="p-field__icon">
+                      <IntroFieldIcon kind="person" />
+                    </span>
+                    <span className="p-field__label">
+                      名前
+                      <span className="p-field__label-required">（必須）</span>
+                    </span>
+                  </span>
                   <input
                     className="p-field__input"
                     value={participantName}
-                    onChange={(e) => setParticipantName(e.target.value)}
-                    placeholder="任意"
+                    onChange={(e) => {
+                      setParticipantName(e.target.value);
+                      if (fieldWarn) setFieldWarn(null);
+                    }}
+                    placeholder="例：山田 太郎"
+                    required
                   />
                 </label>
-                <label className="p-field p-field--compact p-field--scene">
-                  <span className="p-field__label">所属</span>
+                <label className="p-field p-field--compact">
+                  <span className="p-field__head">
+                    <span className="p-field__icon">
+                      <IntroFieldIcon kind="building" />
+                    </span>
+                    <span className="p-field__label">
+                      所属
+                      <span className="p-field__label-required">（必須）</span>
+                    </span>
+                  </span>
                   <input
                     className="p-field__input"
                     value={affiliation}
-                    onChange={(e) => setAffiliation(e.target.value)}
-                    placeholder="営業部"
+                    onChange={(e) => {
+                      setAffiliation(e.target.value);
+                      if (fieldWarn) setFieldWarn(null);
+                    }}
+                    placeholder="例：営業部"
+                    required
                   />
                 </label>
               </div>
-              <div className="p-nav-bar">
-                <div className="p-nav">
-                  <button type="button" className="p-btn p-btn--primary" onClick={() => setStep(1)}>
-                    next
-                  </button>
-                </div>
-              </div>
+              <Nav showBack={false} showNext onBack={() => {}} onNext={tryNext} warn={fieldWarn} />
             </div>
           )}
 
-          {scene && step === 1 && (
+          {scene && rp?.phase === "awareness" && (
             <ChipStep
-              choices={attentionChoices}
-              selected={attention}
-              onSelect={(l) => selectSingle(attention, l, setAttention)}
-              back={0}
-              next={2}
-              onBack={goBack}
-              onNext={goNext}
-            />
-          )}
-
-          {scene && step === 2 && (
-            <NoteStep
-              value={attentionNote}
-              onChange={setAttentionNote}
-              placeholder="例：配管の振動が気になった"
-              back={1}
-              next={3}
-              onBack={goBack}
-              onNext={goNext}
-            />
-          )}
-
-          {scene && step === 3 && (
-            <ChipStep
+              title="気づきカード"
+              round={rp.round}
               choices={awarenessChoices}
-              selected={awareness}
-              onSelect={(l) => selectSingle(awareness, l, setAwareness)}
-              back={2}
-              next={4}
+              selected={rounds[rp.round].awarenessSelection}
+              onSelect={(l) => {
+                updateRound(rp.round, {
+                  awarenessSelection: selectSingle(rounds[rp.round].awarenessSelection, l),
+                });
+                if (fieldWarn) setFieldWarn(null);
+              }}
               onBack={goBack}
-              onNext={goNext}
+              onNext={tryNext}
+              warn={fieldWarn}
             />
           )}
 
-          {scene && step === 4 && (
-            <NoteStep
-              value={awarenessNote}
-              onChange={setAwarenessNote}
-              placeholder="例：異音の原因を考えた"
-              back={3}
-              next={5}
-              onBack={goBack}
-              onNext={goNext}
-            />
-          )}
-
-          {scene && step === 5 && (
+          {scene && rp?.phase === "action" && (
             <ChipStep
-              choices={criteriaChoices}
-              selected={criteriaOrder}
-              onSelect={(l) => selectSingle(criteriaOrder, l, setCriteriaOrder)}
-              back={4}
-              next={6}
-              onBack={goBack}
-              onNext={goNext}
-            />
-          )}
-
-          {scene && step === 6 && (
-            <NoteStep
-              value={criteriaNote}
-              onChange={setCriteriaNote}
-              placeholder="例：安全側に判断した"
-              back={5}
-              next={7}
-              onBack={goBack}
-              onNext={goNext}
-            />
-          )}
-
-          {scene && step === 7 && (
-            <ChipStep
+              title="共有・行動カード"
+              round={rp.round}
               choices={actionChoices}
-              selected={actions}
-              onSelect={(l) => selectSingle(actions, l, setActions)}
-              back={6}
-              next={8}
+              selected={rounds[rp.round].actionSelection}
+              onSelect={(l) => {
+                updateRound(rp.round, {
+                  actionSelection: selectSingle(rounds[rp.round].actionSelection, l),
+                });
+                if (fieldWarn) setFieldWarn(null);
+              }}
               onBack={goBack}
-              onNext={goNext}
+              onNext={tryNext}
+              warn={fieldWarn}
             />
           )}
 
-          {scene && step === 8 && (
+          {scene && rp?.phase === "criteria" && (
+            <ChipStep
+              title="判断基準カード"
+              round={rp.round}
+              choices={criteriaChoices}
+              selected={rounds[rp.round].criteriaOrdered}
+              onSelect={(l) => {
+                updateRound(rp.round, {
+                  criteriaOrdered: selectSingle(rounds[rp.round].criteriaOrdered, l),
+                });
+                if (fieldWarn) setFieldWarn(null);
+              }}
+              onBack={goBack}
+              onNext={tryNext}
+              warn={fieldWarn}
+            />
+          )}
+
+          {scene && rp?.phase === "note" && (
             <NoteStep
-              value={actionsNote}
-              onChange={setActionsNote}
-              placeholder="例：次班に共有したい"
-              back={7}
-              next={9}
+              round={rp.round}
+              value={rounds[rp.round].roundNote}
+              onChange={(v) => updateRound(rp.round, { roundNote: v })}
+              placeholder={NOTE_PLACEHOLDERS[rp.round] ?? NOTE_PLACEHOLDERS[0]}
               onBack={goBack}
-              onNext={goNext}
+              onNext={tryNext}
             />
           )}
 
-          {scene && step === 9 && (
+          {scene && step === STEP_CONFIDENCE && (
             <div className="p-form p-form--note">
               <div className="p-conf" role="group" aria-label="確信度">
                 {CONFIDENCE_LABELS.map((label, idx) => {
@@ -376,18 +504,25 @@ export function ParticipantPage() {
                   );
                 })}
               </div>
-              <Nav back={8} next={10} onBack={goBack} onNext={goNext} />
+              <Nav showBack showNext title="確信度" onBack={goBack} onNext={tryNext} />
             </div>
           )}
 
-          {scene && step === 10 && (
+          {scene && step === STEP_CONFIRM && (
             <div className="p-form p-form--note">
-              <p className="p-confirm-text">内容を送信します</p>
-              <Nav back={9} next="submit" onBack={goBack} onNext={goNext} submitLabel="回答を送信" />
+              <p className="p-confirm-text">内容を送信します（設問 {JUDGMENT_ROUND_COUNT} 件）</p>
+              <Nav
+                showBack
+                showNext
+                title="送信"
+                onBack={goBack}
+                onNext={tryNext}
+                submitLabel="回答を送信"
+              />
             </div>
           )}
 
-          {step === 11 && (
+          {step === STEP_DONE && (
             <div className="p-form p-form--done">
               <div className="p-done-icon">✓</div>
               <h2 className="p-form__title">送信完了</h2>
