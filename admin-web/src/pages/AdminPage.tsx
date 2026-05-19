@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { getConfidenceLabel } from "@shared/confidence";
 import { getSubmissionRounds, JUDGMENT_ROUND_COUNT } from "@shared/judgmentFlow";
 import type { ParticipantSubmission, Scene } from "@shared/types";
 import { CardSlotsField, cardsToSlots, slotsToCards } from "../components/CardSlotsField";
@@ -124,7 +125,7 @@ function ResponseDetail({
         <dt>シーン</dt>
         <dd>{sceneLabel}</dd>
         <dt>確信度</dt>
-        <dd>{response.confidenceLevel} / 5</dd>
+        <dd>{getConfidenceLabel(response.confidenceLevel)}</dd>
         <dt>送信日時</dt>
         <dd>{new Date(response.createdAt).toLocaleString("ja-JP")}</dd>
       </dl>
@@ -249,7 +250,8 @@ export function AdminPage() {
     selectedResponse && settings.scenes.find((s) => s.id === selectedResponse.sceneId);
 
   return (
-    <div className="a-page">
+    <div className="a-shell">
+      <div className="a-page">
       <header className="a-topbar">
         <div className="a-topbar__inner">
           <span className="a-topbar__brand">ExpertEye360</span>
@@ -509,6 +511,7 @@ export function AdminPage() {
           </section>
         )}
       </main>
+      </div>
     </div>
   );
 }

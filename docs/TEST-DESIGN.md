@@ -2,6 +2,8 @@
 
 本書は、[TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md) に基づき、**実装ファイルと同じ単位でテストを置く** TDD 設計である。
 
+**機能の洗い出し（テスト単位の一覧）**: [TDD-FEATURE-INVENTORY.md](./TDD-FEATURE-INVENTORY.md)
+
 **対応ルール**: 実装 `foo.ts` に対し、同ディレクトリに `foo.test.ts` を置く（コロケーション）。
 
 ---
@@ -22,6 +24,7 @@
 | 0.2 | 2026-05-18 | **ソースファイル対応**に再構成 |
 | 0.3 | 2026-05-18 | **テスト記述の原則**（§2.2）を追加 |
 | 0.4 | 2026-05-18 | 受講者 iframe レイアウトの受け入れ（§3）を追加 |
+| 0.5 | 2026-05-19 | [TDD-FEATURE-INVENTORY.md](./TDD-FEATURE-INVENTORY.md) を追加（機能一覧の参照先） |
 
 ---
 

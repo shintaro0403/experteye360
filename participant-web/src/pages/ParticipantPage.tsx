@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { limitChoices } from "@shared/choices";
+import { CONFIDENCE_LABELS } from "@shared/confidence";
 import { getSceneQuestionCards } from "@shared/sceneQuestions";
 import {
   createEmptyRounds,
@@ -12,14 +13,6 @@ import {
 } from "@shared/judgmentFlow";
 import type { JudgmentRound } from "@shared/types";
 import { useAppData } from "../hooks/useAppData";
-
-const CONFIDENCE_LABELS = [
-  "かなり不安",
-  "少し不安",
-  "一応判断できる",
-  "ある程度自信あり",
-  "強く自信あり",
-] as const;
 
 const NOTE_PLACEHOLDERS = [
   "例：ラベル位置が通常と違う",
@@ -202,6 +195,47 @@ function ChipStep({
   );
 }
 
+function ConfidenceStep({
+  confidence,
+  onSelect,
+  onBack,
+  onNext,
+  warn,
+}: {
+  confidence: number | null;
+  onSelect: (level: number) => void;
+  onBack: () => void;
+  onNext: () => void;
+  warn?: string | null;
+}) {
+  return (
+    <div className="p-form p-form--chips">
+      <div className="p-chips" role="radiogroup" aria-label="確信度">
+        {CONFIDENCE_LABELS.map((label, idx) => {
+          const level = idx + 1;
+          return (
+            <ChoiceCard
+              key={label}
+              label={label}
+              selected={confidence === level}
+              onToggle={() => onSelect(level)}
+            />
+          );
+        })}
+      </div>
+      <Nav
+        showBack
+        showNext
+        title="確信度"
+        titleRequired
+        onBack={onBack}
+        onNext={onNext}
+        warn={warn}
+      />
+    </div>
+  );
+}
+
 function NoteStep({
   round,
   value,
@@ -262,7 +296,7 @@ export function ParticipantPage() {
   const [participantName, setParticipantName] = useState("");
   const [affiliation, setAffiliation] = useState("");
   const [rounds, setRounds] = useState<JudgmentRound[]>(createEmptyRounds);
-  const [confidence, setConfidence] = useState(3);
+  const [confidence, setConfidence] = useState<number | null>(null);
   const [fieldWarn, setFieldWarn] = useState<string | null>(null);
 
   const scene = settings.scenes[0] ?? null;
@@ -281,6 +315,10 @@ export function ParticipantPage() {
     if (step === STEP_INTRO) {
       if (!participantName.trim()) return "名前を入力してください";
       if (!affiliation.trim()) return "所属を入力してください";
+      return null;
+    }
+    if (step === STEP_CONFIDENCE) {
+      if (confidence === null) return "確信度を1つ選んでください";
       return null;
     }
     const phase = stepToRoundPhase(step);
@@ -317,12 +355,12 @@ export function ParticipantPage() {
     setParticipantName("");
     setAffiliation("");
     setRounds(createEmptyRounds());
-    setConfidence(3);
+    setConfidence(null);
     setFieldWarn(null);
   };
 
   const submit = () => {
-    if (!scene) return;
+    if (!scene || confidence === null) return;
     const awarenessNote = rounds
       .map((r, i) => (r.roundNote.trim() ? `【設問${i + 1}】${r.roundNote.trim()}` : ""))
       .filter(Boolean)
@@ -474,26 +512,16 @@ export function ParticipantPage() {
           )}
 
           {scene && step === STEP_CONFIDENCE && (
-            <div className="p-form p-form--note">
-              <div className="p-conf" role="group" aria-label="確信度">
-                {CONFIDENCE_LABELS.map((label, idx) => {
-                  const v = idx + 1;
-                  return (
-                    <button
-                      key={label}
-                      type="button"
-                      className={`p-conf__btn${confidence === v ? " p-conf__btn--on" : ""}`}
-                      onClick={() => setConfidence(v)}
-                      aria-pressed={confidence === v}
-                      title={label}
-                    >
-                      {v}
-                    </button>
-                  );
-                })}
-              </div>
-              <Nav showBack showNext title="確信度" onBack={goBack} onNext={tryNext} />
-            </div>
+            <ConfidenceStep
+              confidence={confidence}
+              onSelect={(level) => {
+                setConfidence(level);
+                if (fieldWarn) setFieldWarn(null);
+              }}
+              onBack={goBack}
+              onNext={tryNext}
+              warn={fieldWarn}
+            />
           )}
 
           {scene && step === STEP_CONFIRM && (
@@ -514,12 +542,12 @@ export function ParticipantPage() {
             <div className="p-form p-form--done">
               <div className="p-done-icon">✓</div>
               <h2 className="p-form__title">送信完了</h2>
-              <p className="p-done-text">回答を保存しました。講師は管理者画面で確認できます。</p>
-              <div className="p-nav p-nav--center">
+              <p className="p-done-text">回答を保存しました。<br></br>講師は管理者画面で確認できます。</p>
+              {/* <div className="p-nav p-nav--center">
                 <button type="button" className="p-btn p-btn--primary" onClick={resetForm}>
                   別の回答を入力
                 </button>
-              </div>
+              </div> */}
             </div>
           )}
         </div>

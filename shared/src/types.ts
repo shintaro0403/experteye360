@@ -53,7 +53,7 @@ export type ParticipantSubmission = {
   sceneId: string;
   /** 5 設問分（各 4 画面サイクル） */
   rounds: JudgmentRound[];
-  /** 1〜5（1=かなり不安 … 5=強く自信あり） */
+  /** 1〜5（ラベルは shared/confidence.ts の CONFIDENCE_LABELS） */
   confidenceLevel: number;
   /** 旧形式（互換・差分用に submit 時にも冗長保存） */
   attentionSelected?: string[];

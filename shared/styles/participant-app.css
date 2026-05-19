@@ -831,17 +831,24 @@ body {
   min-width: 0;
   min-height: clamp(2.1rem, 18cqh, 3.75rem);
   height: 100%;
-  padding: 0;
+  padding: clamp(0.15rem, 1.2cqh, 0.35rem) clamp(0.1rem, 0.8cqw, 0.25rem);
   border-radius: clamp(6px, 1.2cqh, 10px);
   border: 1.5px solid var(--gray-300);
   background: var(--white);
   color: var(--navy);
-  font-size: var(--p-conf-font);
-  font-weight: 800;
-  line-height: 1;
+  font-size: clamp(0.5rem, 4.2cqh, 0.82rem);
+  font-weight: 700;
+  line-height: 1.15;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
   transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.p-conf__btn-text {
+  display: block;
+  white-space: normal;
+  word-break: keep-all;
+  text-align: center;
 }
 
 .p-conf__btn:hover {

@@ -1,4 +1,7 @@
-/* 管理者 UI（lite 最終版と同一・a-* クラス） */
+/* 管理者 UI — 3DVista 管理者 iframe 専用
+ * レイアウト基準 = iframe 要素に割り当てられた 100%×100%（.a-shell）。
+ * 35%×100% は 3DVista 側のフレーム比率。アプリ内で vw/35vw/vh で組まない。
+ * スケールは .a-shell の container query（cqh/cqw）を優先。 */
 
 :root {
   --navy: #1a2f5a;
@@ -27,7 +30,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body, #root {
-  min-height: 100%;
+  height: 100%;
   margin: 0;
 }
 
@@ -37,15 +40,37 @@ body {
   color: var(--text);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  overflow: hidden;
 }
 
 a { color: var(--navy-mid); }
 
-/* === Layout === */
-.a-page {
-  min-height: 100%;
+/* iframe 全体 = 管理パネル。幅・高さは親 iframe の実サイズに追従 */
+.a-shell {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  background: var(--gray-100);
+  container-type: size;
+  container-name: admin-embed;
+  --a-font-base: clamp(0.68rem, 2.8cqw, 0.92rem);
+  --a-font-sm: clamp(0.62rem, 2.4cqw, 0.82rem);
+  --a-font-lg: clamp(0.78rem, 3.4cqw, 1.05rem);
+  --a-pad-inline: clamp(0.55rem, 3.5cqw, 1.1rem);
+  --a-pad-block: clamp(0.45rem, 1.8cqh, 0.85rem);
+  --a-topbar-h: clamp(2.25rem, 9cqh, 3.25rem);
+}
+
+/* === Layout === */
+.a-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: var(--a-font-base);
 }
 
 .a-topbar {
@@ -53,19 +78,20 @@ a { color: var(--navy-mid); }
   color: var(--white);
   padding: 0;
   flex-shrink: 0;
+  min-height: var(--a-topbar-h);
 }
 
 .a-topbar__inner {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.7rem 1.5rem;
-  max-width: 1200px;
-  margin: 0 auto;
+  gap: clamp(0.35rem, 2cqw, 0.75rem);
+  padding: var(--a-pad-block) var(--a-pad-inline);
+  width: 100%;
+  min-height: var(--a-topbar-h);
 }
 
 .a-topbar__brand {
-  font-size: 1rem;
+  font-size: var(--a-font-lg);
   font-weight: 800;
   letter-spacing: 0.04em;
   color: var(--white);
@@ -73,7 +99,7 @@ a { color: var(--navy-mid); }
 }
 
 .a-topbar__role {
-  font-size: 0.72rem;
+  font-size: var(--a-font-sm);
   font-weight: 600;
   padding: 0.15rem 0.5rem;
   border-radius: 4px;
@@ -90,28 +116,31 @@ a { color: var(--navy-mid); }
 
 .a-main {
   flex: 1;
-  max-width: 1200px;
-  margin: 0 auto;
+  min-height: 0;
   width: 100%;
-  padding: 1.5rem clamp(0.85rem, 2.5vw, 1.75rem) 2.5rem;
+  padding: var(--a-pad-block) var(--a-pad-inline);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* === Tabs === */
 .a-tabs {
   display: flex;
   gap: 0;
-  margin-bottom: 1.25rem;
+  flex-shrink: 0;
+  margin-bottom: var(--a-pad-block);
   border-bottom: 2px solid var(--gray-200);
 }
 
 .a-tab {
-  padding: 0.6rem 1.1rem;
+  padding: clamp(0.4rem, 1.5cqh, 0.55rem) clamp(0.55rem, 3cqw, 0.95rem);
   border: none;
   border-bottom: 2px solid transparent;
   margin-bottom: -2px;
   background: transparent;
   color: var(--text-muted);
-  font-size: 0.88rem;
+  font-size: var(--a-font-base);
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -129,16 +158,20 @@ a { color: var(--navy-mid); }
 
 /* === Panels === */
 .a-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   background: var(--white);
   border: 1px solid var(--gray-200);
-  border-radius: 10px;
-  padding: 1.25rem 1.4rem;
+  border-radius: clamp(6px, 1.5cqw, 10px);
+  padding: clamp(0.65rem, 2.5cqw, 1.1rem);
   box-shadow: 0 1px 3px rgba(26,47,90,0.05);
 }
 
 .a-panel h2 {
   margin: 0 0 0.65rem;
-  font-size: 1rem;
+  font-size: var(--a-font-lg);
   font-weight: 700;
   color: var(--navy);
 }
@@ -155,12 +188,43 @@ a { color: var(--navy-mid); }
 /* === Grid === */
 .a-grid-2 {
   display: grid;
-  gap: 1.25rem;
+  gap: clamp(0.65rem, 2.5cqw, 1rem);
+  grid-template-columns: 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: stretch;
 }
 
-@media (min-width: 860px) {
+.a-grid-2 > * {
+  min-height: 0;
+}
+
+.a-grid-2 > *:last-child {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* 1 列時: 一覧は上限付きでスクロール、編集欄に残り高さを確保 */
+@container admin-embed (max-width: 35.99rem) {
+  .a-grid-2 > *:first-child {
+    max-height: min(42cqh, 20rem);
+    overflow-y: auto;
+  }
+}
+
+/* 埋め込みパネルが十分広いときのみ 2 列（35% 帯では通常 1 列） */
+@container admin-embed (min-width: 36rem) {
   .a-grid-2 {
-    grid-template-columns: 240px 1fr;
+    grid-template-columns: min(38%, 11.5rem) 1fr;
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .a-grid-2 > *:first-child {
+    overflow-y: auto;
+  }
+
+  .a-grid-2 > *:last-child {
+    overflow-y: auto;
   }
 }
 
@@ -177,12 +241,12 @@ a { color: var(--navy-mid); }
   display: block;
   width: 100%;
   margin-top: 0.2rem;
-  padding: 0.45rem 0.55rem;
+  padding: clamp(0.35rem, 1.2cqh, 0.45rem) clamp(0.4rem, 1.5cqw, 0.55rem);
   border-radius: 6px;
   border: 1px solid var(--gray-300);
   background: var(--white);
   color: var(--text);
-  font-size: 0.88rem;
+  font-size: var(--a-font-base);
   font-family: inherit;
   line-height: 1.5;
   ime-mode: active;
@@ -219,10 +283,10 @@ a { color: var(--navy-mid); }
   align-items: center;
   justify-content: center;
   gap: 0.3rem;
-  padding: 0.48rem 0.95rem;
+  padding: clamp(0.35rem, 1.2cqh, 0.48rem) clamp(0.55rem, 2.8cqw, 0.9rem);
   border-radius: 6px;
   border: 1px solid transparent;
-  font-size: 0.85rem;
+  font-size: var(--a-font-base);
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
@@ -403,8 +467,8 @@ a { color: var(--navy-mid); }
 .a-scene-editor {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-height: 0;
-  max-height: calc(100vh - 12rem);
 }
 
 .a-scene-editor__head {
@@ -472,8 +536,16 @@ a { color: var(--navy-mid); }
   list-style: none;
   margin: 0.5rem 0 0;
   padding: 0;
-  max-height: 500px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+}
+
+/* 回答タブ左列: 一覧が残り高さを使う */
+.a-grid-2 > *:first-child:has(.a-resp-list) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .a-resp-item {

@@ -15,6 +15,6 @@ export default defineConfig({
   },
   server: {
     port: 5174,
-    open: "/admin/",
+    open: "/admin/embed-preview.html",
   },
 });
