@@ -55,7 +55,7 @@ export type ParticipantSubmission = {
   rounds: JudgmentRound[];
   /** 1〜5（ラベルは shared/confidence.ts の CONFIDENCE_LABELS） */
   confidenceLevel: number;
-  /** 旧形式（互換・差分用に submit 時にも冗長保存） */
+  /** 旧形式（互換のため submit 時にも冗長保存） */
   attentionSelected?: string[];
   attentionNote?: string;
   awarenessSelections?: string[];

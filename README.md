@@ -2,7 +2,7 @@
 
 > ベテランが現場で見ているポイントと判断基準を360°工場研修として再現し、受講者が何を見落とし、どう判断したかを可視化するパッケージ。
 
-技術仕様の整理は [docs/TECHNICAL-SPEC.md](docs/TECHNICAL-SPEC.md) を参照。機能の TDD 用洗い出しは [docs/TDD-FEATURE-INVENTORY.md](docs/TDD-FEATURE-INVENTORY.md)、テストの書き方・実施順は [docs/TEST-DESIGN.md](docs/TEST-DESIGN.md) を参照。
+技術仕様の整理は [docs/TECHNICAL-SPEC.md](docs/TECHNICAL-SPEC.md) を参照。本番データの保存先は [docs/SPREADSHEET-DATA.md](docs/SPREADSHEET-DATA.md)（Google スプレッドシート）。機能の TDD 用洗い出しは [docs/TDD-FEATURE-INVENTORY.md](docs/TDD-FEATURE-INVENTORY.md)、テストの書き方・実施順は [docs/TEST-DESIGN.md](docs/TEST-DESIGN.md) を参照。
 
 ### 受講者回答フロー（5問）
 
@@ -16,7 +16,7 @@
 | --- | --- | --- |
 | `participant-web/` | 受講者 UI のみ | 5173 |
 | `admin-web/` | 管理者 UI のみ | 5174 |
-| `shared/src/` | 型・シード・ストレージ・差分ロジック（両アプリから参照） | — |
+| `shared/src/` | 型・シード・ストレージ（本番は Sheet API → スプレッドシート） | — |
 
 ### 初回セットアップ
 
@@ -64,7 +64,7 @@ http://localhost:5174/admin/embed-preview.html
 | 役割 | 担当 |
 | --- | --- |
 | **3DVista** | 主に工場現場を360°で見せる部分（既存ツアー。ExpertEye360から編集しない） |
-| **ExpertEye360（研修用Web）** | 埋め込みWebのカード・ベテラン判断・回答・差分・ダッシュボード・OJT |
+| **ExpertEye360（研修用Web）** | 埋め込みWebのカード・ベテラン判断・回答・ダッシュボード・OJT |
 
 3DVistaは「現場を見せる土台」、ExpertEye360は「その現場を見た受講者の判断を記録・比較・可視化する機能」として役割を分ける。
 
@@ -130,7 +130,6 @@ ExpertEye360（研修用Web）から変更できるのは、**3DVista内に埋�
 - 各シーンに表示するカード内容を設定する
 - 各シーンにベテラン判断テンプレートを設定する
 - 受講者の回答結果を見る
-- ベテラン判断との差分を見る
 - OJT確認項目を見る
 
 **管理者画面でやらないこと**
@@ -180,7 +179,7 @@ ExpertEye360（研修用Web）から変更できるのは、**3DVista内に埋�
 - **受講者 iframe:** 受講者向けツアーにのみ設置。**幅100%・高さ25%**の帯に受講者 Web の URL を指定する
 - **管理者 iframe:** 講師・管理者向けツアー／シーンに設置。**幅40%・高さ100%**のパネルに管理者 Web の URL を指定する。受講者ツアーの 25% 帯には **載せない**
 - 受講者が 360° 現場の大半を確保したまま、帯で回答できる導線を用意する
-- 講師・管理者は **管理者 iframe** 側でカード・テンプレ・回答・差分を扱う
+- 講師・管理者は **管理者 iframe** 側でカード・テンプレ・回答を扱う
 
 ### 5. 3DVista側で扱うデータ
 
@@ -193,7 +192,7 @@ ExpertEye360（研修用Web）から変更できるのは、**3DVista内に埋�
 - 注釈・案内表示
 - Live Guideによる案内
 
-**原則:** 3DVista側では、受講者回答の保存・ベテラン判断テンプレートの管理・差分比較・ダッシュボード表示は行わない。
+**原則:** 3DVista側では、受講者回答の保存・ベテラン判断テンプレートの管理・ダッシュボード表示は行わない。
 
 ---
 
@@ -356,6 +355,23 @@ ExpertEye360は、360°現場を見た受講者の**判断を記録・比較・�
 
 - 3DVista側では、受講者回答の保存などは行わない。
 - ExpertEye360側では、360°ツアーの作成・画像差替え・ホットスポット編集・Live Guide の制御は行わない。
+
+---
+
+## データの保存（本番）
+
+**データの流れ（図解）**: [docs/TECHNICAL-SPEC.md §5.1](docs/TECHNICAL-SPEC.md#51-データの流れ図解)（全体・受講者送信・管理者参照）、[docs/SPREADSHEET-DATA.md §1.1](docs/SPREADSHEET-DATA.md#11-データの流れ図解)（ストレージ層・シート書き込み）。
+
+現状の `localStorage` のみでは、受講者と管理者・別端末間でデータが共有されない。本番は次の順で解決する（[docs/SPREADSHEET-DATA.md §0](docs/SPREADSHEET-DATA.md)）。
+
+1. **Sheet API + Google スプレッドシート** — 受講者・管理者が同じ API を参照（必須）
+2. **マスターブック `clients`** — `clientId` → クライアント別スプレッドシート ID
+3. **クライアント用ブック** — `settings` / `rooms` / `responses` / `audit_logs`
+4. **`?client=` + `?room=` または研修コード** — 研修回は `rooms` シートが正本
+
+- フロントは静的ホスト（FileZilla 等）可。GAS Web App 想定。
+- ローカル開発のみ `localStorage`。5173/5174 では共有されないため、結合確認は API 接続後に行う。
+- 将来は API の裏を PostgreSQL 等に差し替え可能（フロントは storage 窓口のみ）。
 
 ---
 

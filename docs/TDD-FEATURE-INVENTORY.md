@@ -5,14 +5,32 @@
 
 | 項目 | 内容 |
 | --- | --- |
-| 関連 | [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md)、[README.md](../README.md) |
-| 現状 | Vitest **未導入**。受講者 5 問フロー・管理者シーン/カード/回答一覧は **UI 実装済み** |
+| 関連 | [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md)、[SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)、[README.md](../README.md) |
+| 現状 | Vitest **未導入**。UI 実装済み。永続化は **localStorage のみ**（本番はスプレッドシート化 **未実装**） |
 
 ### 改訂履歴
 
 | 版 | 日付 | 内容 |
 | --- | --- | --- |
 | 0.1 | 2026-05-19 | 初版（UI 整備後の機能洗い出し） |
+| 0.2 | 2026-05-20 | ベテラン差分（`diff.ts`）をスコープ外として削除。F7/F8 を再採番 |
+| 0.3 | 2026-05-20 | 本番永続化を **Google スプレッドシート** とする方針（§2.1、§6 X、Phase 2.5） |
+| 0.4 | 2026-05-20 | §1.0 現状の問題と解決策、§2.2 SH-08〜10（room）、Postgres 移行（§2.3） |
+| 0.5 | 2026-05-20 | ブック構成確定（マスター clients + 4 シート）。SH-11〜13、AL 系 |
+
+---
+
+## 1.0 現状の問題と解決策（要約）
+
+[SPREADSHEET-DATA.md §0](./SPREADSHEET-DATA.md) と同一。実装・テストの優先順。
+
+**P-01** 受講者回答が講師に届かない → **S-01** Sheet API + スプレッドシート（`sheetApi.test.ts`, SH-01〜07）
+
+**P-02** クライアント混線 → **S-02** `clientId`（SH-01, TC-007）
+
+**P-03** 入室制限なし → **S-03** `roomId` / 研修コード（SH-08〜10）。パスワードのみでは不十分
+
+**将来** → **S-04** storage 窓口 + API 固定で Postgres 差し替え可（§2.3）
 
 ---
 
@@ -139,31 +157,17 @@
 | CF-01 | 1〜5 はそのまま |
 | CF-02 | 1 未満 → 1、5 超 → 5（または拒否。仕様で固定） |
 
-### 1.10 ベテラン差分 — `diff.ts` 【実装済み・UI 未使用】
-
-| ID | 振る舞い |
-| --- | --- |
-| D-01 | テンプレ注目に無い受講者選択 → `extraAttention` |
-| D-02 | 受講者が選ばなかったテンプレ注目 → `missedAttention` |
-| D-03 | テンプレ判断基準の未選択 → `missedCriteria` |
-| D-04 | 共通判断基準の順序一致 → `criteriaOrderHint` に「同じ並び」 |
-| D-05 | 順序不一致 → テンプレ順・受講者順の両方を含むヒント |
-| D-06 | 共通項目なし → 「比較できる共通の判断基準が少ない」 |
-| D-07 | 推奨行動の未選択 → `missedRecommendedActions` |
-| D-08 | 返却にスコア・正誤フラグなし（`DiffSummary` キーのみ） |
-| D-09 | 5 問分の `rounds` を `aggregate*` 経由で比較 |
-
-### 1.11 OJT 出力 — 【未実装】
+### 1.10 OJT 出力 — 【未実装】
 
 新規: `shared/src/ojtExport.ts`（予定）。
 
 | ID | 振る舞い |
 | --- | --- |
-| O-01 | `DiffSummary` + `veteranTemplate.ojtChecklist` → 確認項目テキスト配列 |
-| O-02 | 空差分でも例外にならない |
+| O-01 | `veteranTemplate.ojtChecklist` + 回答内容 → 確認項目テキスト配列 |
+| O-02 | 空チェックリストでも例外にならない |
 | O-03 | 文言に「不正解」等のスコア表現を含めない |
 
-### 1.12 判断基準の並べ替え — 【未実装】（将来 F4）
+### 1.11 判断基準の並べ替え — 【未実装】（将来 F4）
 
 新規: `shared/src/criteriaOrder.ts`（予定）。MVP は単一選択。
 
@@ -176,7 +180,11 @@
 
 ---
 
-## 2. 永続化 — `storage.ts` 【実装済み】
+## 2. 永続化
+
+本番の正本は **Google スプレッドシート**（[SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)）。`clientId` でクライアントを分離。
+
+### 2.1 `storage` — localStorage 【実装済み・開発用】
 
 | ID | 振る舞い |
 | --- | --- |
@@ -190,6 +198,40 @@
 | ST-08 | `appendResponse` → 先頭が最新 |
 | ST-09 | `saveResponses` / `appendResponse` で `expertEye360-storage` 発火 |
 | ST-10 | `resetDemoData` → settings 初期化・responses 空（UI からは削除済み・API 残存） |
+
+### 2.2 Sheet API → スプレッドシート 【未実装】
+
+| ID | 振る舞い |
+| --- | --- |
+| SH-01 | `?client={clientId}` を全 API に付与 |
+| SH-02 | `GET settings` → `AppSettings`（`settings` シート） |
+| SH-03 | `POST settings` → 管理者保存がシートに反映 |
+| SH-04 | `GET responses` → 一覧（新しい順） |
+| SH-05 | `POST responses` → 受講者 1 送信 = 1 行追加 |
+| SH-06 | 不正 `client` / 401 → 画面でエラー（落ちない） |
+| SH-07 | 受講者(5173)と管理者(5174)が **同一 client の同じデータ** を見る（API 経由） |
+| SH-08 | 全 API に `room` クエリ（または初回コード入力後に付与） |
+| SH-09 | `GET responses` は当該 `room` の行のみ |
+| SH-10 | 別 `room` への POST が他 room 一覧に混ざらない |
+| SH-11 | マスター `clients` で `spreadsheetId` 解決・`enabled` チェック |
+| SH-12 | `rooms.accessCodeHash` で研修コード検証（平文をシートに保存しない） |
+| SH-13 | 管理者操作で `adminTokenHash` 照合 |
+
+### 2.2b `audit_logs` シート 【未実装】
+
+| ID | 振る舞い |
+| --- | --- |
+| AL-01 | 管理者 `saveSettings` で `audit_logs` に 1 行追記 |
+| AL-02 | `room` 作成・更新で追記 |
+| AL-03 | 追記のみ（行の更新・削除は GAS 運用外） |
+
+### 2.3 将来ストア（PostgreSQL 等）【設計のみ】
+
+| ID | 振る舞い |
+| --- | --- |
+| PG-01 | フロントは `storage.ts` 窓口のみ。物理 DB を直接参照しない |
+| PG-02 | API の JSON 形は `AppSettings` / `ParticipantSubmission` と一致 |
+| PG-03 | `client` / `room` クエリ契約はシート時代と同一 |
 
 ---
 
@@ -309,10 +351,9 @@
 | ID | 機能 | 備考 |
 | --- | --- | --- |
 | A-50 | ベテラン模板の編集 UI | 型・seed は残存 |
-| A-51 | `computeDiff` 表示 | `diff.ts` のみ。UI 復活時に結合 |
 | A-52 | デモリセットボタン | `resetDemoData` は storage に残存 |
-| A-53 | ダッシュボード集計（F8） | 未実装 |
-| A-54 | OJT エクスポート UI（F9） | 未実装 |
+| A-53 | ダッシュボード集計（F7） | 未実装 |
+| A-54 | OJT エクスポート UI（F8） | 未実装 |
 
 ### 5.7 `useAppData` 【実装済み】
 
@@ -324,25 +365,25 @@
 
 | ID | 項目 | テスト化 |
 | --- | --- | --- |
-| X-01 | 受講者(5173)/管理者(5174)は別オリジンで localStorage 非共有 | ドキュメント + E2E |
-| X-02 | 同一オリジン時 storage イベントで双方 refresh | `useAppData` 結合 |
-| X-03 | 認証・API | 将来（現 MVP は localStorage のみ） |
+| X-01 | 開発時: 5173/5174 は localStorage 非共有。本番: Sheet API で共有（SH-07） | `sheetApi.test.ts` + 手動 |
+| X-02 | 同一オリジン + local 時は storage イベントで refresh | `useAppData` 結合 |
+| X-03 | 複数クライアント: `clientId` ごとにスプレッドシート分離 | [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md) §2 |
+| X-04 | Sheet API `token`（管理者書込） | 要決定・E2E |
 
 ---
 
-## 7. 仕様 ID（F1〜F9）との対応
+## 7. 仕様 ID（F1〜F8）との対応
 
 | 機能 ID | 内容 | 現行 MVP | 主なテスト ID |
 | --- | --- | --- | --- |
 | F1 | ベテラン判断テンプレート | UI なし（空テンプレ保持） | SQ, SD, A-50 |
 | F2 | 注目箇所 | 未実装 | P-40, S-07 |
 | F3 | 気づき＋一言 | 5 問×単一選択＋メモ | V, S, P-11 |
-| F4 | 判断基準（並べ替え） | 単一選択のみ | CO, D |
+| F4 | 判断基準（並べ替え） | 単一選択のみ | CO |
 | F5 | 共有・行動 | 単一選択 | V, S |
 | F6 | 確信度 | 1〜5 ボタン | CF, S |
-| F7 | 差分表示 | `computeDiff` のみ | D, A-51 |
-| F8 | ダッシュボード | 回答一覧のみ | A-40, ST |
-| F9 | OJT 引き継ぎ | 未実装 | O, A-54 |
+| F7 | ダッシュボード | 回答一覧のみ | A-40, ST |
+| F8 | OJT 引き継ぎ | 未実装 | O, A-54 |
 
 ---
 
@@ -357,12 +398,12 @@
 | 5 | `selection.test.ts` | SS |
 | 6 | `validateStep.test.ts` | V |
 | 7 | `buildSubmission.test.ts` | S, CF |
-| 8 | `diff.test.ts` | D |
-| 9 | `storage.test.ts` | ST |
-| 10 | `seed.test.ts` | SD |
-| 11 | `useAppData.test.ts` | H |
-| 12 | `ojtExport.test.ts` | O |
-| 13 | `*.test.tsx`（スモーク） | P-01,02 等 |
+| 8 | `storage.test.ts` | ST |
+| 8b | `sheetApi.test.ts` | SH |
+| 9 | `seed.test.ts` | SD |
+| 10 | `useAppData.test.ts` | H |
+| 11 | `ojtExport.test.ts` | O |
+| 12 | `*.test.tsx`（スモーク） | P-01,02 等 |
 
 ---
 
@@ -372,8 +413,9 @@
 | --- | --- | --- |
 | **0** | Vitest 導入 + choices / judgmentFlow / sceneQuestions | 既存ロジックの固定 |
 | **1** | selection / validateStep / buildSubmission の shared 抽出 + テスト | 受講者コアを TDD 化 |
-| **2** | storage / seed / cardSlots | 永続化・管理者保存の契約 |
-| **3** | diff +（方針後）管理画面への差分 or OJT | F7 / F9 |
+| **2** | storage(local) / seed / cardSlots | 永続化・管理者保存の契約 |
+| **2.5** | Sheet API + `storage/sheet.ts` + GAS | SH-01〜07、本番永続化 |
+| **3** | OJT エクスポート（方針後） | F8 |
 | **4** | UI スモーク + Playwright（5 問フロー） | 回帰 |
 
 **Phase 0〜2**: 今の実装を正としてテストで固定。  
@@ -391,9 +433,8 @@
 | F4 | `criteriaOrder.test.ts`（将来） |
 | F5 | `validateStep.test.ts`, `buildSubmission.test.ts` |
 | F6 | `buildSubmission.test.ts` |
-| F7 | `diff.test.ts` |
-| F8 | `storage.test.ts`, `AdminPage.test.tsx`（薄） |
-| F9 | `ojtExport.test.ts` |
+| F7 | `storage.test.ts`, `sheetApi.test.ts`, `AdminPage.test.tsx`（薄） |
+| F8 | `ojtExport.test.ts` |
 
 ---
 

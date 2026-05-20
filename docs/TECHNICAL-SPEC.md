@@ -10,7 +10,7 @@
 | --- | --- |
 | 対象システム | ExpertEye360（研修用Web。3DVista 360°ツアーに埋め込み） |
 | 前提プロダクト | 3DVista（工場360°ツアー・任意で Live Guide） |
-| 関連ドキュメント | [README.md](../README.md) |
+| 関連ドキュメント | [README.md](../README.md)、[SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md) |
 
 ---
 
@@ -40,10 +40,17 @@
 │  └────────────────────────────────────────────────────────┘  │
 │  ※ 受講者ツアーと同一画面に管理者 iframe を置かない            │
 └──────────────────────────────────────────────────────────────┘
-         │ HTTPS 等（両 iframe とも同一バックエンド／API を参照）
+         │ HTTPS（両 iframe とも同一 Sheet API を参照）
          ▼
-┌──────────────────┐     （要決定：API / BaaS / 自社ホスト）
-│ 研修用Web バックエンド  │
+┌──────────────────────────────────────┐
+│ Sheet API（GAS Web App 想定）           │
+│  → Google スプレッドシート（論理 DB）   │
+└──────────────────────────────────────┘
+         ▲
+         │ 静的ファイル配信のみ可（FileZilla 等）
+┌──────────────────┐
+│ participant-web  │
+│ admin-web        │
 └──────────────────┘
 ```
 
@@ -52,7 +59,7 @@
 | 区分 | 担当 |
 | --- | --- |
 | 現場の空間表現・導線・遠隔案内 | 3DVista |
-| テンプレート／回答／差分／ダッシュボード／OJT出力 | 研修用Web（フロント＋バックエンド） |
+| テンプレート／回答／ダッシュボード／OJT出力 | 研修用Web（フロント＋バックエンド） |
 
 3DVista 本体の内部 API を拡張して判断ロジックを載せる構成にはしない。研修用Webは外部ホストのアプリケーションとして動作し、3DVista から埋め込み表示する。
 
@@ -60,7 +67,7 @@
 
 | 区分 | 受講者 Web | 管理者 Web |
 | --- | --- | --- |
-| 役割 | 現場を見ながら回答入力 | カード・テンプレ・回答・差分の管理 |
+| 役割 | 現場を見ながら回答入力 | カード・テンプレ・回答の管理 |
 | 3DVista 埋め込み | **専用 iframe 1 本**（受講者ツアー内） | **別 iframe 1 本**（講師／管理者用ツアー・シーン） |
 | 埋め込み URL | 受講者エントリのみ | 管理者エントリのみ |
 | 25% 高さ制約 | **適用する**（パノラマ下帯） | **受講者帯には載せない**（管理者側の枠サイズはツアー設計で決定） |
@@ -72,14 +79,14 @@
 | --- | --- | --- |
 | `participant-web/` | 受講者 UI のみ（Vite + React） | `https://{host}/participant/`（要決定） |
 | `admin-web/` | 管理者 UI のみ（Vite + React） | `https://{host}/admin/`（要決定） |
-| `shared/src/` | 共有 TypeScript（型、シード、ストレージ、差分） | — |
+| `shared/src/` | 共有 TypeScript（型、シード、ストレージ） | — |
 
-**localStorage / API の前提**: 永続化はオリジンまたは API で共有する。ローカル開発では受講者（5173）と管理者（5174）が **別オリジン**のため、同一 `localStorage` は共有されない（本番と同型）。データ連携が必要な場合は API またはリバースプロキシで同一オリジンに束ねる。
+**永続化の前提**: 本番は **スプレッドシート（Google Sheets）+ Sheet API** で受講者・管理者・複数端末間を共有する（詳細は [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)）。`localStorage` は **開発用フォールバック**のみ。ローカル開発（5173 / 5174）は別オリジンのため `localStorage` は非共有—本番同等の確認には Sheet API または同一オリジン + API を使う。
 
 ### 2.4 編集範囲の原則（README と同一前提）
 
 - **3DVista のツアーコンテンツ**（360°画像、シーン構成、ホットスポット、導線、注釈、Live Guide、演出）は **既存3DVista側で維持**し、ExpertEye360 のアプリ・管理者画面から **編集しない**。
-- **ExpertEye360 が変更するのは埋め込み Web のみ**（カード内容、ベテラン判断テンプレート、回答・差分・ダッシュボード・OJT、および **3DVistaシーンとの紐づけ**＝ツアーURL・シーン名／識別名・管理用メタデータ）。
+- **ExpertEye360 が変更するのは埋め込み Web のみ**（カード内容、ベテラン判断テンプレート、回答・ダッシュボード・OJT、および **3DVistaシーンとの紐づけ**＝ツアーURL・シーン名／識別名・管理用メタデータ）。
 - **管理者画面**は 3DVista エディタではない。**既存シーンへの紐づけと研修データ管理**にスコープを限定する（詳細は README「管理者画面でやること／やらないこと」）。
 
 ---
@@ -122,7 +129,7 @@
 | 受講者 25% 帯 | **使用しない** |
 | サイズ | 講師／管理者用ツアー・シーンの設計に従う（全画面に近いパネル、別シーンの大きな iframe 等。**要決定**） |
 | 3DVista 側 | **管理者専用**フレームを 1 本（以上）用意し、管理者エントリ URL を設定。受講者ツアーとは別プロジェクト／別シーン／別ホットスポットでもよい |
-| 研修用Web 側 | 管理・差分・一覧向け UI。受講者帯の 25% 制約は **適用しない** |
+| 研修用Web 側 | 管理・一覧向け UI。受講者帯の 25% 制約は **適用しない** |
 
 #### 3.2.3 受講者 Web — レイアウト実装（必須）
 
@@ -167,18 +174,12 @@ README の機能番号に対応する実装単位の整理。
 | F4 | 判断基準カード（並べ替え） | 優先順位は順序付きリストとして保存（JSON 配列等） |
 | F5 | 共有・行動カード | 複数選択の可否（**要決定**）。単一なら radio 相当 |
 | F6 | 確信度 | 5 段階または 0〜100 スライダー。保存型は UI と一致させる |
-| F7 | 差分表示 | テンプレートと受講者回答の集合比較。スコアリングではなく **差分リスト生成**（ルールエンジンまたは単純集合演算） |
-| F8 | 講師・管理者ダッシュボード | 集計クエリ、フィルタ（シーン／期／受講者グループ）。リアルタイム性（**要決定**） |
-| F9 | OJT 引き継ぎ | F7 の結果を OJT 確認項目として整形・エクスポート（PDF／CSV 等 **要決定**） |
+| F7 | 講師・管理者ダッシュボード | 集計クエリ、フィルタ（シーン／期／受講者グループ）。リアルタイム性（**要決定**） |
+| F8 | OJT 引き継ぎ | テンプレートの OJT 確認項目と回答内容を整形・エクスポート（PDF／CSV 等 **要決定**） |
 
-### 4.1 差分表示の原則（非スコア化）
+### 4.1 管理者画面のスコープ
 
-- 「正解／不正解」の二元判定を主表示にしない。
-- 表示は「テンプレートにあって回答にない」「順序の違い」「共有先の不足」等の **説明的差分** とする。
-
-### 4.2 管理者画面のスコープ
-
-- README に定義するとおり、管理者 API／UI は **ツアーURL登録・シーン識別子登録・カード／テンプレ設定・回答・差分・OJT参照**に限定する。
+- README に定義するとおり、管理者 API／UI は **ツアーURL登録・シーン識別子登録・カード／テンプレ設定・回答・OJT参照**に限定する。
 - 360°画像差替え、ホットスポット編集、シーン遷移変更、Live Guide 設定、注釈・演出の変更など **3DVista 固有操作は提供しない**（バックエンドにそのためのエンドポイントも持たない設計とする）。
 
 ### 4.3 受講者回答フロー（5問 × 4画面サイクル）
@@ -251,7 +252,7 @@ type JudgmentRound = {
 // ParticipantSubmission.rounds: JudgmentRound[]  // length === JUDGMENT_ROUND_COUNT (5)
 ```
 
-**後方互換**: `submit` 時に `awarenessSelections` / `criteriaOrdered` / `actionsSelected` 等の旧フラットフィールドへ **全ラウンドを flatMap 集約**しても冗長保存する。管理者の差分表示は `getSubmissionRounds()` / `aggregateCriteriaOrdered()` 等（`judgmentFlow.ts`）で `rounds` を優先し、無い場合は `legacyToRounds()` で旧形式を 5 要素に展開する。
+**後方互換**: `submit` 時に `awarenessSelections` / `criteriaOrdered` / `actionsSelected` 等の旧フラットフィールドへ **全ラウンドを flatMap 集約**しても冗長保存する。管理者の回答表示は `getSubmissionRounds()`（`judgmentFlow.ts`）で `rounds` を優先し、無い場合は `legacyToRounds()` で旧形式を 5 要素に展開する。
 
 #### 4.3.3 各画面の要件
 
@@ -358,7 +359,6 @@ type JudgmentRound = {
 | --- | --- |
 | README / F4 目標 | 判断基準を **優先順位付きで並べ替え**て保存 |
 | 現行プロトタイプ | 気づき・共有と同様 **1 枚選択**。`criteriaOrdered` は 0〜1 要素 |
-| 差分表示 | `aggregateCriteriaOrdered()` で全ラウンドの選択を **出現順にユニーク結合**し、テンプレート優先順と比較（`diff.ts`） |
 | 将来 | ドラッグ並べ替え等で `criteriaOrdered` に複数＋順序を入れる場合、バリデーションを「1 枚以上」等に変更 |
 
 #### 4.3.11 シーン・データソースの制約（プロトタイプ）
@@ -368,7 +368,7 @@ type JudgmentRound = {
 | 利用シーン | `AppSettings.scenes[0]` **固定**（シーン切替・URL 連携なし） |
 | カード件数 | `limitChoices()` で各マスタ **最大 5 件** |
 | 注目箇所（F2） | 未実装。`attentionSelected` は送信時 **空配列** |
-| 永続化 | ローカルは `localStorage`（`shared/src/storage.ts`）。受講者 5173 / 管理者 5174 は別オリジンで非共有 |
+| 永続化 | 本番: スプレッドシート（[SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)）。開発: `localStorage`（`storage.ts`）。5173 / 5174 は API 未接続時のみ非共有 |
 
 #### 4.3.12 送信・完了画面（実装済み）
 
@@ -399,20 +399,225 @@ type JudgmentRound = {
 
 ## 5. データ所有と永続化
 
-### 5.1 研修用Web が永続化するデータ（論理）
+### 5.0 現状の課題と解決方針
 
-- 利用者（受講者／講師／管理者）および認証情報（**要決定**: IdP）
-- 研修シーン定義（3DVista のシーン名／識別子との対応表）
-- ベテラン判断テンプレート（全フィールド）
-- 受講者セッション・回答イベント・履歴
-- 差分計算結果のキャッシュ（再計算可能なら省略可）
-- OJT 引き継ぎ用の出力スナップショット
+詳細・API 契約は [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md) §0 を正とする。テストは [TEST-DESIGN.md](./TEST-DESIGN.md) §2.0・§4.2b。
 
-### 5.2 3DVista が保持するデータ（論理）
+**課題（現行 `localStorage` のみ）**
+
+- 受講者回答が講師端末に届かない（別オリジン・別ブラウザ）
+- クライアント・研修回のデータ分離がない
+- 入室制限がない
+
+**解決（優先順）**
+
+1. **Sheet API + スプレッドシート** — 共有の正本（必須）
+2. **`clientId`** — 複数クライアント分離（URL `?client=`）
+3. **`roomId` / 研修コード** — 同一クライアント内の研修回分離（推奨）
+4. **storage 抽象化** — 将来 PostgreSQL 等へ API 差し替え（[SPREADSHEET-DATA.md §7](./SPREADSHEET-DATA.md#7-将来-postgresql-等への移行)）
+
+### 5.1 データの流れ（図解）
+
+本節は、研修データが **どこからどこへ流れるか** を俯瞰する。API 契約・シート列の詳細は [SPREADSHEET-DATA.md §1.1](./SPREADSHEET-DATA.md#11-データの流れ図解) を正とする。
+
+#### 5.1.1 全体像（本番）
+
+受講者・管理者は **別 iframe・別アプリ** だが、永続化の正本は **同一 Sheet API → 同一クライアント用スプレッドシート** である。
+
+```mermaid
+flowchart TB
+  subgraph vista["3DVista（ホスト・本番は別ツアー／別 iframe）"]
+    P_iframe["iframe #1<br/>participant/?client=&room="]
+    A_iframe["iframe #2<br/>admin/?client=&room="]
+  end
+
+  subgraph host["静的ホスト（FileZilla 等）"]
+    PW["participant-web"]
+    AW["admin-web"]
+  end
+
+  subgraph app["shared/src"]
+    ST["storage 窓口<br/>loadSettings / saveSettings<br/>loadResponses / appendResponse"]
+  end
+
+  API["GAS Web App<br/>Sheet API（HTTPS）"]
+
+  subgraph sheets["Google スプレッドシート"]
+    MB[("マスターブック<br/>clients")]
+    CB[("クライアント用ブック<br/>settings · rooms · responses · audit_logs")]
+  end
+
+  P_iframe --> PW
+  A_iframe --> AW
+  PW --> ST
+  AW --> ST
+  ST -->|"本番: fetch"| API
+  API -->|"clientId → spreadsheetId"| MB
+  API -->|"読み書き"| CB
+```
+
+**読み方**
+
+- 3DVista は **360° 表示のみ**。回答・設定は iframe 内の Web が扱う（§2.2）。
+- フロントは `storage.ts` の窓口のみを呼ぶ。裏は `localStorage`（開発）または Sheet API（本番）に切替（§5.2）。
+- GAS はリクエストの `client` でマスター `clients` を引き、当該 `spreadsheetId` のブックを開く。
+
+#### 5.1.2 受講者 — 回答送信の流れ
+
+1 送信 = `responses` シートへの **1 行追記**。5 問分は `submission_json` 内の `rounds` 配列に格納（§4.3.2）。
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor U as 受講者
+  participant V as 3DVista
+  participant P as participant-web
+  participant S as storage.ts
+  participant API as GAS Sheet API
+  participant SS as クライアント用ブック
+
+  U->>V: 360° 現場を観察
+  V->>P: iframe 内で UI 操作
+  U->>P: 名前・所属 → 5 問（気づき→共有→基準→メモ）×5 → 確信度 → 送信
+  P->>P: ParticipantSubmission 組み立て<br/>（roomId 付与）
+  P->>S: appendResponse(submission)
+  alt 本番（VITE_STORAGE_BACKEND=sheet）
+    S->>API: POST /responses<br/>?client=&room=
+    API->>API: clients 解決 · room 検証<br/>（enabled · accessCodeHash）
+    API->>SS: responses に 1 行追記
+    API-->>S: 200 OK
+  else 開発（localStorage）
+    S->>S: 当該ブラウザの localStorage のみ更新
+    Note over S: 5173 と 5174 は別オリジンで非共有（P-01）
+  end
+  S-->>P: 送信完了表示
+```
+
+#### 5.1.3 管理者 — 設定読取・保存と回答参照
+
+管理者は **同一 `client` + `room`** のデータのみ参照する（`adminToken` 必須）。
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor T as 講師・管理者
+  participant A as admin-web
+  participant S as storage.ts
+  participant API as GAS Sheet API
+  participant SS as クライアント用ブック
+
+  T->>A: 管理者 iframe を開く<br/>?client=&room=&token=
+  A->>S: loadSettings()
+  S->>API: GET /settings?client=&token=
+  API->>SS: settings シート（settings_json）
+  API-->>S: AppSettings
+  S-->>A: カード・テンプレ表示
+
+  T->>A: カード内容を編集して保存
+  A->>S: saveSettings(settings)
+  S->>API: POST /settings?client=&token=
+  API->>SS: settings 上書き + audit_logs 追記
+  API-->>S: 200 OK
+
+  T->>A: ダッシュボードで回答一覧
+  A->>S: loadResponses()
+  S->>API: GET /responses?client=&room=&token=
+  API->>SS: responses を room_id で絞り込み
+  API-->>S: ParticipantSubmission[]
+  S-->>A: 一覧・個別表示（5 問 rounds）
+```
+
+#### 5.1.4 開発環境と本番の違い
+
+```mermaid
+flowchart LR
+  subgraph dev["開発（現状・API 未接続時）"]
+    P3["participant-web<br/>:5173"]
+    A4["admin-web<br/>:5174"]
+    LS1[("localStorage<br/>受講者ブラウザ")]
+    LS2[("localStorage<br/>管理者ブラウザ")]
+    P3 --> LS1
+    A4 --> LS2
+  end
+
+  subgraph prod["本番（目標）"]
+    Pp["participant-web"]
+    Ap["admin-web"]
+    APIp["Sheet API"]
+    SSp[("マスター +<br/>クライアント用ブック")]
+    Pp --> APIp
+    Ap --> APIp
+    APIp --> SSp
+  end
+
+  dev -.->|"VITE_STORAGE_BACKEND=sheet<br/>+ API 実装後"| prod
+```
+
+| 観点 | 開発（localStorage） | 本番（Sheet API） |
+| --- | --- | --- |
+| 受講者 ↔ 管理者 | **共有されない**（別オリジン） | **同一 API・同一ブックで共有** |
+| 正本 | 各ブラウザ内のみ | スプレッドシート |
+| 結合確認 | API 接続後に実施（[TEST-DESIGN.md](./TEST-DESIGN.md) Phase 2.5） | 研修運用の前提 |
+
+#### 5.1.5 API によるクライアント解決（GAS）
+
+すべての API リクエストは `client`（`clientId`）を必須とする。
+
+```mermaid
+flowchart TD
+  REQ["HTTPS リクエスト<br/>?client=acme-factory&room=...&token=..."]
+  REQ --> LOOKUP["マスターブック clients シート"]
+  LOOKUP -->|clientId 不明| E400["400 Bad Request"]
+  LOOKUP -->|enabled = false| E403["403 Forbidden"]
+  LOOKUP -->|enabled = true| OPEN["spreadsheetId の<br/>クライアント用ブックを開く"]
+  OPEN --> BR{"操作種別"}
+  BR -->|GET/POST settings| SH["settings シート"]
+  BR -->|GET/POST rooms| RM["rooms シート"]
+  BR -->|GET/POST responses| RS["responses シート<br/>（room_id で絞り込み）"]
+  BR -->|管理者変更| AL["audit_logs 追記"]
+```
+
+#### 5.1.6 新規クライアント追加（プロビジョニング）
+
+運用者が手でブックを毎回作る必要はない（推奨: テンプレート自動複製）。詳細は [SPREADSHEET-DATA.md §2.2.1](./SPREADSHEET-DATA.md#221-クライアント用ブックは事前に手作り必須か)。
+
+```mermaid
+flowchart LR
+  TPL[("テンプレート用ブック<br/>4 シート空")]
+  GAS["GAS<br/>POST clients/provision"]
+  COPY[("コピー + displayName でリネーム")]
+  MASTER[("マスター clients<br/>1 行追加")]
+  URL["管理者 iframe URL 配布<br/>?client= & adminToken"]
+
+  TPL --> GAS
+  GAS --> COPY
+  GAS --> MASTER
+  MASTER --> URL
+```
+
+### 5.2 物理ストア（採用）
+
+| 環境 | ストア | 備考 |
+| --- | --- | --- |
+| **本番** | **Google スプレッドシート** | マスター 1 冊 + クライアントごと 1 冊（各: settings / rooms / responses / audit_logs） |
+| **API** | **GAS Web App**（推奨） | フロントは静的配信可。読み書きは HTTPS |
+| **開発** | `localStorage` | `shared/src/storage.ts` の現行実装。オフライン・Vitest 用 |
+
+シート名・列・API 契約・`clientId` は [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md) を正とする。
+
+### 5.3 研修用Web が永続化するデータ（論理）
+
+- 利用者（受講者／講師／管理者）および認証情報（**要決定**: IdP。シート API の `token` は暫定）
+- 研修シーン定義（3DVista のシーン名／識別子との対応表）→ `settings` シート
+- ベテラン判断テンプレート（全フィールド）→ `settings` シート内 JSON
+- 受講者セッション・回答イベント・履歴 → `responses` シート（1 行 = 1 送信）
+- OJT 引き継ぎ用の出力スナップショット（**要決定**: シート列追加 or 都度生成）
+
+### 5.4 3DVista が保持するデータ（論理）
 
 - 360°画像資産、ツアー XML／プロジェクト、ホットスポット、シーン遷移、注釈、Live Guide 設定
 
-### 5.3 シーン識別子の連携（要決定）
+### 5.5 シーン識別子の連携（要決定）
 
 3DVista のシーンと Web 側の「研修シーン」を結ぶため、以下のいずれかまたは併用を設計時に決める。
 
@@ -440,7 +645,8 @@ type JudgmentRound = {
 | --- | --- |
 | 埋め込み | 受講者・管理者 **それぞれ**の配信 URL に `frame-ancestors` を設定。受講者ツアー用オリジンと管理者ツアー用オリジンが異なる場合は **両方を許可**（**要決定**: 一覧） |
 | 認証 | iframe 内でのセッション Cookie は `SameSite`／サードパーティ Cookie 制約を検証（**要決定**: トークンは localStorage ＋ Bearer 等の代替案） |
-| API | 認可はロールベース。受講者は自分の回答のみ、講師は担当範囲、管理者は全体（**要決定**） |
+| API | Sheet API は `client` + `token`（書込）。認可はロールベース（**要決定**）。受講者は回答 POST のみ、管理者は settings / responses 読書 |
+| スプレッドシート | 共有リンクを限定。クライアント間でブックを分離（[SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md) §2） |
 
 ---
 
@@ -448,8 +654,8 @@ type JudgmentRound = {
 
 実装着手前にプロダクト／インフラで確定すること。
 
-1. 研修用Web のホスティング（クラウド・オンプレ・ドメイン）
-2. 認証方式（SSO、メール招待、研修コードのみ等）
+1. 研修用Web のホスティング（静的 + GAS URL。FileZilla 可）
+2. 認証方式（SSO、メール招待、研修コードのみ等）および Sheet API `token` 配布
 3. 3DVista → Web の **シーン同期** の有無とパラメータ契約
 4. 同一ツアー複数受講者の **セッション分離** モデル
 5. 個人情報の取り扱い（GDPR／国内法）とデータ保持期間
@@ -461,6 +667,10 @@ type JudgmentRound = {
 
 | 版 | 日付 | 内容 |
 | --- | --- | --- |
+| 1.0 | 2026-05-20 | §5.1 データの流れ（図解）を追加（全体・受講者送信・管理者参照・開発/本番・クライアント解決・provision） |
+| 0.9 | 2026-05-20 | スプレッドシート構成: マスター `clients` + クライアント別 settings/rooms/responses/audit_logs |
+| 0.8 | 2026-05-20 | §5.0 現状の課題と解決方針（Sheet API / clientId / roomId）を追記 |
+| 0.7 | 2026-05-20 | 本番永続化を **Google スプレッドシート** とする方針を §5 に追記。[SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md) を追加 |
 | 0.6 | 2026-05-19 | 受講者 5 問フローの実装詳細を追記（§4.3.2 実装済み化、§4.3.7〜4.3.13：バリデーション、必須/任意表示、intro UI、MVP 単一選択、送信・スタイル変数） |
 | 0.5 | 2026-05-18 | 受講者 Web のレイアウト実装原則を **§3.2.3** に追加（iframe 100% 追従・cqh のみ・25% はホスト比率） |
 | 0.4 | 2026-05-15 | 受講者／管理者を **別 iframe・別埋め込み URL** とする要件を明文化（§2.1, §2.3, §3.1, §3.2） |
