@@ -13,10 +13,11 @@
 | 版 | 日付 | 内容 |
 | --- | --- | --- |
 | 0.1 | 2026-05-19 | 初版（UI 整備後の機能洗い出し） |
-| 0.2 | 2026-05-20 | ベテラン差分（`diff.ts`）をスコープ外として削除。F7/F8 を再採番 |
+| 0.2 | 2026-05-20 | 機能一覧の整理（未採用項目の削除） |
 | 0.3 | 2026-05-20 | 本番永続化を **Google スプレッドシート** とする方針（§2.1、§6 X、Phase 2.5） |
 | 0.4 | 2026-05-20 | §1.0 現状の問題と解決策、§2.2 SH-08〜10（room）、Postgres 移行（§2.3） |
 | 0.5 | 2026-05-20 | ブック構成確定（マスター clients + 4 シート）。SH-11〜13、AL 系 |
+| 0.6 | 2026-05-20 | README 整合（同一ツアー・研修コード必須・F2 削除・F7 回答状況/PDF・確信度必須） |
 
 ---
 
@@ -28,7 +29,7 @@
 
 **P-02** クライアント混線 → **S-02** `clientId`（SH-01, TC-007）
 
-**P-03** 入室制限なし → **S-03** `roomId` / 研修コード（SH-08〜10）。パスワードのみでは不十分
+**P-03** 入室制限なし → **S-03** `roomId` / **研修コード必須**（SH-08〜10）。パスワードのみでは不十分
 
 **将来** → **S-04** storage 窓口 + API 固定で Postgres 差し替え可（§2.3）
 
@@ -131,7 +132,7 @@
 | V-05 | 共有 step・未選択 → `共有・行動カードを1つ選んでください` |
 | V-06 | 判断 step・未選択 → `判断基準カードを1つ選んでください` |
 | V-07 | 一言メモ step → 常に `null`（任意） |
-| V-08 | 確信度・送信確認 step → `null` |
+| V-08 | 確信度 step・未選択（`confidence === null`）→ `確信度を1つ選んでください`。送信確認 step → `null` |
 | V-09 | 名前・所属は空白のみ不可（trim） |
 
 ### 1.8 送信ペイロード組み立て — 【要抽出】
@@ -146,7 +147,7 @@
 | S-04 | `confidenceLevel` は 1〜5（範囲外の補正ルールを仕様で固定） |
 | S-05 | レガシー `awarenessSelections` 等は全ラウンド flatMap |
 | S-06 | `awarenessNote` は `【設問n】本文` を改行連結（空ラウンドはスキップ） |
-| S-07 | `attentionSelected` は空配列（F2 未実装） |
+| S-07 | `attentionSelected` は空配列（レガシー互換フィールド） |
 | S-08 | `criteriaNote` / `actionsNote` / `attentionNote` は空文字 |
 | S-09 | `id` / `createdAt` が付与される |
 
@@ -288,7 +289,6 @@
 
 | ID | 振る舞い |
 | --- | --- |
-| P-40 | 注目箇所選択（F2）step の追加 |
 | P-41 | 判断基準のドラッグ並べ替え（F4 本番） |
 | P-42 | シーン ID の URL 連携（3DVista 同期・要決定） |
 
@@ -352,7 +352,7 @@
 | --- | --- | --- |
 | A-50 | ベテラン模板の編集 UI | 型・seed は残存 |
 | A-52 | デモリセットボタン | `resetDemoData` は storage に残存 |
-| A-53 | ダッシュボード集計（F7） | 未実装 |
+| A-53 | 回答状況（回答中／回答済み）・回答済み PDF エクスポート（F7） | 未実装 |
 | A-54 | OJT エクスポート UI（F8） | 未実装 |
 
 ### 5.7 `useAppData` 【実装済み】
@@ -377,12 +377,11 @@
 | 機能 ID | 内容 | 現行 MVP | 主なテスト ID |
 | --- | --- | --- | --- |
 | F1 | ベテラン判断テンプレート | UI なし（空テンプレ保持） | SQ, SD, A-50 |
-| F2 | 注目箇所 | 未実装 | P-40, S-07 |
 | F3 | 気づき＋一言 | 5 問×単一選択＋メモ | V, S, P-11 |
 | F4 | 判断基準（並べ替え） | 単一選択のみ | CO |
 | F5 | 共有・行動 | 単一選択 | V, S |
-| F6 | 確信度 | 1〜5 ボタン | CF, S |
-| F7 | ダッシュボード | 回答一覧のみ | A-40, ST |
+| F6 | 確信度 | 1〜5 ボタン・必須 | CF, S |
+| F7 | ダッシュボード | 回答状況（回答中／回答済み）・回答済み PDF（目標）。現状は回答一覧中心 | A-40, ST |
 | F8 | OJT 引き継ぎ | 未実装 | O, A-54 |
 
 ---
@@ -428,10 +427,9 @@
 | 機能 ID | 主なテストファイル |
 | --- | --- |
 | F1 | `sceneQuestions.test.ts`, `storage.test.ts`, `seed.test.ts` |
-| F2 | `buildSubmission.test.ts`, `choices.test.ts` |
-| F3 | `validateStep.test.ts`, `buildSubmission.test.ts` |
+| F3 | `validateStep.test.ts`, `buildSubmission.test.ts`, `choices.test.ts` |
 | F4 | `criteriaOrder.test.ts`（将来） |
-| F5 | `validateStep.test.ts`, `buildSubmission.test.ts` |
+| F5 | `validateStep.test.ts`, `buildSubmission.test.ts`, `choices.test.ts` |
 | F6 | `buildSubmission.test.ts` |
 | F7 | `storage.test.ts`, `sheetApi.test.ts`, `AdminPage.test.tsx`（薄） |
 | F8 | `ojtExport.test.ts` |

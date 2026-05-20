@@ -40,10 +40,11 @@
 - 埋め込み URL: `?client={clientId}`
 - クライアントごとにスプレッドシート 1 冊（方式 A）で P-02 の組織単位分離
 
-**S-03 — `roomId` / 研修コード（推奨・同一クライアントで複数研修がある場合）**
+**S-03 — `roomId` / 研修コード（必須・同一クライアントで複数研修がある場合）**
 
-- URL または受講者の初回入力: `?client=...&room=...` または画面でコード入力
+- 受講者の入室は **研修コード入力のみ**（URL に `room` を載せない方針）。画面でコードを入力し、GAS が `rooms` で検証（`accessCodeHash` 照合）→ 通過後 `roomId` を `sessionStorage` 等に保持
 - `responses` に `room_id` を保存し、管理者一覧は **同一 room のみ** 表示
+- API 呼び出しでは **`client` + `room`（roomId）必須**
 - 関係者以外の直アクセス抑止の **補助**（本格的認証の代替ではない）
 
 **S-04 — ストレージ抽象化（Postgres 移行のため）**
@@ -58,7 +59,7 @@
 3. `storage/sheet.ts` + GAS（通常 API）
 4. GAS `clients/provision`（クライアント追加の自動化）
 5. URL から `clientId` 取得
-6. `roomId` / 研修コード（必要なクライアントから）
+6. `roomId` / 研修コード（必須フロー）
 
 ---
 
@@ -176,7 +177,7 @@ flowchart TD
 
 | 項目 | 内容 |
 | --- | --- |
-| キー | `clientId` + `roomId`（URL または研修コード検証後） |
+| キー | `clientId` + `roomId`（**研修コード検証後**に確定） |
 | 粒度 | 1 行 = `ParticipantSubmission` 1 件（`submission_json` に `rounds[5]`） |
 | 更新 | 受講者は **追記のみ**。削除・一括クリアは管理者 + `audit_logs` |
 
@@ -188,16 +189,12 @@ sequenceDiagram
   participant API as GAS
   participant RM as rooms シート
 
-  alt URL に room あり
-    P->>API: POST responses（room 付き）
-    API->>RM: roomId 存在 · enabled 確認
-  else URL に room なし
-    P->>API: POST rooms/verify（accessCode）
-    API->>RM: accessCodeHash 照合
-    API-->>P: roomId
-    P->>P: sessionStorage に roomId 保持
-    P->>API: 以降の POST に room 付与
-  end
+  P->>API: POST rooms/verify（accessCode）
+  API->>RM: accessCodeHash 照合
+  API-->>P: roomId
+  P->>P: sessionStorage に roomId 保持
+  P->>API: POST responses（client + room 必須）
+  API->>RM: roomId 存在 · enabled 確認
 ```
 
 - 平文の研修コードは **シートに保存しない**（`accessCodeHash` のみ）。
@@ -308,19 +305,23 @@ https://{host}/admin/?client=acme-factory
 **識別子 `roomId`**
 
 - 英小文字・数字・ハイフン（例: `2026-05-20-am`, `plant-tour-03`）
-- `rooms` シートの主キー。URL の `room` パラメータはこの ID を渡す
+- `rooms` シートの主キー。受講者は **研修コード入力**で `roomId` を確定し、以降の API クエリに `room` として付与する（URL 直書きはしない）
 
-**URL 例**
+**埋め込み URL 例（クエリは `client` のみ）**
 
 ```
-https://{host}/participant/?client=client-a&room=2026-05-20-am
-https://{host}/admin/?client=client-a&room=2026-05-20-am
+https://{host}/participant/?client=client-a
+https://{host}/admin/?client=client-a&token=…
 ```
 
-**受講者 UI（要決定）**
+**受講者 UI**
 
-- URL に `room` が無い場合、step 0 付近で **研修コード入力** → GAS が `rooms` で検証（`accessCodeHash` 照合）→ 通過後 `roomId` を `sessionStorage` に保持
+- step 0（名前・所属）の前後いずれかで **研修コード入力**（必須）→ GAS が `rooms` で検証（`accessCodeHash` 照合）→ 通過後 `roomId` を `sessionStorage` に保持
 - コード不正・`enabled=false` の room は送信不可
+
+**管理者 UI**
+
+- 同一研修回のデータを扱うため、**同じ研修コード**（または検証済み `roomId`）で入室する。詳細は実装フェーズで固定する
 
 **API**
 
@@ -527,7 +528,7 @@ https://{host}/admin/?client=client-a&room=2026-05-20-am
 **共通クエリ**
 
 - `client` — 必須（`clientId`）
-- `room` — 推奨（`roomId`）。無い場合の扱いは API で定義（要決定: 拒否 or デフォルト room）
+- `room` — 必須（`roomId`）。受講者は **研修コード検証成功後**に付与された ID を送る。欠落・不一致は **400**
 - `token` — 管理者操作で必須（`clients.adminTokenHash` と照合。**要決定**: ヘッダ `Authorization: Bearer` に移行可）
 - 受講者 — `token` なし。`room` は `rooms` シートで存在・`enabled`・`accessCodeHash`（コード入力時）を検証
 
@@ -707,3 +708,5 @@ POST ボディは JSON。GAS はマスター `clients` で `spreadsheetId` を�
 **0.5**（2026-05-20）— §2.2.1 テンプレートからの自動プロビジョニング（方式 B 推奨）、`POST clients/provision` を追記。
 
 **0.6**（2026-05-20）— §1.1 データの流れ（図解）を追加。レイヤー・settings/responses/rooms・マスター解決の mermaid 図。
+
+**0.7**（2026-05-20）— 入室を **研修コード必須**（URL に `room` を載せない方針）に統一。API 共通クエリの `room` を **必須**化。§1.1.4 シーケンス図の整理

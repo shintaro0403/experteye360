@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>3DVista 埋め込み確認（外側モック 35vw × iframe 100%）</title>
+    <title>3DVista 埋め込み確認（外側モック 40vw × iframe 100%）</title>
     <style>
       * {
         box-sizing: border-box;
@@ -31,8 +31,8 @@
         background: linear-gradient(165deg, #0f1f3d, #2d4a7c);
       }
       .embed {
-        flex: 0 0 35vw;
-        width: 35vw;
+        flex: 0 0 40vw;
+        width: 40vw;
         height: 100%;
         min-width: 0;
         border-left: 3px solid #0f1f3d;
@@ -48,10 +48,10 @@
   </head>
   <body>
     <div class="host">
-      <div class="pano">360° パノラマ（3DVista・モック・65%）</div>
+      <div class="pano">360° パノラマ（3DVista・モック・約60%）</div>
       <div class="embed">
-        <iframe src="/admin/" title="管理者 Web（iframe 内は width/height 100%。外側 35vw は 3DVista モックのみ）"></iframe>
-      </motion.div>
+        <iframe src="/admin/" title="管理者 Web（iframe 内は width/height 100%。外側 40vw は 3DVista モックのみ）"></iframe>
+      </div>
     </div>
   </body>
 </html>

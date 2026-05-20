@@ -13,7 +13,7 @@
 ## 1. 文書情報
 
 - **対象**: `shared/src`（最優先）→ `participant-web` / `admin-web`
-- **関連仕様**: [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md) §3.2.3（受講者 iframe レイアウト）、§4（F1〜F8）、§5（永続化）
+- **関連仕様**: [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md) §3.2.3・§3.2.4（iframe レイアウト）、§4（F1・F3〜F8）、§5（永続化）
 - **永続化仕様**: [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)
 - **現状**: テストコード・Vitest は **未導入**。ストレージは `localStorage` のみ実装済み（Sheet API は未実装）
 
@@ -29,7 +29,7 @@
 
 **0.5**（2026-05-19）— [TDD-FEATURE-INVENTORY.md](./TDD-FEATURE-INVENTORY.md) を追加（機能一覧の参照先）
 
-**0.6**（2026-05-20）— ベテラン差分（`diff.ts` / F7 差分表示）をスコープ外として削除
+**0.6**（2026-05-20）— 機能一覧・手動テスト節との参照整合
 
 **0.7**（2026-05-20）— 横並び表をやめ、縦書きブロック形式に統一
 
@@ -39,9 +39,7 @@
 
 **1.0**（2026-05-20）— ブック構成確定（マスター clients + settings/rooms/responses/audit_logs）。rooms・verify の TC 追記
 
-**1.1**（2026-05-20）— §2.4 テスト重要度（A / B / C）を追加。§3・§4・§8 にランク付与
-
----
+**1.2**（2026-05-20）— README 準拠で 5 問手動（§4.11）・入室（研修コード）・管理者 iframe 手動（§8.1）を整理
 
 ## 2. 方針（要約）
 
@@ -266,7 +264,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 - **テスト**: [choices.test.ts](../shared/src/choices.test.ts)
 - **状態**: 未
 - **重要度**: **C**
-- **関連機能**: F2〜F5（5 枚制限）
+- **関連機能**: F3〜F5（5 枚制限）
 
 #### [storage.ts](../shared/src/storage.ts)
 
@@ -289,7 +287,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 - **テスト**: `submission.test.ts`
 - **状態**: 未
 - **重要度**: **B**（TC-002 は **A**）
-- **関連機能**: F2〜F6, FLOW
+- **関連機能**: F3〜F6, FLOW
 
 #### criteriaOrder.ts（新規）
 
@@ -403,7 +401,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 - **入力**: —
 - **期待**: `MAX_CHOICE_CARDS === 5`
 
-**関連仕様**: F2〜F5（表示・保存の上限）
+**関連仕様**: F3〜F5（表示・保存の上限）
 
 ---
 
@@ -580,15 +578,14 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 
 **予定 API（例）**
 
-- `toggleLabel(list, label)` — F2, F3, F5 複数選択
-- `clampConfidence(n)` — F6（1〜5）
+- `toggleLabel(list, label)` — F3, F5（単一選択トグル相当・抽出後）
 - `buildSubmission(state, sceneId)` — 送信ペイロード組み立て
-- `anonymousName(name)` — 無記名時「（無記名）」
+- `clampConfidence(n)` — F6（1〜5）
 
 #### TC-001
 
-- **内容**: トグルで追加・削除
-- **関連**: F2
+- **内容**: トグルで単一選択の切替
+- **関連**: F3 / F5
 
 #### TC-002
 
@@ -598,7 +595,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 
 #### TC-003
 
-- **内容**: 空名前 → 無記名
+- **内容**: 名前・所属が trim 後空ならバリデーションエラー（無記名フォールバックなし）
 - **関連**: FLOW
 
 #### TC-004
@@ -733,20 +730,19 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 
 **受講者 5 問フロー（手動・受け入れ）— 重要度: A**
 
-[TECHNICAL-SPEC.md §4.3](TECHNICAL-SPEC.md#43-受講者回答フロー5問--4画面サイクル) に従う。**5 問 = 4 画面サイクル × 5 回**。一言メモの `next` で次ラウンドの気づきカードへ進むこと。**人間が必ず通す**（embed-preview または 3DVista 埋め込み）。
+[README.md](../README.md) の「受講者回答フロー（5問）」および [TECHNICAL-SPEC.md §4.3.5](TECHNICAL-SPEC.md#435-プロトタイプ実装participant-web) に従う。
 
-**事前（名前・所属）**
+- **5 問** = 同じ 4 画面（気づき → 共有 → 判断基準 → 一言メモ）を **5 回**。一言メモの `next` で次ラウンドの気づきへ。**人間が必ず通す**（`participant-web/public/embed-preview.html` または 3DVista 埋め込み）。
 
-- 画面順: step 0
-
-**1〜5 各回**
-
-- 画面順: 気づき → 共有 → 判断基準 → 一言メモ → **次の気づき**
-- 現行（2026-05-19）: 1 回分のみ・順序ずれ（TECHNICAL-SPEC §4.3.5）
-
-**締め（確信度 → 送信）**
-
-- 画面順: step 9〜11
+| ブロック | step（§4.3.5） | 画面順 |
+| --- | --- | --- |
+| 事前（名前・所属） | 0 | 名前 → 所属 |
+| 設問 1 | 1〜4 | 気づき → 共有 → 判断基準 → 一言メモ |
+| 設問 2 | 5〜8 | 同上 |
+| 設問 3 | 9〜12 | 同上 |
+| 設問 4 | 13〜16 | 同上 |
+| 設問 5 | 17〜20 | 同上 |
+| 締め | 21〜23 | 確信度（必須）→ 送信確認 → 送信完了 |
 
 ---
 
@@ -774,9 +770,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 
 **F1** — `normalizeScene.test.ts`, `storage.test.ts`, `seed.test.ts`
 
-**F2** — `submission.test.ts`, `choices.test.ts`
-
-**F3** — `submission.test.ts`
+**F3** — `submission.test.ts`, `choices.test.ts`
 
 **F4** — `criteriaOrder.test.ts`
 
@@ -898,16 +892,18 @@ admin-web/src/
 
 ---
 
-## 8.1 受講者 iframe レイアウト（手動・E2E）
+## 8.1 iframe レイアウト（手動・E2E）
 
-**重要度**: 本節はすべて **A**（§2.4）— 人間の目視が必須。Playwright 化後もリリース前に人間が代表解像度で再確認する。
+**重要度**: 本節の **A** ランクは人間の目視が必須（§2.4）。Playwright 化後もリリース前に代表解像度で再確認する。
+
+### 受講者（§3.2.3）
 
 [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md) **§3.2.3** に従う。Vitest 化は Phase 3 以降の Playwright 想定（自動化後も L-01〜L-05 は **A** のサンプリング対象）。
 
 #### L-01
 
 - **重要度**: A
-- **手順**: `embed-preview.html` を開き、ブラウザウィンドウの高さを大きく／小さく変える
+- **手順**: `participant-web/public/embed-preview.html` を開き、ブラウザウィンドウの高さを大きく／小さく変える
 - **期待**: 全 step で帯内に収まり、**帯内スクロールバーが出ない**
 
 #### L-02
@@ -939,6 +935,22 @@ admin-web/src/
 - **重要度**: C（grep / CI スクリプト可。失敗時のみ人間）
 - **手順**: `participant-app.css` に `vh` / `25vh` が無いこと（`cqh`/`cqw` と iframe 100% のみ）
 - **期待**: 静的確認または grep
+
+### 管理者（§3.2.4）
+
+[TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md) **§3.2.4** に従う。README の「管理者の見た目確認」と同じ URL（`admin-web/public/embed-preview.html`）。
+
+#### L-07
+
+- **重要度**: A
+- **手順**: `http://localhost:5174/admin/embed-preview.html` を開き、ブラウザウィンドウの幅を大きく／小さく変える
+- **期待**: 管理 UI が **右側 40% 相当のモック枠内**に収まる（縦スクロールは一覧用途で可）
+
+#### L-08
+
+- **重要度**: C
+- **手順**: 外側モックが **40vw**、アプリ本体 iframe が **100%×100%** であること（`40vw` をアプリ CSS に使っていないこと）
+- **期待**: grep または目視
 
 ---
 
