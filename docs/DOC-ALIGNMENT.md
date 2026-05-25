@@ -2,7 +2,7 @@
 
 README・各 `docs/*.md`・コードの食い違いをなくすための **参照順** と **現状の一言** をまとめる。更新したら本ファイルの **最終確認日** も直す。
 
-**最終確認日**: 2026-05-25（読み方・目次・重複禁止ルールを整理）
+**最終確認日**: 2026-05-25（Phase 2 / 2.5 の実装・テスト状態を反映）
 
 ---
 
@@ -88,7 +88,7 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 
 - **実装** — あり
 - **自動テスト** — `choices.test` / `judgmentFlow.test` / `sceneQuestions.test` / `cardSlots.test` / `selection.test` / `validateStep.test` / `submission.test`
-- **備考** — Phase 0 の中核と Phase 1 の shared 抽出は Green
+- **備考** — Phase 0 の中核、Phase 1 の shared 抽出、Phase 2 の local 永続化・seed は Green
 
 **判断基準**
 
@@ -98,7 +98,7 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 
 - **実装** — あり（local 平文照合）
 - **自動テスト** — `roomEntry.test` あり
-- **備考** — API・hash 照合は Phase 2.5
+- **備考** — local は Green。API 契約入口は `sheetApi.test`、GAS・hash 照合・画面配線は Phase 2.5 継続
 
 **管理者コード入室**
 
@@ -107,9 +107,9 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 
 **本番 Sheet API**
 
-- **実装** — なし
-- **自動テスト** — なし
-- **備考** — `localStorage` のみ
+- **実装** — フロント契約の入口のみあり（`shared/src/storage/sheet.ts`）
+- **自動テスト** — `sheetApi.test` あり（TC-001〜004、TC-010 相当の入口）
+- **備考** — GAS、`VITE_STORAGE_BACKEND` 切替、`storage.ts` 統合、画面配線は未
 
 **講師・管理者 一覧・詳細（F7）**
 
@@ -130,7 +130,7 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 - **備考** — README §7 は **将来**
 
 ```bash
-npm test          # ルート Vitest（shared）。現状 37 本 Green
+npm test          # ルート Vitest（shared）。現状 11 files / 56 tests Green
 npm run test:watch
 ```
 
@@ -157,7 +157,7 @@ npm run test:watch
 **入室**
 
 - **誤りやすい** — INVENTORY「§2.1c 未実装」
-- **正しい現状** — **local で実装済み**。未なのは **GAS/API 照合**（Phase 2.5）
+- **正しい現状** — **local で実装済み**。Sheet API の `rooms/verify` 契約入口も実装済み。未なのは **GAS/hash 照合・画面配線**（Phase 2.5）
 
 **Phase 0**
 

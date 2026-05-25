@@ -28,7 +28,7 @@
 
 **研修コード・管理者コード入室** — **実装済み**（local の平文照合。API 照合は未）
 
-**永続化** — **`localStorage` のみ**（5173/5174 は別オリジンで非共有）
+**永続化** — UI の現行窓口は **`localStorage`**。Sheet API は契約テストと `storage/sheet.ts` の最小 fetch 実装まで完了（GAS・切替・UI 配線は未）
 
 **講師・管理者の回答一覧・詳細** — **実装済み**
 
@@ -36,9 +36,9 @@
 
 **OJT 整理** — **未実装**（§7 は将来仕様）
 
-**本番 Sheet API** — **未実装**（設計は SPREADSHEET-DATA）
+**本番 Sheet API** — **一部実装**（`sheetApi.test.ts` と `storage/sheet.ts` の入口は Green。GAS・`VITE_STORAGE_BACKEND`・画面配線は未）
 
-**自動テスト** — **Vitest**（`npm test` — 現状 37 本 Green）
+**自動テスト** — **Vitest**（`npm test` — 現状 11 files / 56 tests Green）
 
 ```bash
 npm test          # ルート: shared の Unit テスト
@@ -59,7 +59,7 @@ npm run test:watch
 
 **`shared/src/`** — 型・シード・ストレージ（**現状**は `localStorage`。本番は Sheet API → スプレッドシート）
 
-**現状のローカル**: 入室 UI（研修コード・管理者コード）は動くが、データは **ブラウザの `localStorage`** に保存される。受講者（5173）と管理者（5174）は **別オリジン**のため、回答は自動では共有されない（同一ブラウザで両方開いてもストレージは分離）。本番同等の共有確認には Sheet API（Phase 2.5）が必要。
+**現状のローカル**: 入室 UI（研修コード・管理者コード）は動くが、画面の保存先はまだ **ブラウザの `localStorage`**。受講者（5173）と管理者（5174）は **別オリジン**のため、回答は自動では共有されない（同一ブラウザで両方開いてもストレージは分離）。Sheet API の契約テストと薄い fetch 実装はあるが、本番同等の共有確認には GAS、`VITE_STORAGE_BACKEND` 切替、画面配線が必要。
 
 #### 初回セットアップ
 

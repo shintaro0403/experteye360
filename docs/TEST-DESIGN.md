@@ -121,7 +121,7 @@
 - **対象**: `shared/src`（最優先）→ `participant-web` / `admin-web`
 - **関連仕様**: [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md) §3.2.3・§3.2.4（iframe レイアウト）、§4（F3〜F8）、§5（永続化）
 - **永続化仕様**: [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)
-- **現状**: **Vitest 導入済み**（ルート `npm test`）。Phase 0 の中核と Phase 1 の shared 抽出（`cardSlots` / `selection` / `validateStep` / `submission`）は Green。ストレージは `localStorage` のみ（Sheet API は未実装）。入室 UI（研修コード・管理者コード）は **local 実装済み**
+- **現状**: **Vitest 導入済み**（ルート `npm test`）。Phase 0 / 1 / 2 は Green。Sheet API は `sheetApi.test.ts` と `storage/sheet.ts` の入口のみ Green（GAS・`VITE_STORAGE_BACKEND`・画面配線は未）。入室 UI（研修コード・管理者コード）は **local 実装済み**
 
 ### 1.1 改訂履歴
 
@@ -161,6 +161,8 @@
 
 **1.9**（2026-05-25）— **§0 読み方（人間と AI）** を追加。目次は章・主要節中心にし、細かい TC/ID は本文検索用に整理
 
+**2.0**（2026-05-25）— Phase 2 の `storage` / `seed` テスト追加と、Phase 2.5 の Sheet API 契約入口・`storage/sheet.ts` 最小実装を反映
+
 ### 1.2 テストスコープとマイルストーン
 
 **本節がテスト計画の正本**である。Phase の意味・含める／含めない範囲・作業順はここを優先する。
@@ -177,7 +179,7 @@
 
 **役割** — 振る舞い ID（C-01、V-04 等）とファイル対応の辞書。**Phase は書かない**
 
-**現在のマイルストーン**: **Phase 2**（開発用永続化・管理者保存の契約）
+**現在のマイルストーン**: **Phase 2.5**（本番永続化。Sheet API 契約入口は Green、統合は継続）
 
 **2 つの優先軸**（混同しない）
 
@@ -331,7 +333,7 @@
 #### clientId / room 分離
 
 **README / 機能** — `clientId` / `room` 分離
-**現行実装** — **方針確定**（`?client=` 付与・POST は `client`+`room` クエリとボディ `roomId`）／実装は Phase 2.5
+**現行実装** — `sheetApi.test.ts` と `storage/sheet.ts` の入口で、`?client=`、`room`、`token`、`rooms/verify` の最小契約を固定済み。`VITE_STORAGE_BACKEND` 切替・画面配線・GAS は未
 **今回マイルストーン** — Phase 2.5
 **主なテスト** — `sheetApi` TC-005〜009
 **備考** — §1.5・**D-07** 本番近似・**D-09**
@@ -1297,21 +1299,21 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 #### [seed.ts](../shared/src/seed.ts)
 
 - **テスト**: [seed.test.ts](../shared/src/seed.test.ts)
-- **状態**: 未
+- **状態**: Green
 - **重要度**: **C**
 - **関連機能**: デモ初期データ
 
 #### [choices.ts](../shared/src/choices.ts)
 
 - **テスト**: [choices.test.ts](../shared/src/choices.test.ts)
-- **状態**: 未
+- **状態**: Green
 - **重要度**: **C**
 - **関連機能**: F3〜F5（5 枚制限）
 
 #### [storage.ts](../shared/src/storage.ts)
 
 - **テスト**: [storage.test.ts](../shared/src/storage.test.ts)（local 実装）
-- **状態**: 未（local）。Sheet 層は未実装
+- **状態**: local は Green。Sheet 層は `storage/sheet.ts` の最小実装あり
 - **重要度**: **C**（local）
 - **関連機能**: F7、settings / responses
 - **備考**: 本番は [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)。`storage/local.ts` + `storage/sheet.ts` + `storage/index.ts` へ分割予定
@@ -1319,7 +1321,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 #### storage/sheet.ts（新規）
 
 - **テスト**: `sheetApi.test.ts`
-- **状態**: 未
+- **状態**: 入口 Green（TC-001〜004、TC-010 相当）。残り TC、`storage.ts` 統合、`VITE_STORAGE_BACKEND` は未
 - **重要度**: **B**（TC-008〜009 は **A**）
 - **関連機能**: F7（本番永続化）
 - **備考**: `fetch` で GAS Web App。`clientId` は URL クエリから
@@ -2044,15 +2046,17 @@ admin-web/src/
 
 #### Phase 2 — 永続化・管理（local）
 
-- [ ] `storage.test.ts` Green
-- [ ] `seed.test.ts` Green
-- [ ] `sceneQuestions.test.ts`（`normalizeScene` / `normalizeSettings`）Green
+- [x] `storage.test.ts` Green
+- [x] `seed.test.ts` Green
+- [x] `sceneQuestions.test.ts`（`normalizeScene` / `normalizeSettings`）Green
 
 #### Phase 2.5 — スプレッドシート永続化（本番）
 
 - [ ] **B** — GAS（または API）を [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md) §0〜4 に沿って用意
-- [ ] **B** — `sheetApi.test.ts` を **先に** Red → Green（TC-001〜007, TC-010〜013 は CI）
-- [ ] **B** — `roomEntry.test.ts` / `adminEntry.test.ts` Green（§1.5）
+- [x] **B** — `sheetApi.test.ts` の入口を **先に** Red → Green（TC-001〜004、TC-010 相当）
+- [x] **B** — `storage/sheet.ts` の最小 fetch 実装
+- [ ] **B** — `sheetApi.test.ts` の残り TC-005〜009、TC-011〜013 を追加
+- [ ] **B** — `adminEntry.test.ts` Green。`roomEntry.test.ts` は local Green、API 契約は `sheetApi.test.ts` 入口 Green（§1.5）
 - [ ] **B** — 受講者: 研修コード → 名前所属。管理者: **管理者コードのみ**（§1.5）
 - [ ] **A** — `sheetApi` TC-008〜009 Green 後、人間が room 漏洩の代表操作を確認
 - [ ] **A** — ENTRY-M / ADM-M（§1.5 手動）
