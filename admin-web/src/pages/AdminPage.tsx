@@ -1,4 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { primaryTrainingRoom } from "@shared/appSettings";
+import {
+  changeAdminAccessCode,
+  isAdminSessionActive,
+  setAdminSessionActive,
+  verifyAdminCode,
+} from "@shared/adminEntry";
 import { getConfidenceLabel } from "@shared/confidence";
 import { getSubmissionRounds, JUDGMENT_ROUND_COUNT } from "@shared/judgmentFlow";
 import type { ParticipantSubmission, Scene } from "@shared/types";
@@ -149,6 +156,13 @@ function ResponseDetail({
 
 export function AdminPage() {
   const { settings, setSettings, responses, replaceResponses, refresh } = useAppData();
+  const [adminAuthed, setAdminAuthed] = useState(() => isAdminSessionActive());
+  const [adminCodeInput, setAdminCodeInput] = useState("");
+  const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
+  const [trainingCodeDraft, setTrainingCodeDraft] = useState("");
+  const [adminCurrentForChange, setAdminCurrentForChange] = useState("");
+  const [adminNewCode, setAdminNewCode] = useState("");
+  const [adminChangeMsg, setAdminChangeMsg] = useState<string | null>(null);
   const [tab, setTab] = useState<"base" | "scenes" | "responses">("base");
   const [tourUrl, setTourUrl] = useState(settings.tourUrl);
   const [activeSceneId, setActiveSceneId] = useState(settings.scenes[0]?.id ?? "");
@@ -166,6 +180,65 @@ export function AdminPage() {
   useEffect(() => {
     setTourUrl(settings.tourUrl);
   }, [settings.tourUrl]);
+
+  useEffect(() => {
+    const room = primaryTrainingRoom(settings);
+    setTrainingCodeDraft(room.accessCode);
+  }, [settings.rooms, settings]);
+
+  const tryAdminLogin = () => {
+    if (verifyAdminCode(adminCodeInput, settings.adminAccessCode)) {
+      setAdminSessionActive(true);
+      setAdminAuthed(true);
+      setAdminLoginError(null);
+      setAdminCodeInput("");
+      return;
+    }
+    setAdminLoginError("管理者コードが正しくありません");
+  };
+
+  const saveTrainingCode = () => {
+    const code = trainingCodeDraft.trim();
+    if (!code) {
+      alert("研修コードを入力してください");
+      return;
+    }
+    const room = primaryTrainingRoom(settings);
+    const nextRooms =
+      settings.rooms.length > 0
+        ? settings.rooms.map((r) =>
+            r.roomId === room.roomId ? { ...r, accessCode: code } : r,
+          )
+        : [{ ...room, accessCode: code }];
+    setSettings({ ...settings, rooms: nextRooms });
+    refresh();
+    alert("研修コードを保存しました。受講者に新しいコードを案内してください。");
+  };
+
+  const saveAdminCodeChange = () => {
+    const result = changeAdminAccessCode(
+      adminCurrentForChange,
+      adminNewCode,
+      settings.adminAccessCode,
+    );
+    if (!result.ok) {
+      setAdminChangeMsg(result.error);
+      return;
+    }
+    const next = adminNewCode.trim();
+    setSettings({ ...settings, adminAccessCode: next });
+    setAdminCurrentForChange("");
+    setAdminNewCode("");
+    setAdminChangeMsg("管理者コードを変更しました。次回から新しいコードで入室してください。");
+    refresh();
+  };
+
+  const logoutAdmin = () => {
+    setAdminSessionActive(false);
+    setAdminAuthed(false);
+    setAdminCodeInput("");
+    setAdminLoginError(null);
+  };
 
   useEffect(() => {
     if (!activeScene) {
@@ -249,6 +322,46 @@ export function AdminPage() {
   const selectedResponseScene =
     selectedResponse && settings.scenes.find((s) => s.id === selectedResponse.sceneId);
 
+  if (!adminAuthed) {
+    return (
+      <div className="a-shell">
+        <div className="a-page a-entry-gate">
+          <div className="a-entry-card">
+            <h1>管理者コード</h1>
+            <p>
+              管理者コードを入力してください。研修コードとは別のコードです。受講者向けの研修コードはログイン後に設定できます。
+            </p>
+            {adminLoginError && (
+              <p className="a-entry-error" role="alert">
+                {adminLoginError}
+              </p>
+            )}
+            <AdminLabel label="管理者コード">
+              <ImeInput
+                className="a-input"
+                value={adminCodeInput}
+                onChange={setAdminCodeInput}
+                placeholder="管理者コード"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") tryAdminLogin();
+                }}
+              />
+            </AdminLabel>
+            <div className="a-actions">
+              <button type="button" className="a-btn a-btn--primary" onClick={tryAdminLogin}>
+                入室する
+              </button>
+            </div>
+            <p className="a-hint" style={{ marginTop: "1rem" }}>
+              初回デモ: 管理者コード <code>admin-demo</code> / 受講者研修コード <code>DEMO-2026</code>
+              （ローカルはアプリごとに storage が分かれるため、管理者で研修コードを変更した場合は受講者側の再読込が必要です）
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="a-shell">
       <div className="a-page">
@@ -259,6 +372,9 @@ export function AdminPage() {
           <div className="a-topbar__actions">
             <button type="button" className="a-btn a-btn--secondary" onClick={() => refresh()}>
               再読込
+            </button>
+            <button type="button" className="a-btn a-btn--secondary" onClick={logoutAdmin}>
+              ロック
             </button>
           </div>
         </div>
@@ -280,6 +396,62 @@ export function AdminPage() {
 
         {tab === "base" && (
           <section className="a-panel">
+            <h2>入室・研修回</h2>
+            <p className="a-hint">
+              受講者には<strong>研修コード</strong>を案内します。管理者の入室には<strong>管理者コード</strong>を使います（別物）。
+            </p>
+            <AdminLabel label={`研修コード（${primaryTrainingRoom(settings).displayName}）`}>
+              <ImeInput
+                className="a-input"
+                value={trainingCodeDraft}
+                onChange={setTrainingCodeDraft}
+                placeholder="受講者が入力するコード"
+              />
+            </AdminLabel>
+            <div className="a-actions">
+              <button type="button" className="a-btn a-btn--primary" onClick={saveTrainingCode}>
+                研修コードを保存
+              </button>
+            </div>
+
+            <hr className="a-entry-divider" />
+
+            <h3>管理者コードの変更</h3>
+            <p className="a-hint">現在の管理者コードを入力した場合のみ、新しいコードに変更できます。</p>
+            {adminChangeMsg && (
+              <p
+                className={adminChangeMsg.includes("変更しました") ? "a-hint" : "a-entry-error"}
+                role="status"
+              >
+                {adminChangeMsg}
+              </p>
+            )}
+            <AdminLabel label="現在の管理者コード">
+              <ImeInput
+                className="a-input"
+                value={adminCurrentForChange}
+                onChange={setAdminCurrentForChange}
+                placeholder="現在のコード"
+                autoComplete="off"
+              />
+            </AdminLabel>
+            <AdminLabel label="新しい管理者コード">
+              <ImeInput
+                className="a-input"
+                value={adminNewCode}
+                onChange={setAdminNewCode}
+                placeholder="4文字以上"
+                autoComplete="off"
+              />
+            </AdminLabel>
+            <div className="a-actions">
+              <button type="button" className="a-btn a-btn--primary" onClick={saveAdminCodeChange}>
+                管理者コードを変更
+              </button>
+            </div>
+
+            <hr className="a-entry-divider" />
+
             <h2>3DVista ツアー URL</h2>
             <p className="a-hint">受講者 iframe の 3DVista 埋め込み元 URL を登録します。</p>
             <div className="a-row" style={{ marginTop: "0.65rem" }}>

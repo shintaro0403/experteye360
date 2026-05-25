@@ -1,3 +1,4 @@
+import { DEFAULT_ADMIN_ACCESS_CODE, DEFAULT_TRAINING_ROOMS } from "./appSettings";
 import { JUDGMENT_ROUND_COUNT } from "./judgmentFlow";
 import type { AppSettings, Scene, SceneQuestionCards } from "./types";
 
@@ -86,4 +87,6 @@ const demoScene: Scene = {
 export const DEFAULT_SETTINGS: AppSettings = {
   tourUrl: "https://example.com/3dvista-tour-placeholder",
   scenes: [demoScene],
+  rooms: DEFAULT_TRAINING_ROOMS.map((r) => ({ ...r })),
+  adminAccessCode: DEFAULT_ADMIN_ACCESS_CODE,
 };

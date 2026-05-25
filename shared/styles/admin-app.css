@@ -661,3 +661,52 @@ a { color: var(--navy-mid); }
   flex-wrap: wrap;
   margin-top: 1rem;
 }
+
+/* === 管理者コード入室 === */
+.a-entry-gate {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.a-entry-card {
+  width: min(100%, 22rem);
+  padding: 1.25rem 1.35rem;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(26, 47, 90, 0.06);
+}
+
+.a-entry-card h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
+  color: var(--navy);
+}
+
+.a-entry-card p {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.a-entry-error {
+  margin: 0 0 0.65rem;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--danger, #b42318);
+  background: #fef3f2;
+  border: 1px solid #fecdca;
+  border-radius: 6px;
+}
+
+.a-entry-divider {
+  margin: 1.25rem 0 0.75rem;
+  border: none;
+  border-top: 1px solid var(--gray-200);
+}

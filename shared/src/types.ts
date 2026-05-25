@@ -21,11 +21,12 @@ export type Scene = {
   awarenessCards?: string[];
   criteriaCards?: string[];
   actionCards?: string[];
+  /** @deprecated settings JSON 互換用。常に空オブジェクト。 */
   veteranTemplate: VeteranTemplate;
 };
 
+/** @deprecated settings JSON 互換用。アプリでは未使用。 */
 export type VeteranTemplate = {
-  /** ベテランが見ている注目ポイント */
   focusPoints: string[];
   /** 重視する判断基準（優先が先頭） */
   criteriaPriority: string[];
@@ -44,12 +45,23 @@ export type JudgmentRound = {
   roundNote: string;
 };
 
+/** 研修回（受講者の研修コードで入室。管理者が設定） */
+export type TrainingRoom = {
+  roomId: string;
+  displayName: string;
+  /** 受講者が入力する平文コード（本番は API 側でハッシュ照合） */
+  accessCode: string;
+  enabled: boolean;
+};
+
 export type ParticipantSubmission = {
   id: string;
   createdAt: string;
   participantName: string;
   /** 所属（受講者入力） */
   affiliation?: string;
+  /** 研修コード検証後に確定した roomId */
+  roomId?: string;
   sceneId: string;
   /** 5 設問分（各 4 画面サイクル） */
   rounds: JudgmentRound[];
@@ -70,4 +82,8 @@ export type AppSettings = {
   /** 登録した 3DVista ツアー URL */
   tourUrl: string;
   scenes: Scene[];
+  /** 受講者向け研修回（研修コード） */
+  rooms: TrainingRoom[];
+  /** 管理者入室用コード（開発時は settings に平文保持） */
+  adminAccessCode: string;
 };

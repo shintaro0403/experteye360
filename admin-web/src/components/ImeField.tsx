@@ -5,6 +5,8 @@ type BaseProps = {
   onChange: (value: string) => void;
   className?: string;
   placeholder?: string;
+  onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>;
+  autoComplete?: string;
 };
 
 /** 日本語 IME と英語の連続入力の両方に対応する controlled input */
@@ -44,7 +46,14 @@ function useImeControlledValue(value: string, onChange: (value: string) => void)
   return { local, onInputChange, onCompositionStart, onCompositionEnd };
 }
 
-export function ImeInput({ value, onChange, className, placeholder }: BaseProps) {
+export function ImeInput({
+  value,
+  onChange,
+  className,
+  placeholder,
+  onKeyDown,
+  autoComplete,
+}: BaseProps) {
   const { local, onInputChange, onCompositionStart, onCompositionEnd } = useImeControlledValue(
     value,
     onChange,
@@ -55,6 +64,8 @@ export function ImeInput({ value, onChange, className, placeholder }: BaseProps)
       className={className}
       value={local}
       placeholder={placeholder}
+      autoComplete={autoComplete}
+      onKeyDown={onKeyDown}
       onChange={(e) => onInputChange(e.target.value)}
       onCompositionStart={onCompositionStart}
       onCompositionEnd={(e) => onCompositionEnd(e.currentTarget.value)}

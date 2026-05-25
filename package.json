@@ -1,11 +1,20 @@
 {
   "name": "experteye360",
   "private": true,
+  "type": "module",
   "scripts": {
-    "install:all": "npm install --prefix participant-web && npm install --prefix admin-web",
+    "install:all": "npm install && npm install --prefix participant-web && npm install --prefix admin-web",
     "dev": "npm run dev:participant",
     "dev:participant": "npm run dev --prefix participant-web",
     "dev:admin": "npm run dev --prefix admin-web",
-    "build:all": "npm run build --prefix participant-web && npm run build --prefix admin-web"
+    "build:all": "npm run build --prefix participant-web && npm run build --prefix admin-web",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19",
+    "happy-dom": "^17.4.4",
+    "typescript": "5.7.3",
+    "vitest": "^3.0.5"
   }
 }

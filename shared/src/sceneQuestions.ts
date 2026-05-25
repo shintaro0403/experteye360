@@ -34,9 +34,9 @@ export function normalizeScene(scene: Scene): Scene {
     };
   }
   const legacy: SceneQuestionCards = {
-    awarenessCards: scene.awarenessCards ?? [],
-    criteriaCards: scene.criteriaCards ?? [],
-    actionCards: scene.actionCards ?? [],
+    awarenessCards: limitChoices(scene.awarenessCards ?? []),
+    criteriaCards: limitChoices(scene.criteriaCards ?? []),
+    actionCards: limitChoices(scene.actionCards ?? []),
   };
   const questionCards = Array.from({ length: JUDGMENT_ROUND_COUNT }, () => ({
     awarenessCards: [...legacy.awarenessCards],

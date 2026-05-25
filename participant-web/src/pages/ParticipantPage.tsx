@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { limitChoices } from "@shared/choices";
 import { CONFIDENCE_LABELS } from "@shared/confidence";
+import {
+  getVerifiedRoomId,
+  setVerifiedRoomId,
+  verifyTrainingCode,
+} from "@shared/roomEntry";
 import { getSceneQuestionCards } from "@shared/sceneQuestions";
 import {
   createEmptyRounds,
@@ -26,7 +31,31 @@ function uid() {
   return crypto.randomUUID();
 }
 
-function IntroFieldIcon({ kind }: { kind: "person" | "building" }) {
+function IntroFieldIcon({ kind }: { kind: "person" | "building" | "key" }) {
+  if (kind === "key") {
+    return (
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+        <path
+          d="M7 11V8a5 5 0 0 1 10 0v3"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+        />
+        <rect
+          x="5"
+          y="11"
+          width="14"
+          height="10"
+          rx="2"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+        />
+        <circle cx="12" cy="15.5" r="1.25" fill="currentColor" />
+      </svg>
+    );
+  }
   if (kind === "person") {
     return (
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -292,6 +321,8 @@ function selectSingle(list: string[], v: string): string[] {
 
 export function ParticipantPage() {
   const { settings, addResponse } = useAppData();
+  const [verifiedRoomId, setVerifiedRoomIdState] = useState<string | null>(() => getVerifiedRoomId());
+  const [trainingCode, setTrainingCode] = useState("");
   const [step, setStep] = useState(STEP_INTRO);
   const [participantName, setParticipantName] = useState("");
   const [affiliation, setAffiliation] = useState("");
@@ -300,6 +331,18 @@ export function ParticipantPage() {
   const [fieldWarn, setFieldWarn] = useState<string | null>(null);
 
   const scene = settings.scenes[0] ?? null;
+  const profileUnlocked = Boolean(verifiedRoomId);
+
+  const tryVerifyTrainingCode = () => {
+    const result = verifyTrainingCode(trainingCode, settings.rooms);
+    if (!result.ok) {
+      setFieldWarn(result.message);
+      return;
+    }
+    setVerifiedRoomId(result.roomId);
+    setVerifiedRoomIdState(result.roomId);
+    setFieldWarn(null);
+  };
 
   const goBack = () => {
     setFieldWarn(null);
@@ -350,15 +393,6 @@ export function ParticipantPage() {
     setRounds((prev) => patchRound(prev, roundIdx, patch));
   };
 
-  const resetForm = () => {
-    setStep(STEP_INTRO);
-    setParticipantName("");
-    setAffiliation("");
-    setRounds(createEmptyRounds());
-    setConfidence(null);
-    setFieldWarn(null);
-  };
-
   const submit = () => {
     if (!scene || confidence === null) return;
     const awarenessNote = rounds
@@ -371,6 +405,7 @@ export function ParticipantPage() {
       createdAt: new Date().toISOString(),
       participantName: participantName.trim(),
       affiliation: affiliation.trim(),
+      roomId: verifiedRoomId ?? undefined,
       sceneId: scene.id,
       rounds,
       confidenceLevel: confidence,
@@ -396,7 +431,46 @@ export function ParticipantPage() {
             <p className="p-warn">シーンが未設定です。管理者 iframe で登録してください。</p>
           )}
 
-          {scene && step === STEP_INTRO && (
+          {scene && !profileUnlocked && (
+            <div className="p-form p-form--intro">
+              <div className="p-intro-card">
+                <label className="p-field p-field--compact">
+                  <span className="p-field__head">
+                    <span className="p-field__icon">
+                      <IntroFieldIcon kind="key" />
+                    </span>
+                    <span className="p-field__label">
+                      研修コード
+                      <span className="p-field__label-required">（必須）</span>
+                    </span>
+                  </span>
+                  <input
+                    className="p-field__input"
+                    value={trainingCode}
+                    onChange={(e) => {
+                      setTrainingCode(e.target.value);
+                      if (fieldWarn) setFieldWarn(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") tryVerifyTrainingCode();
+                    }}
+                    placeholder="例：DEMO-2026"
+                    autoComplete="off"
+                    required
+                  />
+                </label>
+              </div>
+              <Nav
+                showBack={false}
+                showNext
+                onBack={() => {}}
+                onNext={tryVerifyTrainingCode}
+                warn={fieldWarn}
+              />
+            </div>
+          )}
+
+          {scene && profileUnlocked && step === STEP_INTRO && (
             <div className="p-form p-form--intro">
               <div className="p-intro-card">
                 <label className="p-field p-field--compact">
@@ -446,7 +520,7 @@ export function ParticipantPage() {
             </div>
           )}
 
-          {scene && rp?.phase === "awareness" && (
+          {scene && profileUnlocked && rp?.phase === "awareness" && (
             <ChipStep
               title="気づきカード"
               round={rp.round}
@@ -464,7 +538,7 @@ export function ParticipantPage() {
             />
           )}
 
-          {scene && rp?.phase === "action" && (
+          {scene && profileUnlocked && rp?.phase === "action" && (
             <ChipStep
               title="共有・行動カード"
               round={rp.round}
@@ -482,7 +556,7 @@ export function ParticipantPage() {
             />
           )}
 
-          {scene && rp?.phase === "criteria" && (
+          {scene && profileUnlocked && rp?.phase === "criteria" && (
             <ChipStep
               title="判断基準カード"
               round={rp.round}
@@ -500,7 +574,7 @@ export function ParticipantPage() {
             />
           )}
 
-          {scene && rp?.phase === "note" && (
+          {scene && profileUnlocked && rp?.phase === "note" && (
             <NoteStep
               round={rp.round}
               value={rounds[rp.round].roundNote}
@@ -511,7 +585,7 @@ export function ParticipantPage() {
             />
           )}
 
-          {scene && step === STEP_CONFIDENCE && (
+          {scene && profileUnlocked && step === STEP_CONFIDENCE && (
             <ConfidenceStep
               confidence={confidence}
               onSelect={(level) => {
@@ -524,7 +598,7 @@ export function ParticipantPage() {
             />
           )}
 
-          {scene && step === STEP_CONFIRM && (
+          {scene && profileUnlocked && step === STEP_CONFIRM && (
             <div className="p-form p-form--note">
               <p className="p-confirm-text">内容を送信します（設問 {JUDGMENT_ROUND_COUNT} 件）</p>
               <Nav
@@ -543,11 +617,6 @@ export function ParticipantPage() {
               <div className="p-done-icon">✓</div>
               <h2 className="p-form__title">送信完了</h2>
               <p className="p-done-text">回答を保存しました。<br></br>講師は管理者画面で確認できます。</p>
-              {/* <div className="p-nav p-nav--center">
-                <button type="button" className="p-btn p-btn--primary" onClick={resetForm}>
-                  別の回答を入力
-                </button>
-              </div> */}
             </div>
           )}
         </div>

@@ -2,20 +2,126 @@
 
 本書は、[TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md) に基づき、**実装ファイルと同じ単位でテストを置く** TDD 設計である。
 
+**スコープ・Phase・作業順の正本**: [§1.2 テストスコープとマイルストーン](#12-テストスコープとマイルストーン)（未決定は [§1.3](#13-未決定事項)）
+
 **機能の洗い出し（テスト単位の一覧）**: [TDD-FEATURE-INVENTORY.md](./TDD-FEATURE-INVENTORY.md)
+
+**テストコードの書き方・テンプレ（種別ごとの型）**: [TEST-TEMPLATES.md](./TEST-TEMPLATES.md)
+
+**文書と実装の整合**: [DOC-ALIGNMENT.md](./DOC-ALIGNMENT.md)
+
+**記載形式**: 横並び表（`| … |`）は使わない。[DOC-ALIGNMENT.md §0](./DOC-ALIGNMENT.md#0-記載ルール) の縦ブロックに従う。
+
+**機能ごとの実装フロー（6 ステップ）**: [§2.0.4](#204-機能ごとの実装フロー6-ステップ)
+
+**テストの粒度（大→中→小で進める）**: [§2.0.5](#205-テストの粒度大中小)
 
 **永続化（本番）**: [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md) — Google スプレッドシート + Sheet API
 
 **対応ルール**: 実装 `foo.ts` に対し、同ディレクトリに `foo.test.ts` を置く（コロケーション）。
+
+## 目次
+
+- [0. 読み方（人間と AI）](#0-読み方)
+- [1. 文書情報](#1-文書情報)
+  - [1.1 改訂履歴](#11-改訂履歴)
+  - [1.2 テストスコープとマイルストーン](#12-テストスコープとマイルストーン)
+  - [1.4 講師・管理者ダッシュボードと PDF エクスポート（機能 ID: F7）](#14-講師管理者ダッシュボードと-PDF-エクスポート)
+  - [1.5 入室・マルチテナント](#15-入室マルチテナント)
+  - [1.3 未決定事項](#13-未決定事項)
+- [2. 方針（要約）](#2-方針)
+  - [2.0 現状の問題と解決策（テスト観点）](#20-現状の問題と解決策)
+  - [2.3 永続化とテスト](#23-永続化とテスト)
+  - [2.1 テストピラミッド（技術分類）](#21-テストピラミッド)
+  - [2.2 テスト記述の原則](#22-テスト記述の原則)
+  - [2.4 テスト重要度（A / B / C）](#24-テスト重要度)
+- [3. ファイル対応一覧](#3-ファイル対応一覧)
+  - [3.1 shared/src（ドメイン・永続化）](#31-shared/src)
+  - [3.2 participant-web/src](#32-participant-web/src)
+  - [3.3 admin-web/src](#33-admin-web/src)
+- [4. テストケース（ファイル別）](#4-テストケース)
+  - [4.1 shared/src/choices.ts → choices.test.ts](#41-shared/src/choicests-choicestestts)
+  - [4.2 shared/src/storage/local.ts → storage.test.ts（開発用）](#42-shared/src/storage/localts-storagetestts)
+  - [4.3 shared/src/seed.ts → seed.test.ts](#43-shared/src/seedts-seedtestts)
+  - [4.4 shared/src/types.ts](#44-shared/src/typests)
+  - [4.5 shared/src/submission.ts（新規）→ submission.test.ts](#45-shared/src/submissionts-submissiontestts)
+  - [4.6 shared/src/normalizeScene.ts（新規）→ normalizeScene.test.ts](#46-shared/src/normalizeScenets-normalizeScenetestts)
+  - [4.7 shared/src/pdfExport.ts（新規）→ pdfExport.test.ts](#47-shared/src/pdfExportts-pdfExporttestts)
+  - [4.8 shared/src/ojtExport.ts（新規）→ ojtExport.test.ts](#48-shared/src/ojtExportts-ojtExporttestts)
+  - [4.9 shared/src/test/fixtures.ts（補助）](#49-shared/src/test/fixturests)
+  - [4.10 participant-web/src/hooks/useAppData.ts → useAppData.test.ts](#410-participant-web/src/hooks/useAppDatats-useAppDatatestts)
+  - [4.11 participant-web/src/pages/ParticipantPage.tsx → ParticipantPage.test.tsx](#411-participant-web/src/pages/ParticipantPagetsx-ParticipantPagetesttsx)
+  - [4.12 admin-web/src/pages/AdminPage.tsx → AdminPage.test.tsx](#412-admin-web/src/pages/AdminPagetsx-AdminPagetesttsx)
+- [5. 機能 ID ↔ ファイル対応（参照用）](#5-機能-ID-↔-ファイル対応)
+- [6. ディレクトリ構成（完成形）](#6-ディレクトリ構成)
+- [7. TDD 実施順（ファイル単位）](#7-TDD-実施順)
+- [8. Phase 完了チェックリスト（ファイル別）](#8-Phase-完了チェックリスト)
+- [8.1 iframe レイアウト（手動・E2E）](#81-iframe-レイアウト)
+- [9. CI・未決定](#9-CI未決定)
+- [10. 参照](#10-参照)
+
+---
+
+
+## 0. 読み方（人間と AI）
+
+この文書は **正本** であり、同じ内容の要約ファイルを別に増やさない。読みやすくするための入口は本節に置き、詳細は後続の節に残す。
+
+#### 人間がまず読む範囲
+
+**1 — Phase**
+
+- **見る場所** — [§1.2 テストスコープとマイルストーン](#12-テストスコープとマイルストーン)
+- **見る内容** — いま何をやる段階か。Phase 0 / 1 / 2 / 2.5 / 3 / 4 のどこか
+
+**2 — 人間チェック**
+
+- **見る場所** — [§2.4 テスト重要度（A / B / C）](#24-テスト重要度)
+- **見る内容** — A は必ず人間が確認、B は代表ケースだけ、C は自動テスト・AI に寄せる
+
+**3 — 手動で見る画面**
+
+- **見る場所** — [§1.5 入室・マルチテナント](#15-入室マルチテナント)、[§8.1 iframe レイアウト（手動・E2E）](#81-iframe-レイアウト)
+- **見る内容** — 研修コード、管理者コード、画面幅、受講者送信から管理者表示、client / room 漏洩
+
+**4 — 完了判定**
+
+- **見る場所** — [§8 Phase 完了チェックリスト（ファイル別）](#8-Phase-完了チェックリスト)
+- **見る内容** — その Phase を次へ進めてよいか
+
+#### AI が作業するときの入口
+
+**1 — 作業順**
+
+- **見る場所** — [§2.0.4 機能ごとの実装フロー（6 ステップ）](#204-機能ごとの実装フロー6-ステップ)
+- **使い方** — 受け入れ条件 → 振る舞いテスト → 実装 → 単体 → リファクタの順を崩さない
+
+**2 — 対象ファイル**
+
+- **見る場所** — [§3 ファイル対応一覧](#3-ファイル対応一覧)、[§4 テストケース（ファイル別）](#4-テストケース)
+- **使い方** — `foo.ts` と `foo.test.ts` を同じ粒度で扱う
+
+**3 — 振る舞い ID**
+
+- **見る場所** — [TDD-FEATURE-INVENTORY.md](./TDD-FEATURE-INVENTORY.md)
+- **使い方** — C-01、V-04、SH-07 などの ID は辞書として検索する。目次に全 ID を並べない
+
+#### 更新ルール
+
+**重複禁止** — `TEST-OVERVIEW.md` や `HUMAN-CHECKLIST.md` のような別要約を作らない。同じチェックリストを複数ファイルに置くと片方だけ古くなるため。
+
+**入口は短く、正本は一つ** — 読みやすさが必要な場合は本節・§1.2・§2.4・§8 の先頭を直す。詳細 TC は §4 と INVENTORY に残す。
+
+**人間向けと AI 向けを混ぜない** — 人間に読ませる文は「どこを見るか」「何を判断するか」に絞る。AI 向けにはファイル名・関数名・ID を明記する。
 
 ---
 
 ## 1. 文書情報
 
 - **対象**: `shared/src`（最優先）→ `participant-web` / `admin-web`
-- **関連仕様**: [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md) §3.2.3・§3.2.4（iframe レイアウト）、§4（F1・F3〜F8）、§5（永続化）
+- **関連仕様**: [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md) §3.2.3・§3.2.4（iframe レイアウト）、§4（F3〜F8）、§5（永続化）
 - **永続化仕様**: [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)
-- **現状**: テストコード・Vitest は **未導入**。ストレージは `localStorage` のみ実装済み（Sheet API は未実装）
+- **現状**: **Vitest 導入済み**（ルート `npm test`）。Phase 0 の中核（`choices` / `roomEntry` / `judgmentFlow` / `sceneQuestions`）は Green。ストレージは `localStorage` のみ（Sheet API は未実装）。入室 UI（研修コード・管理者コード）は **local 実装済み**
 
 ### 1.1 改訂履歴
 
@@ -39,7 +145,707 @@
 
 **1.0**（2026-05-20）— ブック構成確定（マスター clients + settings/rooms/responses/audit_logs）。rooms・verify の TC 追記
 
-**1.2**（2026-05-20）— README 準拠で 5 問手動（§4.11）・入室（研修コード）・管理者 iframe 手動（§8.1）を整理
+**1.2**（2026-05-20）— README 準拠で 5 問手動（§4.12）・入室（研修コード）・管理者 iframe 手動（§8.1）を整理
+
+**1.3**（2026-05-21）— **§1.2 テストスコープとマイルストーン**・**§1.3 未決定事項**を追加。Phase 定義と実施順の正本を本書に集約（旧 §7 は §1.2 へ統合）
+
+**1.4**（2026-05-21）— **§1.4 F7 ダッシュボード・PDF** を追加。回答済み定義・jsPDF 項目を確定（D-05 決定）
+
+**1.5**（2026-05-21）— **§1.5 入室・マルチテナント** を追加。研修コード（受講者・名前前）・管理者コード（管理者・研修コード不要）・ローカル本番近似（D-06 / D-07 / D-08 決定）
+
+**1.6**（2026-05-21）— **§2.0.5 テストの粒度（大→中→小）** を追加。Phase 0 作業順を中粒度優先に更新
+
+**1.7**（2026-05-21）— **§2.0.4 機能ごとの実装フロー（6 ステップ）** を正本として追加
+
+**1.8**（2026-05-21）— 旧機能 ID の記述削除。OJT TC 整理
+
+**1.9**（2026-05-25）— **§0 読み方（人間と AI）** を追加。目次は章・主要節中心にし、細かい TC/ID は本文検索用に整理
+
+### 1.2 テストスコープとマイルストーン
+
+**本節がテスト計画の正本**である。Phase の意味・含める／含めない範囲・作業順はここを優先する。
+
+#### [README.md](../README.md) / [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md)
+
+**役割** — プロダクト要件の正
+
+#### [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)
+
+**役割** — 本番永続化・API 契約の正
+
+#### [TDD-FEATURE-INVENTORY.md](./TDD-FEATURE-INVENTORY.md)
+
+**役割** — 振る舞い ID（C-01、V-04 等）とファイル対応の辞書。**Phase は書かない**
+
+**現在のマイルストーン**: **Phase 0**（Vitest 導入と既存 `shared` ロジックの固定）
+
+**2 つの優先軸**（混同しない）
+
+#### **Phase**
+
+**意味** — **いつやるか**（マイルストーン・作業順）
+**例** — Phase 0 で `choices.test.ts`
+
+#### **A / B / C**（§2.4）
+
+**意味** — **人間がどこまで確認するか**（受け入れの厳しさ）
+**例** — room 漏洩は A、`choices` は C
+
+#### マイルストーン一覧
+
+#### 0
+
+**Phase** — **0**
+**ゴール（1行）** — テスト基盤＋既存ドメインロジックの固定
+**含めるもの** — ルート Vitest、`choices` / `judgmentFlow` / `sceneQuestions` のテスト、`roomEntry.test`、`test/fixtures.ts`
+**含めないもの** — UI 抽出、Sheet API、GAS、**研修コード API 照合**
+**完了条件** — §8「Phase 0」のチェックリストがすべて [x]
+
+#### 1
+
+**Phase** — **1**
+**ゴール（1行）** — 受講者コアを `shared` に集約してテスト
+**含めるもの** — `selection` / `validateStep` / `buildSubmission`（`ParticipantPage` から抽出）、`cardSlots` の shared 移動
+**含めないもの** — F7 PDF
+**完了条件** — §8「Phase 1」のチェックリストがすべて [x]
+
+#### 2
+
+**Phase** — **2**
+**ゴール（1行）** — 開発用永続化・管理者保存の契約
+**含めるもの** — `storage`（local）、`seed`、`sceneQuestions`（管理者正規化）
+**含めないもの** — Sheet API、**rooms/verify API**
+**完了条件** — §8「Phase 2」のチェックリストがすべて [x]
+
+#### 2.5
+
+**Phase** — **2.5**
+**ゴール（1行）** — 本番永続化（スプレッドシート）
+**含めるもの** — `storage/sheet.ts`、`sheetApi.test.ts`（`fetch` mock）、`VITE_STORAGE_BACKEND`、研修コード検証 API（仕様確定後）
+**含めないもの** — GAS の実装詳細を Unit に載せない（契約のみ）
+**完了条件** — §8「Phase 2.5」のチェックリストがすべて [x]
+
+#### 3
+
+**Phase** — **3**
+**ゴール（1行）** — F7 PDF・UI 配線・OJT
+**含めるもの** — `pdfExport`（jsPDF）、`AdminPage` エクスポート UI、薄い `*.test.tsx`、`ojtExport`（F8）
+**含めないもの** — Playwright 本格（Phase 4）
+**完了条件** — §8「Phase 3」
+
+#### 4
+
+**Phase** — **4**
+**ゴール（1行）** — E2E・回帰
+**含めるもの** — Playwright（5 問フロー）、§8.1 の自動化（任意）
+**含めないもの** — —
+**完了条件** — リリース前の代表 E2E Green
+
+**方針**
+
+- **Phase 0〜2**: いま動いている実装を正としてテストで固定する（リファクタ＋テスト追加）。
+- **Phase 2.5 以降**: 契約テストを先に Red → Green。UI は §1.3 の未決定が解消してから本格実装。
+
+#### 機能スコープ（README 対応）
+
+#### §1 気づきカード
+
+**README / 機能** — §1 気づきカード
+**現行実装** — あり（5 問・単一選択）
+**今回マイルストーン** — Phase 0〜1
+**主なテスト** — `choices`, `validateStep`, 手動 §4.12
+**備考** — —
+
+#### §2 共有・行動カード
+
+**README / 機能** — §2 共有・行動カード
+**現行実装** — あり（単一選択）
+**今回マイルストーン** — Phase 0〜1
+**主なテスト** — 同上
+**備考** — 単一選択で固定（仕様済み）
+
+#### §3 判断基準
+
+**README / 機能** — §3 判断基準
+**現行実装** — **単一選択のみ**
+**今回マイルストーン** — Phase 0〜1
+**主なテスト** — `choices`, `validateStep` 等
+**備考** — —
+
+#### §4 一言メモ
+
+**README / 機能** — §4 一言メモ
+**現行実装** — あり（任意）
+**今回マイルストーン** — Phase 0〜1
+**主なテスト** — `validateStep`
+**備考** — —
+
+#### §5 確信度（5 段階・必須）
+
+**README / 機能** — §5 確信度（5 段階・必須）
+**現行実装** — あり
+**今回マイルストーン** — Phase 0〜1
+**主なテスト** — `buildSubmission`, `validateStep`
+**備考** — §1.3 **D-11**
+
+#### 5 問フロー（4 画面×5）
+
+**README / 機能** — 5 問フロー（4 画面×5）
+**現行実装** — あり
+**今回マイルストーン** — Phase 0 + 手動 A
+**主なテスト** — `judgmentFlow`, §4.12
+**備考** — step 0〜23
+
+#### §6 講師・管理者画面（F7）
+
+**README / 機能** — §6 講師・管理者画面（F7）
+**現行実装** — 回答済み一覧・詳細のみ
+**今回マイルストーン** — 一覧は現状、PDF Phase 3
+**主なテスト** — `sheetApi`, `AdminPage`, `pdfExport`
+**備考** — §1.4。一覧は回答済みのみ・保存順表示
+
+#### §7 OJT 整理
+
+**README / 機能** — §7 OJT 整理
+**現行実装** — **なし**
+**今回マイルストーン** — Phase 3（F8）
+**主なテスト** — `ojtExport`
+**備考** — PDF（F7）とは別機能
+
+#### 研修コード入室（受講者）
+
+**README / 機能** — 研修コード入室（受講者）
+**現行実装** — **あり**（UI + `roomEntry`・local 平文照合）
+**今回マイルストーン** — Phase 0（`roomEntry.test`）〜2.5（API）
+**主なテスト** — `roomEntry`, `sheetApi` TC-010, `ParticipantPage` ENTRY
+**備考** — §1.5
+
+#### 管理者コード入室
+
+**README / 機能** — 管理者コード入室
+**現行実装** — **あり**（UI + `adminEntry`・local）
+**今回マイルストーン** — 同上
+**主なテスト** — `adminEntry`, `sheetApi` TC-012〜013, `AdminPage` ADM-ENTRY
+**備考** — §1.5
+
+#### clientId / room 分離
+
+**README / 機能** — `clientId` / `room` 分離
+**現行実装** — **方針確定**（`?client=` 付与・POST は `client`+`room` クエリとボディ `roomId`）／実装は Phase 2.5
+**今回マイルストーン** — Phase 2.5
+**主なテスト** — `sheetApi` TC-005〜009
+**備考** — §1.5・**D-07** 本番近似・**D-09**
+
+#### 受講者 scenes[0] 固定
+
+**README / 機能** — 受講者 `scenes[0]` 固定
+**現行実装** — あり
+**今回マイルストーン** — Phase 0〜2（現状維持）
+**主なテスト** — `sceneQuestions`
+**備考** — §1.3 **D-12**
+
+#### iframe レイアウト
+
+**README / 機能** — iframe レイアウト
+**現行実装** — あり
+**今回マイルストーン** — 手動 **A**（全 Phase）
+**主なテスト** — §8.1 L-01〜L-08
+**備考** — Vitest 化は Phase 4
+
+#### Phase 0 — 作業順
+
+**進め方の正本**: [§2.0.5](#205-テストの粒度大中小)（いきなり JF-01 単体から書かず、**中**で芯を固定してから **小** に分割）
+
+1. ルート `vitest.config.ts` + `npm test`（`@shared` エイリアス・happy-dom）— 完了済み
+2. `shared/src/test/fixtures.ts` — 完了済み
+3. **中** — `judgmentFlow.test.ts`（5 問 step の代表経路。JF/JR の芯を少数の `it` にまとめる）
+4. **中** — `sceneQuestions.test.ts`（正規化・取得の代表。SQ-01 / SQ-04 / SQ-06 等）
+5. **小** — `choices.test.ts`（ID: C）— 完了済み。境界の追加分のみ
+6. **小** — `roomEntry.test.ts`（ENTRY）— 完了済み
+7. デバッグ・回帰で必要になったら、上記 **中** を JF-01 等の **小** に分割（inventory の ID 単位）
+
+#### Phase 1 — 作業順
+
+1. `shared/src/cardSlots.ts` へ `CardSlotsField` ロジックを移動 → `cardSlots.test.ts`（ID: SL）
+2. `shared/src/selection.ts`（`selectSingle` 抽出）→ `selection.test.ts`（ID: SS）
+3. `shared/src/validateStep.ts` 抽出 → `validateStep.test.ts`（ID: V）
+4. `shared/src/submission.ts`（`buildSubmission` 等）→ `submission.test.ts`（ID: S, CF）
+5. `ParticipantPage.tsx` が上記 shared のみを呼ぶことを確認（重複ロジック削除）
+
+#### Phase 2 — 作業順（概要）
+
+1. `storage.test.ts`（local・ID: ST）
+2. `seed.test.ts`（ID: SD）
+3. 管理者保存は `sceneQuestions.test.ts` で `normalizeScene` / `normalizeSettings` を継続検証
+
+#### Phase 2.5 — 作業順（概要）
+
+1. `sheetApi.test.ts` を **先に** Red → Green（§4.2b TC-001〜011。TC-008〜009 は **A**）
+2. `storage/sheet.ts` + `storage/index.ts` + `VITE_STORAGE_BACKEND`
+3. 受講者: 研修コード UI → `rooms/verify`（§1.5）。管理者: 管理者コードゲート（§1.5）
+4. ローカル結合は **本番近似**（§1.5・D-07）：`sheet` mock または dev GAS。入室スキップしない
+5. 手動 **A**: 受講者（研修コード→送信）→ 管理者（管理者コードのみ）で同一 `client` の回答確認（SH-07）
+
+#### Phase 3 — 作業順（F7 PDF・F8 OJT）
+
+1. `shared/src/pdfExport.ts`（jsPDF。§1.4）→ `pdfExport.test.ts`（ID: PDF）
+2. `admin-web` 回答済み一覧から **1 件選択 → PDF ダウンロード**（手動 **B**、代表ケース **A**）
+3. `useAppData.test.ts`（両 Web）
+4. `ojtExport.test.ts`（F8・OJT 用。F7 PDF とは別ファイル）
+5. 薄い `*.test.tsx` スモーク
+
+#### Phase 4 — 概要
+
+- Playwright、§8.1 の一部自動化
+
+### 1.4 講師・管理者ダッシュボードと PDF エクスポート（機能 ID: F7）
+
+**利用者向けの説明**: [README.md §6](../README.md)（「講師・管理者向け画面」）。本節はテスト・実装用の ID **F7** で整理する。
+
+**関連**: [TECHNICAL-SPEC.md §4](./TECHNICAL-SPEC.md)
+
+#### 回答済みの定義（一覧の対象）
+
+#### **回答済み**
+
+**仕様** — `appendResponse` 済みの `ParticipantSubmission` **1 件 = 1 行**（本番は `POST responses` で `responses` シートに 1 行追記）。管理者の回答一覧は **この行だけ**を表示する
+
+一覧は **回答済みのみ**、**保存順**で表示する。`AdminPage` / `sheetApi` のテストは件数一致・詳細表示を中心とする。
+
+#### PDF エクスポート（回答済み 1 件につき 1 ファイル）
+
+#### 単位
+
+**仕様** — **受講者 1 人 × 送信完了 1 件 = PDF 1 ファイル**
+
+#### トリガー
+
+**仕様** — 管理者ダッシュボードの回答済み一覧から選択しエクスポート
+
+#### 生成
+
+**仕様** — ブラウザ側 **`jspdf`**（サーバー／GAS で PDF 生成しない）
+
+#### 入力データ
+
+**仕様** — `ParticipantSubmission` + 当該 `Scene`（`sceneId` で紐づけ。マスタは `settings.scenes` から解決）
+
+**PDF に含める項目（必須）**
+
+#### ①
+
+**内容** — **どのシーンか**
+**データソース（テストで固定する例）** — `Scene.displayName`（および必要なら `vistaSceneName` / `processArea`）
+
+#### ②
+
+**内容** — **出題された選択肢と実際の選択**
+**データソース（テストで固定する例）** — 設問 1〜5 それぞれについて、マスタ（`getSceneQuestionCards(scene, n)` の気づき・共有・判断基準）と、`rounds[n]` の `awarenessSelection` / `actionSelection` / `criteriaOrdered` の **選択ラベル**
+
+#### ③
+
+**内容** — **確信度**
+**データソース（テストで固定する例）** — `confidenceLevel`（1〜5）と [CONFIDENCE_LABELS](../shared/src/confidence.ts) の表示文言
+
+#### ④
+
+**内容** — **名前・所属**
+**データソース（テストで固定する例）** — `participantName` / `affiliation`（trim 後）
+
+#### ⑤
+
+**内容** — **一言メモ**
+**データソース（テストで固定する例）** — 各ラウンドの `roundNote`（空ラウンドは省略または「—」表示。実装で固定しテストする）
+
+**②のテスト観点（設問ごと）**
+
+- マスタに存在するが **未選択**のカードは PDF 上で「出題のみ」または未選択であることが分かる表現にする（実装詳細は `pdfExport.ts` で固定）。
+- 実際の選択がマスタ外ラベル（データ不整合）のときは **エラーにせず** PDF にそのまま出すか、テストで「フォールバック表示」を 1 パターンに固定する。
+
+#### テストファイル・TC（予定）
+
+#### `pdfExport.test.ts`
+
+**重要度** — **B**（代表ダウンロード 1 件は **A**・手動）
+**関連 ID** — PDF
+
+#### `AdminPage.test.tsx`
+
+**重要度** — B
+**関連 ID** — A-40, A-53
+
+**`pdfExport.test.ts` — TC 案**
+
+### PDF-01
+
+**内容** — 回答済み 1 件 + シーンを渡すと `Blob` または `Uint8Array` が返る
+**期待** — サイズ > 0
+
+### PDF-02
+
+**内容** — PDF 生成用ペイロードに ①シーン名が含まれる
+**期待** — 文字列 assert
+
+### PDF-03
+
+**内容** — ② 設問 1 のマスタカード一覧と選択ラベルが含まれる
+**期待** — 5 問分は PDF-04 でまとめても可
+
+### PDF-04
+
+**内容** — ③ 確信度ラベルが含まれる
+**期待** — `confidenceLevel` と一致
+
+### PDF-05
+
+**内容** — ④ 名前・所属が含まれる
+**期待** — trim 後の値
+
+### PDF-06
+
+**内容** — ⑤ 一言メモ（`roundNote`）が含まれる
+**期待** — 記載ありのラウンドのみでも可
+
+### PDF-07
+
+**内容** — `rounds` が 5 未満・破損時
+**期待** — クラッシュせずエラーまたは空扱い（実装方針を 1 つに固定）
+
+**`AdminPage` — TC 案（F7）**
+
+#### A-40
+
+**重要度** — B
+**内容** — 回答一覧が `loadResponses` の件数と一致（local / mock API）
+
+#### A-53
+
+**重要度** — B
+**内容** — 一覧の 1 件から PDF エクスポートを呼び出せる（`pdfExport` を mock 可）
+
+**含めないもの（F7）**
+
+- 複数受講者を 1 PDF にまとめる一括出力（将来必要なら別 ID で追加）
+- OJT 用の確認項目リスト PDF（**F8** / `ojtExport.ts`）
+
+### 1.5 入室・マルチテナント
+
+**関連**: [README.md §入室とマルチテナント](../README.md#入室とマルチテナント)、[SPREADSHEET-DATA.md §2](./SPREADSHEET-DATA.md)、[TECHNICAL-SPEC.md §5.0](./TECHNICAL-SPEC.md)
+
+#### 用語（混同しない）
+
+#### **`clientId`**
+
+**誰が使う** — 受講者・管理者
+**役割** — 契約組織（マルチテナントの最上位）。埋め込み URL の `?client=`
+**永続化（本番）** — マスター `clients`
+
+#### **研修コード**
+
+**誰が使う** — **受講者のみ**
+**役割** — 当該研修回への入室。管理者が `rooms` に設定したコードと照合
+**永続化（本番）** — `rooms.accessCodeHash`（平文はシートに保存しない）
+
+#### **管理者コード**
+
+**誰が使う** — **管理者のみ**
+**役割** — 管理者 API・管理画面への入室。研修コードとは **別物**
+**永続化（本番）** — `clients.adminTokenHash`（API では `token` クエリ等）
+
+#### **`roomId`**
+
+**誰が使う** — 受講者（検証後）・API
+**役割** — 研修回 ID。受講者は研修コード検証成功後に保持し、以降 `room` クエリに付与
+**永続化（本番）** — `rooms.roomId`
+
+#### 受講者の入室フロー（UI）
+
+#### 1
+
+**画面** — **研修コード入力**（**名前・所属より前**。専用ステップ）
+**仕様** — 受講者がコードを入力し `POST rooms/verify`（または local 模倣）で検証
+
+#### 2a
+
+**画面** — 検証 **成功**
+**仕様** — 返却された `roomId` を `sessionStorage` 等に保持。**名前・所属**の入力欄を表示し step 0 へ進める
+
+#### 2b
+
+**画面** — 検証 **失敗**
+**仕様** — 警告 **「正しい研修コードを入力してください」**（文言固定）。名前・所属は **表示しない**
+
+#### 3
+
+**画面** — 名前・所属 → 5 問フロー
+**仕様** — §4.12。送信時は `client` + `room`（検証済み `roomId`）必須
+
+**照合の意味** — 入力した研修コードは、管理者が当該 `client` の `rooms` シート（または管理者 UI）で設定した **研修コード（入室コード）** と一致すること。管理者画面に表示する「研修回」識別子（`roomId` / 表示名）と、受講者が知る **平文の研修コード** は別表現だが、検証 API で 1:1 に結びつく。
+
+#### 管理者の入室フロー（UI）
+
+#### **必須入力**
+
+**仕様** — **管理者コード**（初回表示時。未検証では設定・回答一覧等の本体 UI を出さない）
+
+#### **不要**
+
+**仕様** — **研修コード** — 管理者は研修コードを **設定する側**であり、自分の入室に研修コードは **不要**
+
+#### **URL**
+
+**仕様** — `?client={clientId}` は従来どおり（`room` を URL に載せない方針は受講者側と同様）
+
+#### **研修回の操作**
+
+**仕様** — `rooms` の追加・`accessCode`（研修コード）の設定・有効化は、**管理者コード検証済み**のセッションでのみ。回答閲覧は `client` 配下。`room` 単位の絞り込みは UI の研修回選択（一覧）で行い、**研修コードの再入力は不要**（§1.3 **D-21** で詳細を詰めても可）
+
+#### **管理者コードの変更**
+
+**仕様** — **現在の管理者コードを知っている者のみ**変更可能（変更 API／画面は旧コード（現行 `token`）の再入力を必須とする）
+
+#### ローカル開発（本番近似）
+
+#### 方針
+
+**仕様** — **本番に近い形**で開発・結合する。研修コードゲート・管理者コードゲートを **省略しない**
+
+#### 推奨
+
+**仕様** — `VITE_STORAGE_BACKEND=sheet` + GAS dev、または `sheetApi.test.ts` と同型の **fetch mock** で `rooms/verify` と管理者 `token` 照合を再現
+
+#### `client`
+
+**仕様** — 各 `*-web/.env.development` で `VITE_CLIENT_ID`（名称は実装時に確定）を固定し、本番と同様 `?client=` を付与
+
+#### 避ける
+
+**仕様** — 「local だから step 0 から開始」「room 無視で全回答表示」など、本番と乖離したショートカットを **結合確認の正** にしない
+
+#### Phase 0〜2
+
+**仕様** — `localStorage` は **Unit（`storage.test.ts`）** 用。入室 E2E は Phase 2.5 以降
+
+#### テストファイル・TC（予定）
+
+#### `roomEntry.test.ts`（`shared/src/roomEntry.ts` 新規）
+
+**重要度** — B
+**関連 ID** — ENTRY, SH-12
+
+#### `adminEntry.test.ts`（`shared/src/adminEntry.ts` 新規）
+
+**重要度** — B
+**関連 ID** — ADM-ENTRY, SH-13
+
+#### `sheetApi.test.ts`
+
+**重要度** — B / A
+**関連 ID** — TC-010, TC-012〜013
+
+#### `ParticipantPage.test.tsx`
+
+**重要度** — B（ENTRY は **A** 手動）
+**関連 ID** — ENTRY
+
+#### `AdminPage.test.tsx`
+
+**重要度** — B
+**関連 ID** — ADM-ENTRY
+
+**`roomEntry.test.ts` — TC 案**
+
+### ENTRY-01
+
+**内容** — 検証前
+**期待** — `canShowProfileFields === false`
+
+### ENTRY-02
+
+**内容** — `verify` 成功
+**期待** — `roomId` 保持・プロフィール欄表示可
+
+### ENTRY-03
+
+**内容** — `verify` 失敗
+**期待** — エラーメッセージが **「正しい研修コードを入力してください」**（完全一致）
+
+**`adminEntry.test.ts` — TC 案**
+
+### ADM-ENTRY-01
+
+**内容** — 管理者コード未設定
+**期待** — 管理 UI ロック
+
+### ADM-ENTRY-02
+
+**内容** — 正しいコード
+**期待** — `isAdminAuthenticated === true`
+
+### ADM-ENTRY-03
+
+**内容** — コード変更リクエスト
+**期待** — 旧コード不一致なら拒否
+
+**`sheetApi.test.ts` — 追記 TC**
+
+### TC-012
+
+**重要度** — B
+**内容** — 管理者 `GET settings` に不正 `token` → 401 相当
+
+### TC-013
+
+**重要度** — B
+**内容** — 管理者コード変更 API が旧 `token` 必須（成功／失敗）
+
+**手動受け入れ（A）**
+
+### SH-07
+
+**内容** — 受講者: 研修コード → 名前所属 → 送信。管理者: **管理者コードのみ**で入室し、同一 `client` の回答が見える
+
+### ENTRY-M
+
+**内容** — 不正研修コードで名前欄が出ないこと・警告文言
+
+### ADM-M
+
+**内容** — 管理者コードなしで本体 UI が出ないこと
+
+### 1.3 未決定事項
+
+**決定日が空の行については、新規 TC を増やさない**（Red のみ・`it.skip` / `describe.skip` で明示は可）。決定後は §1.2 の表と §4 の TC を更新する。
+
+#### D-01
+
+**ID** — D-01
+**論点** — 最初のゴール
+**候補（要約）** — A: Phase 0 のみ / B: 〜 Phase 1 / C: 〜 Phase 2.5
+**影響** — 全体・スケジュール
+**決定** — —
+
+#### D-05
+
+**ID** — D-05
+**論点** — PDF（F7）
+**候補（要約）** — **1 人 1 PDF**、項目 ①〜⑤、**jsPDF**。§1.4 を正
+**影響** — F7、`pdfExport`
+**決定** — 2026-05-21
+
+#### D-06
+
+**ID** — D-06
+**論点** — 研修コード UI のタイミング
+**候補（要約）** — **名前・所属の前**の専用ステップ。成功後のみプロフィール表示。§1.5
+**影響** — 受講者 UI、`roomEntry`
+**決定** — 2026-05-21
+
+#### D-07
+
+**ID** — D-07
+**論点** — local 開発の `client` / `room`
+**候補（要約）** — **本番近似**。入室検証を省略しない。`.env` で `client` 固定 + sheet mock または dev GAS
+**影響** — 5173/5174 結合
+**決定** — 2026-05-21
+
+#### D-08
+
+**ID** — D-08
+**論点** — 管理者入室
+**候補（要約）** — **管理者コード必須**。研修コードは **不要**（設定側）。§1.5
+**影響** — 管理者 URL、API
+**決定** — 2026-05-21
+
+#### D-21
+
+**ID** — D-21
+**論点** — 管理者の回答一覧と `room`
+**候補（要約）** — 全 room 一覧 / UI で room 選択のみ（研修コード再入力なし）
+**影響** — `AdminPage`、`GET responses`
+**決定** — —
+
+#### D-09
+
+**ID** — D-09
+**論点** — `ParticipantSubmission.roomId`
+**候補（要約）** — **型 + POST ボディ + クエリ `room` の両方**（同値。クエリは API 検証、ボディは行・PDF 用）
+**影響** — 型、シート `room_id`、`sheetApi`
+**決定** — 2026-05-21
+
+#### D-11
+
+**ID** — D-11
+**論点** — 確信度範囲外
+**候補（要約）** — クランプ 1〜5 / バリデーション拒否
+**影響** — CF-02、`buildSubmission`
+**決定** — —
+
+#### D-12
+
+**ID** — D-12
+**論点** — シーン切替
+**候補（要約）** — `scenes[0]` 固定継続 / URL 連携
+**影響** — P-42
+**決定** — —
+
+#### D-13
+
+**ID** — D-13
+**論点** — `legacyToRounds`
+**候補（要約）** — 設問1のみ中身・2〜5 空で固定
+**影響** — JR-02
+**決定** — —
+
+#### D-14
+
+**ID** — D-14
+**論点** — `resetDemoData`
+**候補（要約）** — API 残す / 削除
+**影響** — ST-10、`POST reset`
+**決定** — —
+
+#### D-16
+
+**ID** — D-16
+**論点** — Vitest の置き場
+**候補（要約）** — **ルート 1 本**（`vitest.config.ts` + `npm test` / `npm run test:watch`）
+**影響** — `vitest.config`
+**決定** — 2026-05-21
+
+#### D-17
+
+**ID** — D-17
+**論点** — `cardSlots` 移動
+**候補（要約）** — Phase 1 前に必須 / 後回し
+**影響** — SL、管理者 UI
+**決定** — —
+
+#### D-18
+
+**ID** — D-18
+**論点** — Playwright
+**候補（要約）** — Phase 4 まで不要 / 早めに導入
+**影響** — E2E
+**決定** — —
+
+#### D-19
+
+**ID** — D-19
+**論点** — `attentionLabels`
+**候補（要約）** — 削除 / 空固定 / 将来用
+**影響** — 型、管理者
+**決定** — —
+
+#### D-20
+
+**ID** — D-20
+**論点** — `rooms` 期間外拒否
+**候補（要約）** — MVP 必須 / 2.5 以降
+**影響** — GAS、`startsAt`/`endsAt`
+**決定** — —
+
+**優先して決めると Phase 0 を始めやすい項目**: D-01、D-13（D-16 は決定済み）。
 
 ## 2. 方針（要約）
 
@@ -66,6 +872,170 @@
 - S-03 → §4.2b TC-008〜009、inventory SH-08〜10
 - S-04 → `storage` 窓口のみ mock。GAS/シート列名はテストに出さない
 
+#### 2.0.4 機能ごとの実装フロー（6 ステップ）
+
+**本リポジトリでテストを実装していくときの正本。** 1 機能（または 1 ユーザーストーリー）ごとに、次の順で繰り返す。
+
+#### ステップ一覧
+
+**1. 機能の受け入れ条件を書く**
+
+- **何を書くか**: ユーザー／講師から見て「できていれば OK」の条件（Given / When / Then でも、チェックリストでもよい）
+- **置き場**: [README.md](../README.md)、[TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md)、本書 §1.4 / §1.5、手動節（§4.12、§8.1）、[TDD-FEATURE-INVENTORY.md](./TDD-FEATURE-INVENTORY.md) の該当節
+- **粒度**: **大（L）**。この段階では `it` は書かない
+- **例**: 「研修コードが正しければ名前・所属が表示される」「5 問すべて回答後、送信すると管理者一覧に 1 件増える」
+
+**2. 機能の振る舞いテストを書く**
+
+- **何を書くか**: 受け入れ条件を満たすかどうかを検証するテスト（最初は **Red**）
+- **置き場**: `*.test.ts`（Vitest）。UI 全体ではなく **振る舞いの芯**（モジュール・API・ペイロード）
+- **粒度**: **中（M）**。1 ファイルに **少数の `it`**（inventory の ID を最初から 1:1 にしない）
+- **テンプレ**: [TEST-TEMPLATES.md](./TEST-TEMPLATES.md) T3〜T5、または `judgmentFlow` 代表のようなモジュール中粒度
+- **例**: `roomEntry.test.ts` の verify 一式、`judgmentFlow.test.ts` で step 0→23 の代表
+
+**3. 最小実装する**
+
+- **何をするか**: ステップ 2 のテストが **Green** になるまでの最少コード（UI にベタ書きでも可。のちに shared へ）
+- **原則**: テストに合わせて足すだけ。先回りの抽象化や全境界の Unit は書かない
+
+**4. 実装中に複雑な内部ロジックが見えてくる**
+
+- **何が起きるか**: 分岐・変換・正規化などが `ParticipantPage` 等に残り、`shared` へ切り出した方がよい部分がはっきりする
+- **この段階では**: まだテストを増やさなくてよい。切り出し候補をメモ（inventory の【要抽出】と対応）
+
+**5. その部分だけ単体テストを書く**
+
+- **何を書くか**: ステップ 4 で分離した **純関数・小さなモジュール** だけを対象にしたテスト
+- **粒度**: **小（S）**。1 振る舞い 1 `it`（C-01、JF-03、V-04 等）
+- **テンプレ**: T1（[TEST-TEMPLATES.md](./TEST-TEMPLATES.md) §3）
+- **いつ書くか**: 振る舞いテスト（**中**）が Green のあと。**最初から全体を小テストにしない**
+
+**6. リファクタする**
+
+- **何をするか**: 重複削除・命名・`shared` への移動。ステップ 2・5 のテストは **すべて Green のまま**
+- **繰り返し**: 次の受け入れ条件／次の振る舞いへ 1 に戻る
+
+#### 6 ステップと粒度（大・中・小）の対応
+
+#### 1
+
+**内容** — 受け入れ条件
+**粒度** — **大**
+
+#### 2
+
+**内容** — 振る舞いテスト
+**粒度** — **中**
+
+#### 3
+
+**内容** — 最小実装
+**粒度** — （実装）
+
+#### 4
+
+**内容** — 内部ロジックの発見
+**粒度** — （設計メモ）
+
+#### 5
+
+**内容** — 単体テスト（その部分だけ）
+**粒度** — **小**
+
+#### 6
+
+**内容** — リファクタ
+**粒度** — （実装・テストは維持）
+
+**Red → Green → Refactor** は、主に **2 → 3 → 6** の中で回す。ステップ 5 は **4 のあと**に追加する第二の Red → Green。
+
+#### 既存コードとの関係
+
+- `choices.test.ts` / `roomEntry.test.ts` は、すでに存在するロジックに対する **小**／**中** の固定（ステップ 5 相当から入ったもの）。**新規機能**では 1→2→3 を先に回す
+- Phase 0 の残り（`judgmentFlow`）も **2（中の振る舞いテスト）→ 3（既存実装の確認）→ 5（必要なら JF-* 分割）→ 6** の順がよい
+
+#### 2.0.5 テストの粒度（大→中→小）
+
+§2.0.4 の各ステップで使う **テストの大きさ**の定義。いきなり **小**（C-01、JF-03 単体など）から書き始めない。
+
+**Phase**（§1.2）= **いつ**リリース単位で何を含めるか。**§2.0.4** = **1 機能をどう進めるか**。**本節** = そのときのテストのサイズ感。
+
+#### 大（L）— ユーザーが触る一連の流れ
+
+**目的**: 「この研修は動くか」を最初に確認する。自動化は後回しでもよい。
+
+**含むもの**
+
+- 手動 §4.12（5 問フロー一通り）
+- 手動 §8.1（iframe 帯内収まり）
+- 手動 ENTRY-M / ADM-M（研修コード・管理者コード）
+- 手動 受講者送信 → 管理者で同一 `client` の回答が見える（SH-07）
+- Phase 4: Playwright 代表シナリオ
+
+**テンプレ**: [TEST-TEMPLATES.md](./TEST-TEMPLATES.md) **T6**  
+**重要度**: 多くは **A**（§2.4）
+
+**書き方の目安**: チェックリスト 1 本。「研修コード OK → 名前所属 → 5 問 → 送信 → 管理者で 1 件見える」程度の粒度でよい。
+
+#### 中（M）— モジュール・契約・フロー単位
+
+**目的**: 1 ファイル（または 1 API）で「主要経路が壊れていない」ことを Vitest で固定する。inventory の ID を **1 `it` 1 点**にしない。
+
+**含むもの**
+
+- `judgmentFlow.test.ts` — step 0〜23 の変換の芯（`stepToRoundPhase` の代表、`createEmptyRounds` 等を **少数の `it`** に）
+- `sceneQuestions.test.ts` — `normalizeSettings` / `getSceneQuestionCards` の代表
+- `submission.test.ts` — 送信ペイロード一式（S-01〜S-09 をまとめても可）
+- `storage.test.ts` — 保存→読込の往復（ST）
+- `sheetApi.test.ts` — fetch mock で API 契約（SH）
+- `roomEntry.test.ts` / `adminEntry.test.ts` — 検証関数一式（ENTRY / ADM-ENTRY）
+- `useAppData.test.ts` — フックと storage の結合（H）
+- `*.test.tsx` — 配線スモーク（T5）
+
+**テンプレ**: **T3**（API）、**T2**（local 永続化）、**T4**（ペイロード）、**T5**（薄い UI）  
+**重要度**: **B** が多い（room 漏洩などは **A**）
+
+**書き方の目安**: 1 `describe` あたり 3〜8 本の `it`。「6 件入力→5 件」と「空配列」を別 `it` にするのは **小** の段階でよい。
+
+#### 小（S）— 関数・境界の 1 点
+
+**目的**: **中** で Green にしたあと、バグ再発・仕様の端だけを高速に固定する。
+
+**含むもの**
+
+- `choices.test.ts`（C-01〜C-04）
+- `judgmentFlow` の JF-01〜JF-11 を **1 ID 1 `it`** に分割したもの
+- `validateStep` の V-01〜V-09 各 step
+- `selection` の SS-01〜SS-03
+
+**テンプレ**: **T1**（純関数 Unit）  
+**重要度**: **C**（CI で毎回）
+
+**いつ書くか**
+
+- **中** のテストが失敗し、原因が 1 関数に特定できたとき
+- 境界値（6 件目、step 範囲外など）を明示的に残したいとき
+- すでに **小** が存在するモジュール（`choices`）への追加分
+
+#### 推奨の進め方（新規・未テスト領域）
+
+[§2.0.4](#204-機能ごとの実装フロー6-ステップ) の 1〜6 に従う。粒度だけ抜き出すと次のとおり。
+
+1. **大** — ステップ 1（受け入れ条件）
+2. **中** — ステップ 2（振る舞いテスト）→ ステップ 3（最小実装）
+3. **小** — ステップ 5（見えた内部だけ単体テスト）→ ステップ 6（リファクタ）
+
+#### T1〜T6 との対応
+
+**T6** → **大**　**T3, T2, T4, T5** → **中**　**T1** → **小**
+
+詳細なコード例は [TEST-TEMPLATES.md](./TEST-TEMPLATES.md)。
+
+#### Phase 0 の位置づけ（現状）
+
+- `choices.test.ts` / `roomEntry.test.ts` は **小** から着手済み（問題なし。以降は **中** 優先）
+- 残りは `judgmentFlow` / `sceneQuestions` を **中** で先に Green → 必要なら **小** へ分割
+
 ### 2.3 永続化とテスト
 
 **本番** — `storage` の裏は Sheet API → スプレッドシート（[SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)）
@@ -78,27 +1048,27 @@
 
 **非同期** — Sheet 実装導入時は `loadSettings` 等を `async` 化する想定。`useAppData` のテストはローディング・エラー表示を追加（Phase 2.5）
 
-### 2.1 テストピラミッド
+### 2.1 テストピラミッド（技術分類）
 
-**Unit**（Vitest）
+§2.0.5 の **大→中→小** と併用する。下は **実行環境・ツール** による分類。
 
-- 主な対象: `shared/src/*.ts`（storage 除く純関数）
+**大（L）**
 
-**Integration**（Vitest + happy-dom）
+- 手動（§4.12、§8.1、§1.5 手動）
+- E2E（Playwright・Phase 4）
 
-- 主な対象: `storage/local` の `storage.test.ts`
+**中（M）**
 
-**Integration**（Vitest + `fetch` mock）
+- Vitest + `fetch` mock — `sheetApi.test.ts`
+- Vitest + happy-dom — `storage.test.ts`、`useAppData.test.ts`
+- Vitest 純関数だが **1 モジュール少数 `it`** — `judgmentFlow.test.ts`、`sceneQuestions.test.ts`、`submission.test.ts`
+- Vitest + Testing Library — 薄い `*.test.tsx`
 
-- 主な対象: `sheetApi.test.ts`（スプレッドシート API 契約）
+**小（S）**
 
-**Component**（任意・Vitest + Testing Library）
+- Vitest 純関数 — `choices.test.ts`、`validateStep.test.ts` 等（**1 振る舞い 1 `it`**）
 
-- 主な対象: `*.test.tsx`（ロジック抽出後は最小）
-
-**E2E**（Playwright）
-
-- 主な対象: `e2e/participant.spec.ts` 等（別フォルダ）
+**件数の目安**: リポジトリ全体では **小** が多くてよい（ピラミッド下辺）。**書く順序**は **大 → 中 → 小**（§2.0.5）。
 
 ### 2.2 テスト記述の原則
 
@@ -215,30 +1185,102 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 
 #### 運用上の目安
 
-| ランク | 実施タイミング | 担当の想定 |
-| --- | --- | --- |
-| A | マイルストーン完了時・本番前・3DVista 埋め込み後 | プロダクトオーナー／講師代表／開発 |
-| B | Phase 完了時・PR マージ前（ステージング） | 開発＋レビュアが代表操作 |
-| C | 毎コミット・CI Green | 開発＋AI（人間はログ確認） |
+#### A
+
+**実施タイミング** — マイルストーン完了時・本番前・3DVista 埋め込み後
+**担当の想定** — プロダクトオーナー／講師代表／開発
+
+#### B
+
+**実施タイミング** — Phase 完了時・PR マージ前（ステージング）
+**担当の想定** — 開発＋レビュアが代表操作
+
+#### C
+
+**実施タイミング** — 毎コミット・CI Green
+**担当の想定** — 開発＋AI（人間はログ確認）
 
 #### 重要度サマリ（ファイル単位）
 
-| ファイル / 区分 | 既定 | 備考 |
-| --- | --- | --- |
-| `choices.test.ts` | C | 5 枚制限の純関数 |
-| `storage.test.ts`（local） | C | 開発フォールバック |
-| `sheetApi.test.ts` | B | TC-008〜009 のみ **A**（§4.2b） |
-| `seed.test.ts` | C | デモ契約 |
-| `submission.test.ts` | B | TC-002 のみ **A**（送信形） |
-| `criteriaOrder.test.ts` | C | 並べ替え UI 未実装時は優先度低 |
-| `normalizeScene.test.ts` | C | 管理者保存の正規化 |
-| `ojtExport.test.ts` | C | F8・未実装寄り |
-| `fixtures.ts` | — | 補助（ランク対象外） |
-| `useAppData.test.ts` | C | 配線のみ |
-| `ParticipantPage.test.tsx` | C | スモーク。5 問フローは **手動 A**（§4.11） |
-| `AdminPage.test.tsx` | B | TC-002（回答表示）が芯 |
-| §8.1 レイアウト L-01〜L-06 | A | すべて目視 |
-| Phase 2.5 手動 SH-07 | A | 受講者→管理者の実結合 |
+#### `choices.test.ts`
+
+**既定** — C
+**備考** — 5 枚制限の純関数
+
+#### `storage.test.ts`（local）
+
+**既定** — C
+**備考** — 開発フォールバック
+
+#### `sheetApi.test.ts`
+
+**既定** — B
+**備考** — TC-008〜009 のみ **A**（§4.2b）。TC-012〜013 は管理者コード
+
+#### `roomEntry.test.ts`
+
+**既定** — B
+**備考** — ENTRY。ENTRY-M は **A**（§1.5）
+
+#### `adminEntry.test.ts`
+
+**既定** — B
+**備考** — ADM-ENTRY。ADM-M は **A**（§1.5）
+
+#### `seed.test.ts`
+
+**既定** — C
+**備考** — デモ契約
+
+#### `submission.test.ts`
+
+**既定** — B
+**備考** — TC-002 のみ **A**（送信形）
+
+#### `normalizeScene.test.ts`
+
+**既定** — C
+**備考** — 管理者保存の正規化
+
+#### `pdfExport.test.ts`
+
+**既定** — B
+**備考** — F7・jsPDF。代表 DL は **A**（§1.4）
+
+#### `ojtExport.test.ts`
+
+**既定** — C
+**備考** — F8・OJT（F7 PDF とは別）
+
+#### `fixtures.ts`
+
+**既定** — —
+**備考** — 補助（ランク対象外）
+
+#### `useAppData.test.ts`
+
+**既定** — C
+**備考** — 配線のみ
+
+#### `ParticipantPage.test.tsx`
+
+**既定** — C
+**備考** — スモーク。5 問フローは **手動 A**（§4.12）
+
+#### `AdminPage.test.tsx`
+
+**既定** — B
+**備考** — TC-002（回答表示）が芯
+
+#### §8.1 レイアウト L-01〜L-06
+
+**既定** — A
+**備考** — すべて目視
+
+#### Phase 2.5 手動 SH-07
+
+**既定** — A
+**備考** — 受講者→管理者の実結合
 
 ---
 
@@ -257,7 +1299,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 - **テスト**: [seed.test.ts](../shared/src/seed.test.ts)
 - **状態**: 未
 - **重要度**: **C**
-- **関連機能**: F1（初期データ）
+- **関連機能**: デモ初期データ
 
 #### [choices.ts](../shared/src/choices.ts)
 
@@ -271,7 +1313,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 - **テスト**: [storage.test.ts](../shared/src/storage.test.ts)（local 実装）
 - **状態**: 未（local）。Sheet 層は未実装
 - **重要度**: **C**（local）
-- **関連機能**: F1, F7
+- **関連機能**: F7、settings / responses
 - **備考**: 本番は [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)。`storage/local.ts` + `storage/sheet.ts` + `storage/index.ts` へ分割予定
 
 #### storage/sheet.ts（新規）
@@ -279,7 +1321,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 - **テスト**: `sheetApi.test.ts`
 - **状態**: 未
 - **重要度**: **B**（TC-008〜009 は **A**）
-- **関連機能**: F1, F7（本番永続化）
+- **関連機能**: F7（本番永続化）
 - **備考**: `fetch` で GAS Web App。`clientId` は URL クエリから
 
 #### submission.ts（新規）
@@ -289,19 +1331,34 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 - **重要度**: **B**（TC-002 は **A**）
 - **関連機能**: F3〜F6, FLOW
 
-#### criteriaOrder.ts（新規）
-
-- **テスト**: `criteriaOrder.test.ts`
-- **状態**: 未
-- **重要度**: **C**
-- **関連機能**: F4
-
 #### normalizeScene.ts（新規）
 
 - **テスト**: `normalizeScene.test.ts`
 - **状態**: 未
 - **重要度**: **C**
-- **関連機能**: F1
+- **関連機能**: F3（シーン・設問カード正規化）
+
+#### roomEntry.ts（新規）
+
+- **テスト**: `roomEntry.test.ts`
+- **状態**: 未
+- **重要度**: **B**（手動 ENTRY-M は **A**）
+- **関連機能**: マルチテナント・受講者入室（§1.5）
+
+#### adminEntry.ts（新規）
+
+- **テスト**: `adminEntry.test.ts`
+- **状態**: 未
+- **重要度**: **B**（手動 ADM-M は **A**）
+- **関連機能**: マルチテナント・管理者入室（§1.5）
+
+#### pdfExport.ts（新規）
+
+- **テスト**: `pdfExport.test.ts`
+- **状態**: 未
+- **重要度**: **B**（代表 DL は **A**・§1.4）
+- **関連機能**: F7
+- **備考**: 依存 `jspdf`。入力は `ParticipantSubmission` + `Scene`
 
 #### ojtExport.ts（新規）
 
@@ -329,7 +1386,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 
 - **テスト**: `pages/ParticipantPage.test.tsx`
 - **状態**: 未
-- **重要度**: **C**（Vitest スモーク）。**5 問フロー手動は A**（§4.11）
+- **重要度**: **C**（Vitest スモーク）。**5 問フロー手動は A**（§4.12）
 - **備考**: ロジックは shared へ抽出後はスモークのみ
 
 #### main.tsx / App.tsx
@@ -351,7 +1408,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 - **テスト**: `pages/AdminPage.test.tsx`
 - **状態**: 未
 - **重要度**: **B**
-- **備考**: 保存時 `normalizeScene` 利用後は薄く
+- **備考**: 回答済み一覧・PDF エクスポート（`pdfExport` 呼び出し）。保存正規化は `sceneQuestions.test.ts`
 
 #### main.tsx / App.tsx
 
@@ -448,11 +1505,11 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 - **内容**: `saveSettings` 時
 - **期待**: `expertEye360-storage` イベント発火
 
-**関連仕様**: F1, F7（開発フォールバック）
+**関連仕様**: F7（開発フォールバック）
 
 ---
 
-### 4.2b `shared/src/storage/sheet.ts` → `sheetApi.test.ts`（本番）
+#### 4.2b `shared/src/storage/sheet.ts` → `sheetApi.test.ts`（本番）
 
 **重要度**: ファイル既定 **B**。TC-008〜009 は **A**（研修回の漏洩防止）
 
@@ -524,7 +1581,23 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 - **内容**: 管理者 `POST settings` 成功
 - **期待**: `audit_logs` に `settings.save` 相当が追記される（実装時に action 名固定）
 
-**関連仕様**: F1, F7（本番）。ST / SH 系 ID（inventory）と対応付ける。シート構成は [SPREADSHEET-DATA.md §3](./SPREADSHEET-DATA.md)
+#### TC-012
+
+- **重要度**: B
+- **内容**: 管理者 `GET settings` に **不正な管理者コード**（`token`）
+- **期待**: 401 相当。本体データを返さない（§1.5）
+
+#### TC-013
+
+- **重要度**: B
+- **内容**: 管理者コード変更 API（名称は実装時に確定）
+- **期待**: **現行の管理者コード**が一致したときのみ新コードを受け付ける。不一致は拒否（§1.5）
+
+### TC-010 補足（受講者）
+
+- 検証失敗時、フロントは **「正しい研修コードを入力してください」** を表示（ENTRY-03 と一致）
+
+**関連仕様**: F7（本番）。入室は §1.5。ST / SH 系 ID（inventory）と対応付ける。シート構成は [SPREADSHEET-DATA.md §3](./SPREADSHEET-DATA.md)
 
 ---
 
@@ -549,14 +1622,14 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 #### TC-003
 
 - **内容**: 必須フィールド存在
-- **期待**: `veteranTemplate`, `tourUrl` 等
+- **期待**: `tourUrl`, `scenes`, `rooms` 等
 
 #### TC-004
 
 - **内容**: 深いコピーで変異しない（任意）
 - **期待**: import 元を mutate しても再 import で不変
 
-**関連仕様**: F1（デモ）、TC-COM と整合
+**関連仕様**: デモ seed、TC-COM と整合
 
 ---
 
@@ -610,35 +1683,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 
 ---
 
-### 4.6 `shared/src/criteriaOrder.ts`（新規）→ `criteriaOrder.test.ts`
-
-**重要度**: **C**（§2.4）
-
-**抽出元**: `ParticipantPage.tsx` の `syncCriteriaOrder`, `move`
-
-#### TC-001
-
-- **内容**: 選択追加で順序末尾に追加
-- **関連**: F4
-
-#### TC-002
-
-- **内容**: 選択解除で順序から削除
-- **関連**: F4
-
-#### TC-003
-
-- **内容**: `moveUp` / `moveDown`
-- **関連**: F4
-
-#### TC-004
-
-- **内容**: 境界で move 無効
-- **関連**: F4
-
----
-
-### 4.7 `shared/src/normalizeScene.ts`（新規）→ `normalizeScene.test.ts`
+### 4.6 `shared/src/normalizeScene.ts`（新規）→ `normalizeScene.test.ts`
 
 **重要度**: **C**（§2.4）
 
@@ -647,17 +1692,61 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 #### TC-001
 
 - **内容**: 行配列 → 各カード `limitChoices` 適用
-- **関連**: F1
+- **関連**: F3
 
 #### TC-002
 
 - **内容**: 空行除去
-- **関連**: F1
+- **関連**: F3
 
-#### TC-003
+### 4.7 `shared/src/pdfExport.ts`（新規）→ `pdfExport.test.ts`
 
-- **内容**: `veteranTemplate` 各配列も正規化
-- **関連**: F1
+**重要度**: ファイル既定 **B**（§2.4）。代表 1 件のダウンロード確認は **A**（手動）
+
+**関連仕様**: [§1.4 F7 ダッシュボード・PDF](#14-f7-講師管理者ダッシュボードと-pdf-エクスポート)、F7
+
+**依存**: `jspdf`（`participant-web` / `admin-web` のいずれか、または `shared` に追加）。Vitest では **生成関数の戻り値**（`Uint8Array` / ヘッダ `%PDF`）を assert し、実ファイルの目視は手動 **A**。
+
+### TC-001（PDF-01）
+
+- **重要度**: B
+- **内容**: 回答済み 1 件とシーンを渡すと PDF バイナリが生成される
+- **期待**: 先頭が PDF シグネチャ相当、またはサイズ > 0
+
+### TC-002（PDF-02）
+
+- **重要度**: B
+- **内容**: 生成ペイロードにシーン表示名（①）が含まれる
+
+### TC-003（PDF-03）
+
+- **重要度**: B
+- **内容**: 設問 1 で、マスタの気づきカードと `rounds[0].awarenessSelection` のラベルが対応して出力される（②）
+
+### TC-004（PDF-04）
+
+- **重要度**: B
+- **内容**: 5 問分の共有・判断基準選択も同様に出力される（②）
+
+### TC-005（PDF-05）
+
+- **重要度**: B
+- **内容**: 確信度（③）がラベル付きで含まれる
+
+### TC-006（PDF-06）
+
+- **重要度**: B
+- **内容**: 名前・所属（④）が含まれる
+
+### TC-007（PDF-07）
+
+- **重要度**: B
+- **内容**: 一言メモ（⑤）が含まれる（`roundNote` ありの設問）
+
+### TC-008（PDF-07 異常）
+
+- **重要度**: C
+- **内容**: `rounds` 欠損・長さ不足でもクラッシュしない
 
 ---
 
@@ -665,9 +1754,11 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 
 **重要度**: **C**（§2.4）
 
+**関連**: **F8**（OJT）。F7 の受講者結果 PDF（`pdfExport`）とは別。
+
 #### TC-001
 
-- **内容**: `veteranTemplate.ojtChecklist` + 回答内容 → OJT 用テキスト配列
+- **内容**: 受講者回答から OJT 用テキスト配列を生成
 - **関連**: F8
 
 #### TC-002
@@ -679,7 +1770,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 
 ### 4.9 `shared/src/test/fixtures.ts`（補助）
 
-- `makeScene(overrides?)` — `submission.test.ts`, `ojtExport.test.ts` で利用
+- `makeScene(overrides?)` — `submission.test.ts`, `pdfExport.test.ts`, `ojtExport.test.ts` で利用
 - `makeSubmission(overrides?)` — 同上
 - `makeSettings(overrides?)` — `storage.test.ts` で利用
 
@@ -712,7 +1803,21 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 
 ### 4.11 `participant-web/src/pages/ParticipantPage.tsx` → `ParticipantPage.test.tsx`
 
-**重要度**: Vitest は **C**。下記 **手動受け入れは A**
+**重要度**: Vitest は **C**。入室（ENTRY）は **B**（手動 **A**）。下記 **5 問フロー手動は A**
+
+**関連仕様**: [§1.5 入室・マルチテナント](#15-入室マルチテナント)
+
+### TC-ENTRY-01（ENTRY）
+
+- **重要度**: B（手動 **A**）
+- **内容**: 初回は研修コードのみ。未検証時は名前・所属欄が **非表示**
+- **期待**: `roomEntry` / `verify` 成功後にプロフィール欄表示
+
+### TC-ENTRY-02（ENTRY）
+
+- **重要度**: B（手動 **A**）
+- **内容**: 不正な研修コードで進もうとする
+- **期待**: **「正しい研修コードを入力してください」**。名前・所属は出ない
 
 #### TC-001
 
@@ -726,7 +1831,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 - **内容**: step 0 → 1 に進める
 - **方針**: スモーク（任意）
 
-**方針**: ステップ・選択の詳細は `submission.test.ts` / `criteriaOrder.test.ts` に寄せ、UI テストは最小。
+**方針**: ステップ・選択の詳細は `submission.test.ts` に寄せ、UI テストは最小。
 
 **受講者 5 問フロー（手動・受け入れ）— 重要度: A**
 
@@ -734,15 +1839,45 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 
 - **5 問** = 同じ 4 画面（気づき → 共有 → 判断基準 → 一言メモ）を **5 回**。一言メモの `next` で次ラウンドの気づきへ。**人間が必ず通す**（`participant-web/public/embed-preview.html` または 3DVista 埋め込み）。
 
-| ブロック | step（§4.3.5） | 画面順 |
-| --- | --- | --- |
-| 事前（名前・所属） | 0 | 名前 → 所属 |
-| 設問 1 | 1〜4 | 気づき → 共有 → 判断基準 → 一言メモ |
-| 設問 2 | 5〜8 | 同上 |
-| 設問 3 | 9〜12 | 同上 |
-| 設問 4 | 13〜16 | 同上 |
-| 設問 5 | 17〜20 | 同上 |
-| 締め | 21〜23 | 確信度（必須）→ 送信確認 → 送信完了 |
+#### 入室（研修コード）
+
+**step（§4.3.5）** — 専用（0 より前）
+**画面順** — 研修コード入力 → 検証成功後のみ次へ
+
+#### 事前（名前・所属）
+
+**step（§4.3.5）** — 0
+**画面順** — 名前 → 所属
+
+#### 設問 1
+
+**step（§4.3.5）** — 1〜4
+**画面順** — 気づき → 共有 → 判断基準 → 一言メモ
+
+#### 設問 2
+
+**step（§4.3.5）** — 5〜8
+**画面順** — 同上
+
+#### 設問 3
+
+**step（§4.3.5）** — 9〜12
+**画面順** — 同上
+
+#### 設問 4
+
+**step（§4.3.5）** — 13〜16
+**画面順** — 同上
+
+#### 設問 5
+
+**step（§4.3.5）** — 17〜20
+**画面順** — 同上
+
+#### 締め
+
+**step（§4.3.5）** — 21〜23
+**画面順** — 確信度（必須）→ 送信確認 → 送信完了
 
 ---
 
@@ -750,17 +1885,37 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 
 **重要度**: ファイル既定 **B**
 
+**関連仕様**: F7（§1.4）。入室は §1.5。一覧は **回答済みのみ**（`appendResponse` 済み件数と一致）。
+
+### TC-ADM-ENTRY-01（ADM-ENTRY）
+
+- **重要度**: B（手動 **A**）
+- **内容**: 管理者コード未入力では本体 UI（シーン編集・回答一覧）を出さない
+- **期待**: `adminEntry` 検証成功後に表示
+
+### TC-ADM-ENTRY-02（ADM-ENTRY）
+
+- **重要度**: B
+- **内容**: 管理者コード変更 UI
+- **期待**: 現行コード不一致では保存拒否（§1.5）
+
 #### TC-001
 
 - **重要度**: C
 - **内容**: 保存で `normalizeScene` 経由の 5 件制限
-- **方針**: `normalizeScene.test.ts` と併用
+- **方針**: `sceneQuestions.test.ts` と併用
 
-#### TC-002
+### TC-002（A-40）
 
 - **重要度**: **B**（ステージングでは **A** とセットで受講者送信と確認）
 - **内容**: 回答一覧・詳細が `getSubmissionRounds` 結果と一致
 - **方針**: F7 スモーク
+
+### TC-003（A-53）
+
+- **重要度**: B
+- **内容**: 回答済み 1 件を選び PDF エクスポート（`pdfExport`）を呼び出せる
+- **期待**: `pdfExport` を mock し、ダウンロード用の `Blob` / ファイル名が得られる
 
 ---
 
@@ -768,17 +1923,15 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 
 仕様トレース用。テスト実装の主キーは **§3・§4 のファイル** とする。
 
-**F1** — `normalizeScene.test.ts`, `storage.test.ts`, `seed.test.ts`
-
 **F3** — `submission.test.ts`, `choices.test.ts`
 
-**F4** — `criteriaOrder.test.ts`
+**F4** — `validateStep` / `submission` / `choices`（単一選択）
 
 **F5** — `submission.test.ts`, `choices.test.ts`
 
 **F6** — `submission.test.ts`
 
-**F7** — `storage.test.ts`, `sheetApi.test.ts`, `AdminPage.test.tsx`（薄）
+**F7** — `storage.test.ts`, `sheetApi.test.ts`, `pdfExport.test.ts`, `AdminPage.test.tsx`（薄）
 
 **F8** — `ojtExport.test.ts`
 
@@ -802,11 +1955,15 @@ shared/src/
 ├── sheetApi.test.ts           # 新規
 ├── submission.ts              # 新規
 ├── submission.test.ts
-├── criteriaOrder.ts           # 新規
-├── criteriaOrder.test.ts
-├── normalizeScene.ts          # 新規
-├── normalizeScene.test.ts
-├── ojtExport.ts               # 新規
+├── sceneQuestions.ts          # normalizeScene 含む
+├── sceneQuestions.test.ts
+├── roomEntry.ts               # 新規（受講者・研修コード）
+├── roomEntry.test.ts
+├── adminEntry.ts              # 新規（管理者コード）
+├── adminEntry.test.ts
+├── pdfExport.ts               # 新規（F7・jsPDF）
+├── pdfExport.test.ts
+├── ojtExport.ts               # 新規（F8・OJT）
 ├── ojtExport.test.ts
 └── test/
     └── fixtures.ts
@@ -832,63 +1989,58 @@ admin-web/src/
 
 ## 7. TDD 実施順（ファイル単位）
 
-**1.** `choices.test.ts` — 既存実装・依存なし
-
-**2.** `test/fixtures.ts` — 以降のテストで共用
-
-**3.** `submission.test.ts` — UI からロジック抽出と同時
-
-**4.** `criteriaOrder.test.ts` — 同上
-
-**5.** `storage.test.ts` — Integration（local）
-
-**6.** `sheetApi.test.ts` — Sheet API 契約（本番永続化）
-
-**7.** `seed.test.ts` — デモデータ契約
-
-**8.** `normalizeScene.test.ts` — 管理者保存
-
-**9.** `useAppData.test.ts` — 各 Web（async storage 対応後）
-
-**10.** `*.test.tsx` — スモークのみ
-
-**11.** `ojtExport.test.ts` — F8
+**§1.2 に統合済み。** Phase ごとの作業順・マイルストーン定義は **[§1.2 テストスコープとマイルストーン](#12-テストスコープとマイルストーン)** を正とする。振る舞い ID の一覧は [TDD-FEATURE-INVENTORY.md](./TDD-FEATURE-INVENTORY.md) §8 を参照。
 
 ---
 
 ## 8. Phase 完了チェックリスト（ファイル別）
 
-### Phase 0 — 基盤
+**§1.2 マイルストーン表と対応する。** 完了したら [§1.2](#12-テストスコープとマイルストーン) の「現在のマイルストーン」を次 Phase に更新する。
 
-- [ ] ルート `vitest.config.ts` + `npm test`
-- [ ] `choices.test.ts` 全 TC Green
+#### Phase 0 — 基盤
 
-### Phase 1 — shared 拡張
+- [x] ルート `vitest.config.ts` + `npm test`
+- [x] `shared/src/test/fixtures.ts`
+- [x] **小** — `choices.test.ts` 全 TC Green
+- [x] **小** — `roomEntry.test.ts`（ENTRY-01〜03 相当）Green
+- [x] **中** — `judgmentFlow.test.ts`（5 問 step の芯・代表 `it` で Green）
+- [x] **中** — `sceneQuestions.test.ts`（正規化・取得の代表で Green）
+- [ ] **小**（任意）— 上記 **中** を JF-*/SQ-* 単位に分割（回帰用）
 
+#### Phase 1 — shared 拡張
+
+- [ ] `cardSlots.test.ts` Green（`CardSlotsField` ロジックを shared へ移動後）
+- [ ] `selection.test.ts` Green
+- [ ] `validateStep.test.ts` Green
 - [ ] `submission.test.ts` Green（抽出完了）
-- [ ] `criteriaOrder.test.ts` Green（抽出完了）
-- [ ] React が shared のみ使用（重複ロジック削除）
+- [ ] `ParticipantPage` が shared のみ使用（重複ロジック削除）
 
-### Phase 2 — 永続化・管理（local）
+#### Phase 2 — 永続化・管理（local）
 
 - [ ] `storage.test.ts` Green
 - [ ] `seed.test.ts` Green
-- [ ] `normalizeScene.test.ts` Green
+- [ ] `sceneQuestions.test.ts`（`normalizeScene` / `normalizeSettings`）Green
 
-### Phase 2.5 — スプレッドシート永続化（本番）
+#### Phase 2.5 — スプレッドシート永続化（本番）
 
 - [ ] **B** — GAS（または API）を [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md) §0〜4 に沿って用意
-- [ ] **B** — `sheetApi.test.ts` を **先に** Red → Green（TC-001〜007, TC-010〜011 は CI）
+- [ ] **B** — `sheetApi.test.ts` を **先に** Red → Green（TC-001〜007, TC-010〜013 は CI）
+- [ ] **B** — `roomEntry.test.ts` / `adminEntry.test.ts` Green（§1.5）
+- [ ] **B** — 受講者: 研修コード → 名前所属。管理者: **管理者コードのみ**（§1.5）
 - [ ] **A** — `sheetApi` TC-008〜009 Green 後、人間が room 漏洩の代表操作を確認
-- [ ] **B** — `storage/sheet.ts` + `VITE_STORAGE_BACKEND` で本番切替
-- [ ] **A** — 受講者送信 → 管理者で同一 `client`（+ `room`）の回答が見える（手動・SH-07）
+- [ ] **A** — ENTRY-M / ADM-M（§1.5 手動）
+- [ ] **B** — `storage/sheet.ts` + `VITE_STORAGE_BACKEND` で本番切替（ローカル結合も本番近似・§1.5）
+- [ ] **A** — 受講者送信 → 管理者（管理者コード）で同一 `client` の回答が見える（手動・SH-07）
 - [ ] **A** — 別 `client` / 別 `room` に漏れない（TC-005 の手動確認 + TC-008〜009）
 
-### Phase 3 — UI・OJT
+#### Phase 3 — F7 PDF・UI・OJT
 
+- [ ] `pdfExport.test.ts` 全 TC Green（§4.7 / §1.4）
+- [ ] **B** — 管理者画面から回答済み 1 件の PDF ダウンロード（`jspdf`）
+- [ ] **A** — 代表 1 件の PDF を目視し ①〜⑤ が含まれること
 - [ ] `useAppData.test.ts`（両 Web）
-- [ ] `ParticipantPage.test.tsx` / `AdminPage.test.tsx` スモーク
-- [ ] `ojtExport.test.ts`（任意）
+- [ ] `ParticipantPage.test.tsx` / `AdminPage.test.tsx` スモーク（F7 TC-003 含む）
+- [ ] `ojtExport.test.ts`（F8）
 
 ---
 
@@ -896,7 +2048,7 @@ admin-web/src/
 
 **重要度**: 本節の **A** ランクは人間の目視が必須（§2.4）。Playwright 化後もリリース前に代表解像度で再確認する。
 
-### 受講者（§3.2.3）
+#### 受講者（§3.2.3）
 
 [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md) **§3.2.3** に従う。Vitest 化は Phase 3 以降の Playwright 想定（自動化後も L-01〜L-05 は **A** のサンプリング対象）。
 
@@ -936,7 +2088,7 @@ admin-web/src/
 - **手順**: `participant-app.css` に `vh` / `25vh` が無いこと（`cqh`/`cqw` と iframe 100% のみ）
 - **期待**: 静的確認または grep
 
-### 管理者（§3.2.4）
+#### 管理者（§3.2.4）
 
 [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md) **§3.2.4** に従う。README の「管理者の見た目確認」と同じ URL（`admin-web/public/embed-preview.html`）。
 
