@@ -93,7 +93,7 @@ const EMPTY_VETERAN_TEMPLATE = {
   commonMisses: [],
   instructorComment: "",
   ojtChecklist: [],
-} as const;
+};
 
 const PARTICIPANT_SCENE_INDEX = 0;
 

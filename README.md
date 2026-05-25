@@ -38,7 +38,7 @@
 
 **本番 Sheet API** — **未実装**（設計は SPREADSHEET-DATA）
 
-**自動テスト** — **Vitest**（`npm test` — 現状 20 本 Green）
+**自動テスト** — **Vitest**（`npm test` — 現状 37 本 Green）
 
 ```bash
 npm test          # ルート: shared の Unit テスト

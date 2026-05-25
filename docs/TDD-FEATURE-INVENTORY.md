@@ -13,7 +13,7 @@
 
 **関連**: [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md)、[SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)、[README.md](../README.md)
 
-**現状**: **Vitest 導入済み**（ルート `npm test`）。入室 UI 実装済み。永続化は **localStorage のみ**（本番 Sheet API は Phase 2.5）
+**現状**: **Vitest 導入済み**（ルート `npm test`）。Phase 1 の shared 抽出テストまで Green。入室 UI 実装済み。永続化は **localStorage のみ**（本番 Sheet API は Phase 2.5）
 
 ## 目次
 
@@ -26,12 +26,12 @@
 - [1. 共通ドメイン（shared/src）](#1-共通ドメイン)
   - [1.1 カード枚数制限 — choices.ts 【実装済み】](#11-カード枚数制限-—-choicests-【実装済み】)
   - [1.2 設問別カード取得・正規化 — sceneQuestions.ts 【実装済み】](#12-設問別カード取得正規化-—-sceneQuestionsts-【実装済み】)
-  - [1.3 カードスロット変換 — CardSlotsField 相当 【実装済み・要抽出】](#13-カードスロット変換-—-CardSlotsField-相当-【実装済み要抽出】)
+  - [1.3 カードスロット変換 — cardSlots.ts 【実装済み】](#13-カードスロット変換-—-cardSlotsts-【実装済み】)
   - [1.4 5 問フロー step 変換 — judgmentFlow.ts 【実装済み】](#14-5-問フロー-step-変換-—-judgmentFlowts-【実装済み】)
   - [1.5 回答ラウンドの読取・集約 — judgmentFlow.ts 【実装済み】](#15-回答ラウンドの読取集約-—-judgmentFlowts-【実装済み】)
-  - [1.6 単一選択トグル — 【要抽出】](#16-単一選択トグル-—-【要抽出】)
-  - [1.7 step バリデーション — 【要抽出】](#17-step-バリデーション-—-【要抽出】)
-  - [1.8 送信ペイロード組み立て — 【要抽出】](#18-送信ペイロード組み立て-—-【要抽出】)
+  - [1.6 単一選択トグル — selection.ts 【実装済み】](#16-単一選択トグル-—-selectionts-【実装済み】)
+  - [1.7 step バリデーション — validateStep.ts 【実装済み】](#17-step-バリデーション-—-validateStepts-【実装済み】)
+  - [1.8 送信ペイロード組み立て — submission.ts 【実装済み】](#18-送信ペイロード組み立て-—-submissionts-【実装済み】)
   - [1.9 確信度 — 【要抽出】](#19-確信度-—-【要抽出】)
   - [1.10 OJT 出力 — 【未実装】（README §7・F8。Phase 3）](#110-OJT-出力-—-【未実装】)
 - [2. 永続化](#2-永続化)
@@ -251,9 +251,9 @@
 
 **SQ-06** — `normalizeSettings` → 全シーンに `normalizeScene`
 
-### 1.3 カードスロット変換 — `CardSlotsField` 相当 【実装済み・要抽出】
+### 1.3 カードスロット変換 — `cardSlots.ts` 【実装済み】
 
-現状: `admin-web/src/components/CardSlotsField.tsx`。TDD 前に `shared/src/cardSlots.ts` 等へ移動推奨。
+現状: `shared/src/cardSlots.ts`。`admin-web/src/components/CardSlotsField.tsx` は shared の変換関数を利用。
 
 **SL-01** — `cardsToSlots`: 最大 5 スロット、不足分は `""`
 
@@ -295,9 +295,9 @@
 
 **JR-04** — `aggregateAwarenessSelections` / `aggregateActionsSelected`: flatMap
 
-### 1.6 単一選択トグル — 【要抽出】
+### 1.6 単一選択トグル — `selection.ts` 【実装済み】
 
-現状: `participant-web/src/pages/ParticipantPage.tsx` の `selectSingle`。
+現状: `shared/src/selection.ts` の `selectSingle`。
 
 **SS-01** — 未選択 + ラベル → `[ラベル]`
 
@@ -305,9 +305,9 @@
 
 **SS-03** — 別ラベル → `[新ラベル]`（1 件のみ）
 
-### 1.7 step バリデーション — 【要抽出】
+### 1.7 step バリデーション — `validateStep.ts` 【実装済み】
 
-現状: `ParticipantPage.tsx` の `validateStep`。
+現状: `shared/src/validateStep.ts` の `validateParticipantStep`。
 
 **V-01** — step 0・名前空 → `名前を入力してください`
 
@@ -327,9 +327,9 @@
 
 **V-09** — 名前・所属は空白のみ不可（trim）
 
-### 1.8 送信ペイロード組み立て — 【要抽出】
+### 1.8 送信ペイロード組み立て — `submission.ts` 【実装済み】
 
-現状: `ParticipantPage.tsx` の `submit`。
+現状: `shared/src/submission.ts` の `buildSubmission`。
 
 **S-01** — `rounds` 長さ 5 をそのまま保存
 
@@ -713,13 +713,13 @@
 
 ## 10. 機能 ID ↔ テストファイル（参照）
 
-**F3** — `validateStep.test.ts`, `buildSubmission.test.ts`, `choices.test.ts`
+**F3** — `validateStep.test.ts`, `submission.test.ts`, `choices.test.ts`
 
 **F4** — `validateStep` / `choices` 等（単一選択）
 
-**F5** — `validateStep.test.ts`, `buildSubmission.test.ts`, `choices.test.ts`
+**F5** — `validateStep.test.ts`, `submission.test.ts`, `choices.test.ts`
 
-**F6** — `buildSubmission.test.ts`
+**F6** — `submission.test.ts`
 
 **F7** — `storage.test.ts`, `sheetApi.test.ts`, `AdminPage.test.tsx`（薄）
 

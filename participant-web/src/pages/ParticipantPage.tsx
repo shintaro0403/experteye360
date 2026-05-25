@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { limitChoices } from "@shared/choices";
 import { CONFIDENCE_LABELS } from "@shared/confidence";
+import { buildSubmission } from "@shared/submission";
 import {
   getVerifiedRoomId,
   setVerifiedRoomId,
   verifyTrainingCode,
 } from "@shared/roomEntry";
 import { getSceneQuestionCards } from "@shared/sceneQuestions";
+import { selectSingle } from "@shared/selection";
+import { validateParticipantStep } from "@shared/validateStep";
 import {
   createEmptyRounds,
   JUDGMENT_ROUND_COUNT,
@@ -315,10 +318,6 @@ function patchRound(
   return rounds.map((r, i) => (i === roundIdx ? { ...r, ...patch } : r));
 }
 
-function selectSingle(list: string[], v: string): string[] {
-  return list.includes(v) ? [] : [v];
-}
-
 export function ParticipantPage() {
   const { settings, addResponse } = useAppData();
   const [verifiedRoomId, setVerifiedRoomIdState] = useState<string | null>(() => getVerifiedRoomId());
@@ -354,33 +353,14 @@ export function ParticipantPage() {
     else setStep((s) => s + 1);
   };
 
-  const validateStep = (): string | null => {
-    if (step === STEP_INTRO) {
-      if (!participantName.trim()) return "名前を入力してください";
-      if (!affiliation.trim()) return "所属を入力してください";
-      return null;
-    }
-    if (step === STEP_CONFIDENCE) {
-      if (confidence === null) return "確信度を1つ選んでください";
-      return null;
-    }
-    const phase = stepToRoundPhase(step);
-    if (!phase) return null;
-    const roundData = rounds[phase.round];
-    if (phase.phase === "awareness" && roundData.awarenessSelection.length === 0) {
-      return "気づきカードを1つ選んでください";
-    }
-    if (phase.phase === "action" && roundData.actionSelection.length === 0) {
-      return "共有・行動カードを1つ選んでください";
-    }
-    if (phase.phase === "criteria" && roundData.criteriaOrdered.length === 0) {
-      return "判断基準カードを1つ選んでください";
-    }
-    return null;
-  };
-
   const tryNext = () => {
-    const msg = validateStep();
+    const msg = validateParticipantStep({
+      step,
+      participantName,
+      affiliation,
+      rounds,
+      confidence,
+    });
     if (msg) {
       setFieldWarn(msg);
       return;
@@ -395,29 +375,18 @@ export function ParticipantPage() {
 
   const submit = () => {
     if (!scene || confidence === null) return;
-    const awarenessNote = rounds
-      .map((r, i) => (r.roundNote.trim() ? `【設問${i + 1}】${r.roundNote.trim()}` : ""))
-      .filter(Boolean)
-      .join("\n");
-
-    addResponse({
-      id: uid(),
-      createdAt: new Date().toISOString(),
-      participantName: participantName.trim(),
-      affiliation: affiliation.trim(),
-      roomId: verifiedRoomId ?? undefined,
-      sceneId: scene.id,
-      rounds,
-      confidenceLevel: confidence,
-      attentionSelected: [],
-      attentionNote: "",
-      awarenessSelections: rounds.flatMap((r) => r.awarenessSelection),
-      awarenessNote,
-      criteriaOrdered: rounds.flatMap((r) => r.criteriaOrdered),
-      criteriaNote: "",
-      actionsSelected: rounds.flatMap((r) => r.actionSelection),
-      actionsNote: "",
-    });
+    addResponse(
+      buildSubmission({
+        id: uid(),
+        createdAt: new Date().toISOString(),
+        participantName,
+        affiliation,
+        roomId: verifiedRoomId,
+        sceneId: scene.id,
+        rounds,
+        confidenceLevel: confidence,
+      }),
+    );
     setStep(STEP_DONE);
   };
 

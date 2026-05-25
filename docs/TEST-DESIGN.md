@@ -121,7 +121,7 @@
 - **対象**: `shared/src`（最優先）→ `participant-web` / `admin-web`
 - **関連仕様**: [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md) §3.2.3・§3.2.4（iframe レイアウト）、§4（F3〜F8）、§5（永続化）
 - **永続化仕様**: [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)
-- **現状**: **Vitest 導入済み**（ルート `npm test`）。Phase 0 の中核（`choices` / `roomEntry` / `judgmentFlow` / `sceneQuestions`）は Green。ストレージは `localStorage` のみ（Sheet API は未実装）。入室 UI（研修コード・管理者コード）は **local 実装済み**
+- **現状**: **Vitest 導入済み**（ルート `npm test`）。Phase 0 の中核と Phase 1 の shared 抽出（`cardSlots` / `selection` / `validateStep` / `submission`）は Green。ストレージは `localStorage` のみ（Sheet API は未実装）。入室 UI（研修コード・管理者コード）は **local 実装済み**
 
 ### 1.1 改訂履歴
 
@@ -177,7 +177,7 @@
 
 **役割** — 振る舞い ID（C-01、V-04 等）とファイル対応の辞書。**Phase は書かない**
 
-**現在のマイルストーン**: **Phase 0**（Vitest 導入と既存 `shared` ロジックの固定）
+**現在のマイルストーン**: **Phase 2**（開発用永続化・管理者保存の契約）
 
 **2 つの優先軸**（混同しない）
 
@@ -1324,10 +1324,31 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 - **関連機能**: F7（本番永続化）
 - **備考**: `fetch` で GAS Web App。`clientId` は URL クエリから
 
-#### submission.ts（新規）
+#### [cardSlots.ts](../shared/src/cardSlots.ts)
 
-- **テスト**: `submission.test.ts`
-- **状態**: 未
+- **テスト**: [cardSlots.test.ts](../shared/src/cardSlots.test.ts)
+- **状態**: Green
+- **重要度**: **C**
+- **関連機能**: 管理者カード入力、F3〜F5（5 枚制限）
+
+#### [selection.ts](../shared/src/selection.ts)
+
+- **テスト**: [selection.test.ts](../shared/src/selection.test.ts)
+- **状態**: Green
+- **重要度**: **C**
+- **関連機能**: F3〜F5（単一選択）
+
+#### [validateStep.ts](../shared/src/validateStep.ts)
+
+- **テスト**: [validateStep.test.ts](../shared/src/validateStep.test.ts)
+- **状態**: Green
+- **重要度**: **C**
+- **関連機能**: 受講者5問フロー、F3〜F6
+
+#### [submission.ts](../shared/src/submission.ts)
+
+- **テスト**: [submission.test.ts](../shared/src/submission.test.ts)
+- **状態**: Green
 - **重要度**: **B**（TC-002 は **A**）
 - **関連機能**: F3〜F6, FLOW
 
@@ -1953,7 +1974,13 @@ shared/src/
 │   └── index.ts
 ├── storage.test.ts            # local
 ├── sheetApi.test.ts           # 新規
-├── submission.ts              # 新規
+├── cardSlots.ts
+├── cardSlots.test.ts
+├── selection.ts
+├── selection.test.ts
+├── validateStep.ts
+├── validateStep.test.ts
+├── submission.ts
 ├── submission.test.ts
 ├── sceneQuestions.ts          # normalizeScene 含む
 ├── sceneQuestions.test.ts
@@ -2009,11 +2036,11 @@ admin-web/src/
 
 #### Phase 1 — shared 拡張
 
-- [ ] `cardSlots.test.ts` Green（`CardSlotsField` ロジックを shared へ移動後）
-- [ ] `selection.test.ts` Green
-- [ ] `validateStep.test.ts` Green
-- [ ] `submission.test.ts` Green（抽出完了）
-- [ ] `ParticipantPage` が shared のみ使用（重複ロジック削除）
+- [x] `cardSlots.test.ts` Green（`CardSlotsField` ロジックを shared へ移動後）
+- [x] `selection.test.ts` Green
+- [x] `validateStep.test.ts` Green
+- [x] `submission.test.ts` Green（抽出完了）
+- [x] `ParticipantPage` が shared のみ使用（重複ロジック削除）
 
 #### Phase 2 — 永続化・管理（local）
 

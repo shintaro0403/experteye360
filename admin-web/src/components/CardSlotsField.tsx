@@ -1,5 +1,7 @@
-import { limitChoices, MAX_CHOICE_CARDS } from "@shared/choices";
+import { MAX_CHOICE_CARDS } from "@shared/choices";
 import { ImeInput } from "./ImeField";
+
+export { cardsToSlots, slotsToCards } from "@shared/cardSlots";
 
 type CardSlotsFieldProps = {
   title: string;
@@ -37,10 +39,3 @@ export function CardSlotsField({ title, slots, onChange }: CardSlotsFieldProps) 
   );
 }
 
-export function cardsToSlots(cards: readonly string[]): string[] {
-  return Array.from({ length: MAX_CHOICE_CARDS }, (_, i) => cards[i] ?? "");
-}
-
-export function slotsToCards(slots: readonly string[]): string[] {
-  return limitChoices(slots.map((s) => s.trim()).filter(Boolean));
-}

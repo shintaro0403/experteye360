@@ -87,8 +87,8 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 **5 問フロー・カード**
 
 - **実装** — あり
-- **自動テスト** — `choices.test` / `judgmentFlow.test` / `sceneQuestions.test`
-- **備考** — Phase 0 の中核は Green。受講者ページ内ロジック抽出は Phase 1
+- **自動テスト** — `choices.test` / `judgmentFlow.test` / `sceneQuestions.test` / `cardSlots.test` / `selection.test` / `validateStep.test` / `submission.test`
+- **備考** — Phase 0 の中核と Phase 1 の shared 抽出は Green
 
 **判断基準**
 
@@ -130,7 +130,7 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 - **備考** — README §7 は **将来**
 
 ```bash
-npm test          # ルート Vitest（shared）。現状 20 本 Green
+npm test          # ルート Vitest（shared）。現状 37 本 Green
 npm run test:watch
 ```
 
