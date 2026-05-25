@@ -26,9 +26,9 @@
 
 **受講者 5 問フロー・カード** — **実装済み**（`participant-web`）
 
-**研修コード・管理者コード入室** — **実装済み**（local の平文照合。API 照合は未）
+**研修コード・管理者コード入室** — **実装済み**（local 平文照合 / Sheet API hash 照合）
 
-**永続化** — UI の現行窓口は **`localStorage`**。Sheet API は契約テストと `storage/sheet.ts` の最小 fetch 実装まで完了（GAS・切替・UI 配線は未）
+**永続化** — `VITE_STORAGE_BACKEND=local` は `localStorage`、`VITE_STORAGE_BACKEND=sheet` は GAS Sheet API。受講者送信 → 管理者回答取得のライブ疎通まで確認済み。
 
 **講師・管理者の回答一覧・詳細** — **実装済み**
 
@@ -36,9 +36,9 @@
 
 **OJT 整理ロジック** — **最小実装済み**（`shared/src/ojtExport.ts` / `ojtExport.test.ts` は Green。UI・ファイル出力は未）
 
-**本番 Sheet API** — **一部実装**（`sheetApi.test.ts` と `storage/sheet.ts` の入口は Green。GAS・`VITE_STORAGE_BACKEND`・画面配線は未）
+**本番 Sheet API** — **最小実装済み**（GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、画面配線まで実装。研修コードの管理画面変更、Sheet backend の Playwright は未）
 
-**自動テスト** — **Vitest**（`npm test` — 現状 13 files / 63 tests Green）
+**自動テスト** — **Vitest**（`npm test` — 現状 13 files / 75 tests Green）
 
 ```bash
 npm test          # ルート: shared の Unit テスト
@@ -57,9 +57,9 @@ npm run test:watch
 
 **`admin-web/`** — 管理者 UI のみ。`npm run dev:admin` → ポート **5174**
 
-**`shared/src/`** — 型・シード・ストレージ（**現状**は `localStorage`。本番は Sheet API → スプレッドシート）
+**`shared/src/`** — 型・シード・ストレージ（localStorage / Sheet API を `VITE_STORAGE_BACKEND` で切替）
 
-**現状のローカル**: 入室 UI（研修コード・管理者コード）は動くが、画面の保存先はまだ **ブラウザの `localStorage`**。受講者（5173）と管理者（5174）は **別オリジン**のため、回答は自動では共有されない（同一ブラウザで両方開いてもストレージは分離）。Sheet API の契約テストと薄い fetch 実装はあるが、本番同等の共有確認には GAS、`VITE_STORAGE_BACKEND` 切替、画面配線が必要。
+**現状のローカル**: `VITE_STORAGE_BACKEND=local` ではブラウザの `localStorage` を使う。受講者（5173）と管理者（5174）は別オリジンのため、本番同等の共有確認は `VITE_STORAGE_BACKEND=sheet` と GAS Web App で行う。
 
 #### 初回セットアップ
 

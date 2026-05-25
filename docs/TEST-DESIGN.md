@@ -121,7 +121,7 @@
 - **対象**: `shared/src`（最優先）→ `participant-web` / `admin-web`
 - **関連仕様**: [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md) §3.2.3・§3.2.4（iframe レイアウト）、§4（F3〜F8）、§5（永続化）
 - **永続化仕様**: [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)
-- **現状**: **Vitest 導入済み**（ルート `npm test`）。Phase 0 / 1 / 2 は Green。Sheet API は `sheetApi.test.ts` と `storage/sheet.ts` の入口のみ Green（GAS・`VITE_STORAGE_BACKEND`・画面配線は未）。入室 UI（研修コード・管理者コード）は **local 実装済み**。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口まで Green（jsPDF 本実装・UI 配線・ファイル出力は未）
+- **現状**: **Vitest 導入済み**（ルート `npm test`）。Phase 0 / 1 / 2 は Green。Sheet API は GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線まで最小実装済み。入室 UI（研修コード・管理者コード）は **local / sheet** 対応。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口まで Green（jsPDF 本実装・UI 配線・ファイル出力は未）
 
 ### 1.1 改訂履歴
 
@@ -333,7 +333,7 @@
 #### clientId / room 分離
 
 **README / 機能** — `clientId` / `room` 分離
-**現行実装** — `sheetApi.test.ts` と `storage/sheet.ts` の入口で、`?client=`、`room`、`token`、`rooms/verify` の最小契約を固定済み。`VITE_STORAGE_BACKEND` 切替・画面配線・GAS は未
+**現行実装** — `sheetApi.test.ts` と `storage/sheet.ts` で、`?client=`、`room`、`token`、`rooms/verify` の契約を固定済み。GAS と `VITE_STORAGE_BACKEND=sheet` の画面配線も最小実装済み。Sheet backend の Playwright は未
 **今回マイルストーン** — Phase 2.5
 **主なテスト** — `sheetApi` TC-005〜009
 **備考** — §1.5・**D-07** 本番近似・**D-09**
@@ -1321,7 +1321,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 #### storage/sheet.ts（新規）
 
 - **テスト**: `sheetApi.test.ts`
-- **状態**: 入口 Green（TC-001〜004、TC-010 相当）。残り TC、`storage.ts` 統合、`VITE_STORAGE_BACKEND` は未
+- **状態**: 契約 Green（TC-001〜004、TC-010 相当）。GAS、`storage.ts` async 統合、`VITE_STORAGE_BACKEND=sheet` は最小実装済み。残り TC と Sheet backend Playwright は未
 - **重要度**: **B**（TC-008〜009 は **A**）
 - **関連機能**: F7（本番永続化）
 - **備考**: `fetch` で GAS Web App。`clientId` は URL クエリから
@@ -2060,7 +2060,7 @@ admin-web/src/
 - [ ] **B** — 受講者: 研修コード → 名前所属。管理者: **管理者コードのみ**（§1.5）
 - [ ] **A** — `sheetApi` TC-008〜009 Green 後、人間が room 漏洩の代表操作を確認
 - [ ] **A** — ENTRY-M / ADM-M（§1.5 手動）
-- [ ] **B** — `storage/sheet.ts` + `VITE_STORAGE_BACKEND` で本番切替（ローカル結合も本番近似・§1.5）
+- [x] **B** — `storage/sheet.ts` + `VITE_STORAGE_BACKEND` で本番切替（最小実装済み。Sheet backend Playwright は継続）
 - [ ] **A** — 受講者送信 → 管理者（管理者コード）で同一 `client` の回答が見える（手動・SH-07）
 - [ ] **A** — 別 `client` / 別 `room` に漏れない（TC-005 の手動確認 + TC-008〜009）
 

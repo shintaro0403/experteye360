@@ -89,7 +89,7 @@
 
 1. テンプレート用スプレッドシート 1 冊を用意（手作りはここだけ）
 2. Vitest + `sheetApi.test.ts`（TDD・契約先行）— 入口 Green
-3. `storage/sheet.ts` + GAS（通常 API）— `storage/sheet.ts` の最小 fetch 実装は完了、GAS は未
+3. `storage/sheet.ts` + GAS（通常 API）— 最小実装済み。`VITE_STORAGE_BACKEND=sheet` で受講者・管理者画面から利用する
 4. GAS `clients/provision`（クライアント追加の自動化）
 5. URL から `clientId` 取得
 6. `roomId` / 研修コード（必須フロー）

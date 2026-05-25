@@ -96,20 +96,20 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 - **自動テスト** — 同上
 **研修コード入室**
 
-- **実装** — あり（local 平文照合）
+- **実装** — あり（local 平文照合 / Sheet API hash 照合）
 - **自動テスト** — `roomEntry.test` あり
-- **備考** — local は Green。API 契約入口は `sheetApi.test`、GAS・hash 照合・画面配線は Phase 2.5 継続
+- **備考** — local と Sheet API の代表疎通は Green。Sheet backend の Playwright は未
 
 **管理者コード入室**
 
-- **実装** — あり（local）
+- **実装** — あり（local / Sheet API token）
 - **自動テスト** — `adminEntry.test` **未**
 
 **本番 Sheet API**
 
-- **実装** — フロント契約の入口のみあり（`shared/src/storage/sheet.ts`）
-- **自動テスト** — `sheetApi.test` あり（TC-001〜004、TC-010 相当の入口）
-- **備考** — GAS、`VITE_STORAGE_BACKEND` 切替、`storage.ts` 統合、画面配線は未
+- **実装** — 最小実装あり（GAS、`shared/src/storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線）
+- **自動テスト** — `sheetApi.test` あり。ライブ GAS 手動疎通は `settings`、`rooms/verify`、`responses` 追加・取得まで確認済み
+- **備考** — 管理画面からの研修コード変更、Sheet backend の Playwright、本番運用 hardening は未
 
 **講師・管理者 一覧・詳細（F7）**
 
@@ -130,7 +130,7 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 - **備考** — UI・ファイル出力は未
 
 ```bash
-npm test          # ルート Vitest（shared）。現状 13 files / 63 tests Green
+npm test          # ルート Vitest（shared）。現状 13 files / 75 tests Green
 npm run test:watch
 ```
 
@@ -157,7 +157,7 @@ npm run test:watch
 **入室**
 
 - **誤りやすい** — INVENTORY「§2.1c 未実装」
-- **正しい現状** — **local で実装済み**。Sheet API の `rooms/verify` 契約入口も実装済み。未なのは **GAS/hash 照合・画面配線**（Phase 2.5）
+- **正しい現状** — **local と Sheet API の最小実装済み**。未なのは **管理画面からの研修コード変更、Sheet backend の Playwright、本番運用 hardening**（Phase 2.5 継続）
 
 **Phase 0**
 

@@ -1,5 +1,14 @@
 import { normalizeAppSettings } from "./appSettings";
+import { TRAINING_CODE_MISMATCH_MESSAGE, type VerifyTrainingCodeResult, verifyTrainingCode } from "./roomEntry";
 import { DEFAULT_SETTINGS } from "./seed";
+import {
+  appendSheetResponse,
+  changeAdminTokenViaApi,
+  loadSheetResponses,
+  loadSheetSettings,
+  saveSheetSettings,
+  verifyTrainingCodeViaApi,
+} from "./storage/sheet";
 import type { AppSettings, ParticipantSubmission } from "./types";
 
 const KEY_SETTINGS = "expertEye360:settings";
@@ -11,6 +20,45 @@ const E2E_STORAGE_RESPONSES_URL = "http://127.0.0.1:5199/responses";
 
 function freshDefaults(): AppSettings {
   return JSON.parse(JSON.stringify(DEFAULT_SETTINGS)) as AppSettings;
+}
+
+type StorageEnv = {
+  VITE_STORAGE_BACKEND?: string;
+  VITE_SHEET_API_BASE?: string;
+  VITE_CLIENT_ID?: string;
+};
+
+type LoadResponsesAsyncInput = {
+  roomId?: string | null;
+  adminToken?: string | null;
+};
+
+type SaveSettingsAsyncInput = {
+  adminToken?: string | null;
+};
+
+type ChangeAdminTokenAsyncInput = {
+  adminToken: string;
+  nextAdminToken: string;
+};
+
+function getStorageEnv(): StorageEnv {
+  return ((import.meta as ImportMeta & { env?: StorageEnv }).env ?? {}) as StorageEnv;
+}
+
+export function isSheetStorageBackend(): boolean {
+  const env = getStorageEnv();
+  return env.VITE_STORAGE_BACKEND === "sheet";
+}
+
+function sheetApiConfig(): { apiBaseUrl: string; clientId: string } {
+  const env = getStorageEnv();
+  const apiBaseUrl = env.VITE_SHEET_API_BASE?.trim();
+  const clientId = env.VITE_CLIENT_ID?.trim();
+  if (!apiBaseUrl || !clientId) {
+    throw new Error("Sheet API config is missing");
+  }
+  return { apiBaseUrl, clientId };
 }
 
 function readCookie(name: string): string | null {
@@ -138,4 +186,95 @@ export function resetDemoData(): void {
   clearSharedResponses();
   requestE2eResponses("DELETE");
   saveSettings(freshDefaults());
+}
+
+export async function loadSettingsAsync(): Promise<AppSettings> {
+  if (!isSheetStorageBackend()) return loadSettings();
+  const config = sheetApiConfig();
+  return normalizeAppSettings(await loadSheetSettings(config));
+}
+
+export async function saveSettingsAsync(
+  settings: AppSettings,
+  input: SaveSettingsAsyncInput = {},
+): Promise<void> {
+  if (!isSheetStorageBackend()) {
+    saveSettings(settings);
+    return;
+  }
+  const adminToken = input.adminToken?.trim();
+  if (!adminToken) throw new Error("Admin token is required to save sheet settings");
+  await saveSheetSettings({
+    ...sheetApiConfig(),
+    adminToken,
+    settings: normalizeAppSettings(settings),
+  });
+  window.dispatchEvent(new Event("expertEye360-storage"));
+}
+
+export async function loadResponsesAsync(
+  input: LoadResponsesAsyncInput = {},
+): Promise<ParticipantSubmission[]> {
+  if (!isSheetStorageBackend()) return loadResponses();
+  const roomId = input.roomId?.trim();
+  const adminToken = input.adminToken?.trim();
+  if (!roomId || !adminToken) return [];
+  return loadSheetResponses({
+    ...sheetApiConfig(),
+    roomId,
+    adminToken,
+  });
+}
+
+export async function appendResponseAsync(response: ParticipantSubmission): Promise<void> {
+  if (!isSheetStorageBackend()) {
+    appendResponse(response);
+    return;
+  }
+  const roomId = response.roomId?.trim();
+  if (!roomId) throw new Error("roomId is required to append sheet response");
+  await appendSheetResponse({
+    ...sheetApiConfig(),
+    roomId,
+    submission: response,
+  });
+  window.dispatchEvent(new Event("expertEye360-storage"));
+}
+
+export async function saveResponsesAsync(list: ParticipantSubmission[]): Promise<void> {
+  if (isSheetStorageBackend()) {
+    throw new Error("Replacing all responses is not supported for sheet backend");
+  }
+  saveResponses(list);
+}
+
+export async function verifyTrainingCodeAsync(
+  accessCode: string,
+  fallbackRooms: AppSettings["rooms"],
+): Promise<VerifyTrainingCodeResult> {
+  if (!isSheetStorageBackend()) return verifyTrainingCode(accessCode, fallbackRooms);
+  try {
+    const result = await verifyTrainingCodeViaApi({
+      ...sheetApiConfig(),
+      accessCode,
+    });
+    return { ok: true, roomId: result.roomId };
+  } catch {
+    return { ok: false, message: TRAINING_CODE_MISMATCH_MESSAGE };
+  }
+}
+
+export async function verifyAdminTokenAsync(adminToken: string, roomId: string): Promise<void> {
+  await loadResponsesAsync({ adminToken, roomId });
+}
+
+export async function changeAdminTokenAsync(input: ChangeAdminTokenAsyncInput): Promise<void> {
+  if (!isSheetStorageBackend()) {
+    throw new Error("Changing admin token via API requires sheet backend");
+  }
+  await changeAdminTokenViaApi({
+    ...sheetApiConfig(),
+    adminToken: input.adminToken,
+    nextAdminToken: input.nextAdminToken,
+  });
 }

@@ -2,12 +2,19 @@ import React, { useEffect, useMemo, useState } from "react";
 import { primaryTrainingRoom } from "@shared/appSettings";
 import {
   changeAdminAccessCode,
+  getAdminSessionToken,
   isAdminSessionActive,
   setAdminSessionActive,
+  setAdminSessionToken,
   verifyAdminCode,
 } from "@shared/adminEntry";
 import { getConfidenceLabel } from "@shared/confidence";
 import { getSubmissionRounds, JUDGMENT_ROUND_COUNT } from "@shared/judgmentFlow";
+import {
+  changeAdminTokenAsync,
+  isSheetStorageBackend,
+  verifyAdminTokenAsync,
+} from "@shared/storage";
 import type { ParticipantSubmission, Scene } from "@shared/types";
 import { CardSlotsField, cardsToSlots, slotsToCards } from "../components/CardSlotsField";
 import { ImeInput } from "../components/ImeField";
@@ -155,8 +162,19 @@ function ResponseDetail({
 }
 
 export function AdminPage() {
-  const { settings, setSettings, responses, replaceResponses, refresh } = useAppData();
-  const [adminAuthed, setAdminAuthed] = useState(() => isAdminSessionActive());
+  const [adminToken, setAdminTokenState] = useState(() => getAdminSessionToken() ?? "");
+  const [adminAuthed, setAdminAuthed] = useState(
+    () => isAdminSessionActive() && (!isSheetStorageBackend() || Boolean(getAdminSessionToken())),
+  );
+  const {
+    settings,
+    setSettings,
+    responses,
+    replaceResponses,
+    refresh,
+    loading,
+    error,
+  } = useAppData({ adminToken: adminAuthed ? adminToken : null });
   const [adminCodeInput, setAdminCodeInput] = useState("");
   const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
   const [trainingCodeDraft, setTrainingCodeDraft] = useState("");
@@ -186,7 +204,27 @@ export function AdminPage() {
     setTrainingCodeDraft(room.accessCode);
   }, [settings.rooms, settings]);
 
-  const tryAdminLogin = () => {
+  const tryAdminLogin = async () => {
+    if (isSheetStorageBackend()) {
+      const token = adminCodeInput.trim();
+      if (!token) {
+        setAdminLoginError("管理者コードが正しくありません");
+        return;
+      }
+      try {
+        await verifyAdminTokenAsync(token, primaryTrainingRoom(settings).roomId);
+        setAdminSessionActive(true);
+        setAdminSessionToken(token);
+        setAdminTokenState(token);
+        setAdminAuthed(true);
+        setAdminLoginError(null);
+        setAdminCodeInput("");
+      } catch {
+        setAdminLoginError("管理者コードが正しくありません");
+      }
+      return;
+    }
+
     if (verifyAdminCode(adminCodeInput, settings.adminAccessCode)) {
       setAdminSessionActive(true);
       setAdminAuthed(true);
@@ -197,7 +235,11 @@ export function AdminPage() {
     setAdminLoginError("管理者コードが正しくありません");
   };
 
-  const saveTrainingCode = () => {
+  const saveTrainingCode = async () => {
+    if (isSheetStorageBackend()) {
+      alert("Sheet API 利用時の研修コード変更は未実装です。現在は demo-2026 を使ってください。");
+      return;
+    }
     const code = trainingCodeDraft.trim();
     if (!code) {
       alert("研修コードを入力してください");
@@ -210,12 +252,36 @@ export function AdminPage() {
             r.roomId === room.roomId ? { ...r, accessCode: code } : r,
           )
         : [{ ...room, accessCode: code }];
-    setSettings({ ...settings, rooms: nextRooms });
-    refresh();
+    await setSettings({ ...settings, rooms: nextRooms });
+    await refresh();
     alert("研修コードを保存しました。受講者に新しいコードを案内してください。");
   };
 
-  const saveAdminCodeChange = () => {
+  const saveAdminCodeChange = async () => {
+    if (isSheetStorageBackend()) {
+      const current = adminCurrentForChange.trim();
+      const next = adminNewCode.trim();
+      if (next.length < 4) {
+        setAdminChangeMsg("新しい管理者コードは4文字以上にしてください");
+        return;
+      }
+      if (current === next) {
+        setAdminChangeMsg("新しい管理者コードは現在と異なるものにしてください");
+        return;
+      }
+      try {
+        await changeAdminTokenAsync({ adminToken: current, nextAdminToken: next });
+        setAdminSessionToken(next);
+        setAdminTokenState(next);
+        setAdminCurrentForChange("");
+        setAdminNewCode("");
+        setAdminChangeMsg("管理者コードを変更しました。次回から新しいコードで入室してください。");
+      } catch {
+        setAdminChangeMsg("現在の管理者コードが正しくありません");
+      }
+      return;
+    }
+
     const result = changeAdminAccessCode(
       adminCurrentForChange,
       adminNewCode,
@@ -226,15 +292,17 @@ export function AdminPage() {
       return;
     }
     const next = adminNewCode.trim();
-    setSettings({ ...settings, adminAccessCode: next });
+    await setSettings({ ...settings, adminAccessCode: next });
     setAdminCurrentForChange("");
     setAdminNewCode("");
     setAdminChangeMsg("管理者コードを変更しました。次回から新しいコードで入室してください。");
-    refresh();
+    await refresh();
   };
 
   const logoutAdmin = () => {
     setAdminSessionActive(false);
+    setAdminSessionToken(null);
+    setAdminTokenState("");
     setAdminAuthed(false);
     setAdminCodeInput("");
     setAdminLoginError(null);
@@ -261,19 +329,19 @@ export function AdminPage() {
     });
   };
 
-  const saveTourUrl = () => {
-    setSettings({ ...settings, tourUrl: tourUrl.trim() });
+  const saveTourUrl = async () => {
+    await setSettings({ ...settings, tourUrl: tourUrl.trim() });
   };
 
-  const saveSceneDraft = () => {
+  const saveSceneDraft = async () => {
     if (!activeScene || !draft) return;
     const merged = editorDraftToScene(activeScene, draft);
     const nextScenes = settings.scenes.map((s) => (s.id === merged.id ? merged : s));
-    setSettings({ ...settings, scenes: nextScenes });
-    refresh();
+    await setSettings({ ...settings, scenes: nextScenes });
+    await refresh();
   };
 
-  const addScene = () => {
+  const addScene = async () => {
     const questionCards = Array.from({ length: JUDGMENT_ROUND_COUNT }, (_, i) => {
       const q = defaultQuestionDraft(i + 1);
       return {
@@ -295,26 +363,26 @@ export function AdminPage() {
       actionCards: questionCards[0].actionCards,
       veteranTemplate: { ...EMPTY_VETERAN_TEMPLATE },
     };
-    setSettings({ ...settings, scenes: [...settings.scenes, s] });
+    await setSettings({ ...settings, scenes: [...settings.scenes, s] });
     setActiveSceneId(s.id);
   };
 
-  const removeScene = (id: string) => {
+  const removeScene = async (id: string) => {
     if (!confirm("このシーンを削除しますか？")) return;
     const next = settings.scenes.filter((s) => s.id !== id);
-    setSettings({ ...settings, scenes: next });
+    await setSettings({ ...settings, scenes: next });
     setActiveSceneId(next[0]?.id ?? "");
   };
 
-  const promoteSceneToParticipant = (id: string) => {
+  const promoteSceneToParticipant = async (id: string) => {
     const idx = settings.scenes.findIndex((s) => s.id === id);
     if (idx <= PARTICIPANT_SCENE_INDEX) return;
     const next = [...settings.scenes];
     const [scene] = next.splice(idx, 1);
     next.unshift(scene);
-    setSettings({ ...settings, scenes: next });
+    await setSettings({ ...settings, scenes: next });
     setActiveSceneId(id);
-    refresh();
+    await refresh();
   };
 
   const [selectedResponseId, setSelectedResponseId] = useState<string | null>(null);
@@ -343,17 +411,18 @@ export function AdminPage() {
                 onChange={setAdminCodeInput}
                 placeholder="管理者コード"
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") tryAdminLogin();
+                  if (e.key === "Enter") void tryAdminLogin();
                 }}
               />
             </AdminLabel>
             <div className="a-actions">
-              <button type="button" className="a-btn a-btn--primary" onClick={tryAdminLogin}>
+              <button type="button" className="a-btn a-btn--primary" onClick={() => void tryAdminLogin()}>
                 入室する
               </button>
             </div>
             <p className="a-hint" style={{ marginTop: "1rem" }}>
-              初回デモ: 管理者コード <code>admin-demo</code> / 受講者研修コード <code>DEMO-2026</code>
+              初回デモ: 管理者コード <code>{isSheetStorageBackend() ? "admin-demo-2026" : "admin-demo"}</code> /
+              受講者研修コード <code>{isSheetStorageBackend() ? "demo-2026" : "DEMO-2026"}</code>
               （ローカルはアプリごとに storage が分かれるため、管理者で研修コードを変更した場合は受講者側の再読込が必要です）
             </p>
           </div>
@@ -370,7 +439,7 @@ export function AdminPage() {
           <span className="a-topbar__brand">ExpertEye360</span>
           <span className="a-topbar__role">管理者</span>
           <div className="a-topbar__actions">
-            <button type="button" className="a-btn a-btn--secondary" onClick={() => refresh()}>
+            <button type="button" className="a-btn a-btn--secondary" onClick={() => void refresh()}>
               再読込
             </button>
             <button type="button" className="a-btn a-btn--secondary" onClick={logoutAdmin}>
@@ -381,6 +450,9 @@ export function AdminPage() {
       </header>
 
       <main className="a-main">
+        {loading && <p className="a-hint">データを読み込んでいます。</p>}
+        {error && <p className="a-entry-error" role="alert">{error}</p>}
+
         <nav className="a-tabs">
           {(["base", "scenes", "responses"] as const).map((t) => (
             <button
@@ -409,7 +481,7 @@ export function AdminPage() {
               />
             </AdminLabel>
             <div className="a-actions">
-              <button type="button" className="a-btn a-btn--primary" onClick={saveTrainingCode}>
+              <button type="button" className="a-btn a-btn--primary" onClick={() => void saveTrainingCode()}>
                 研修コードを保存
               </button>
             </div>
@@ -445,7 +517,7 @@ export function AdminPage() {
               />
             </AdminLabel>
             <div className="a-actions">
-              <button type="button" className="a-btn a-btn--primary" onClick={saveAdminCodeChange}>
+              <button type="button" className="a-btn a-btn--primary" onClick={() => void saveAdminCodeChange()}>
                 管理者コードを変更
               </button>
             </div>
@@ -461,7 +533,7 @@ export function AdminPage() {
                 onChange={setTourUrl}
                 placeholder="https://..."
               />
-              <button type="button" className="a-btn a-btn--primary" onClick={saveTourUrl}>
+              <button type="button" className="a-btn a-btn--primary" onClick={() => void saveTourUrl()}>
                 保存
               </button>
             </div>
@@ -473,7 +545,7 @@ export function AdminPage() {
             <div>
               <div className="a-row a-row--spread">
                 <h2 style={{ margin: 0 }}>シーン一覧</h2>
-                <button type="button" className="a-btn a-btn--primary" onClick={addScene}>
+                <button type="button" className="a-btn a-btn--primary" onClick={() => void addScene()}>
                   ＋ 追加
                 </button>
               </div>
@@ -508,7 +580,7 @@ export function AdminPage() {
                       <button
                         type="button"
                         className="a-btn a-btn--secondary a-btn--compact"
-                        onClick={() => promoteSceneToParticipant(s.id)}
+                        onClick={() => void promoteSceneToParticipant(s.id)}
                       >
                         受講者に使う
                       </button>
@@ -525,7 +597,11 @@ export function AdminPage() {
                 <>
                   <div className="a-scene-editor__head a-row a-row--spread">
                     <h2 style={{ margin: 0 }}>編集: {draft.displayName}</h2>
-                    <button type="button" className="a-btn a-btn--danger" onClick={() => removeScene(activeScene.id)}>
+                    <button
+                      type="button"
+                      className="a-btn a-btn--danger"
+                      onClick={() => void removeScene(activeScene.id)}
+                    >
                       削除
                     </button>
                   </div>
@@ -538,7 +614,7 @@ export function AdminPage() {
                           type="button"
                           className="a-btn a-btn--secondary a-btn--compact"
                           style={{ marginLeft: "0.5rem" }}
-                          onClick={() => promoteSceneToParticipant(activeScene.id)}
+                          onClick={() => void promoteSceneToParticipant(activeScene.id)}
                         >
                           受講者に使う
                         </button>
@@ -617,7 +693,7 @@ export function AdminPage() {
                     )}
 
                     <div className="a-actions">
-                      <button type="button" className="a-btn a-btn--primary" onClick={saveSceneDraft}>
+                      <button type="button" className="a-btn a-btn--primary" onClick={() => void saveSceneDraft()}>
                         このシーンを保存
                       </button>
                     </div>
@@ -632,7 +708,11 @@ export function AdminPage() {
           <section className="a-panel a-grid-2">
             <div>
               <h2>回答一覧（{responses.length}）</h2>
-              <p className="a-hint">localStorage に保存された受講者回答です。</p>
+              <p className="a-hint">
+                {isSheetStorageBackend()
+                  ? "Sheet API に保存された受講者回答です。"
+                  : "localStorage に保存された受講者回答です。"}
+              </p>
               <ul className="a-resp-list">
                 {responses.map((r) => {
                   const sceneName =
@@ -659,8 +739,12 @@ export function AdminPage() {
                     type="button"
                     className="a-btn a-btn--danger"
                     onClick={() => {
+                      if (isSheetStorageBackend()) {
+                        alert("Sheet API 利用時の全回答削除は未実装です。");
+                        return;
+                      }
                       if (confirm("全回答を削除しますか？")) {
-                        replaceResponses([]);
+                        void replaceResponses([]);
                         setSelectedResponseId(null);
                       }
                     }}

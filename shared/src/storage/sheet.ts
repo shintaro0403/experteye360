@@ -9,6 +9,12 @@ type AdminSheetApiBase = SheetApiBase & {
   adminToken: string;
 };
 
+type SheetApiErrorBody = {
+  ok: false;
+  status?: number;
+  error?: string;
+};
+
 export type LoadSheetSettingsInput = SheetApiBase;
 
 export type SaveSheetSettingsInput = AdminSheetApiBase & {
@@ -30,6 +36,10 @@ export type VerifyTrainingCodeViaApiInput = SheetApiBase & {
 
 export type VerifyTrainingCodeViaApiResult = {
   roomId: string;
+};
+
+export type ChangeAdminTokenViaApiInput = AdminSheetApiBase & {
+  nextAdminToken: string;
 };
 
 export async function loadSheetSettings(input: LoadSheetSettingsInput): Promise<AppSettings> {
@@ -81,9 +91,19 @@ export async function verifyTrainingCodeViaApi(
   );
 }
 
+export async function changeAdminTokenViaApi(input: ChangeAdminTokenViaApiInput): Promise<void> {
+  await requestJson<unknown>(
+    buildUrl(input.apiBaseUrl, "admin/token", {
+      client: input.clientId,
+      token: input.adminToken,
+    }),
+    postJson({ nextAdminToken: input.nextAdminToken }),
+  );
+}
+
 function buildUrl(apiBaseUrl: string, path: string, params: Record<string, string>): string {
-  const normalizedBase = apiBaseUrl.endsWith("/") ? apiBaseUrl : `${apiBaseUrl}/`;
-  const url = new URL(path, normalizedBase);
+  const url = new URL(apiBaseUrl);
+  url.searchParams.set("path", path);
   for (const [key, value] of Object.entries(params)) {
     url.searchParams.set(key, value);
   }
@@ -93,15 +113,28 @@ function buildUrl(apiBaseUrl: string, path: string, params: Record<string, strin
 function postJson(body: unknown): RequestInit {
   return {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify(body),
   };
 }
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
+  const body = (await response.json()) as T | SheetApiErrorBody;
   if (!response.ok) {
     throw new Error(`Sheet API request failed: ${response.status}`);
   }
-  return (await response.json()) as T;
+  if (isSheetApiErrorBody(body)) {
+    throw new Error(`Sheet API request failed: ${body.status ?? body.error ?? "unknown"}`);
+  }
+  return body as T;
+}
+
+function isSheetApiErrorBody(body: unknown): body is SheetApiErrorBody {
+  return Boolean(
+    body &&
+      typeof body === "object" &&
+      "ok" in body &&
+      (body as { ok?: unknown }).ok === false,
+  );
 }

@@ -5,10 +5,10 @@ import { buildSubmission } from "@shared/submission";
 import {
   getVerifiedRoomId,
   setVerifiedRoomId,
-  verifyTrainingCode,
 } from "@shared/roomEntry";
 import { getSceneQuestionCards } from "@shared/sceneQuestions";
 import { selectSingle } from "@shared/selection";
+import { verifyTrainingCodeAsync } from "@shared/storage";
 import { validateParticipantStep } from "@shared/validateStep";
 import {
   createEmptyRounds,
@@ -319,7 +319,7 @@ function patchRound(
 }
 
 export function ParticipantPage() {
-  const { settings, addResponse } = useAppData();
+  const { settings, addResponse, loading, error } = useAppData();
   const [verifiedRoomId, setVerifiedRoomIdState] = useState<string | null>(() => getVerifiedRoomId());
   const [trainingCode, setTrainingCode] = useState("");
   const [step, setStep] = useState(STEP_INTRO);
@@ -328,12 +328,16 @@ export function ParticipantPage() {
   const [rounds, setRounds] = useState<JudgmentRound[]>(createEmptyRounds);
   const [confidence, setConfidence] = useState<number | null>(null);
   const [fieldWarn, setFieldWarn] = useState<string | null>(null);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const scene = settings.scenes[0] ?? null;
   const profileUnlocked = Boolean(verifiedRoomId);
 
-  const tryVerifyTrainingCode = () => {
-    const result = verifyTrainingCode(trainingCode, settings.rooms);
+  const tryVerifyTrainingCode = async () => {
+    setIsVerifyingCode(true);
+    const result = await verifyTrainingCodeAsync(trainingCode, settings.rooms);
+    setIsVerifyingCode(false);
     if (!result.ok) {
       setFieldWarn(result.message);
       return;
@@ -349,8 +353,11 @@ export function ParticipantPage() {
   };
 
   const advanceStep = () => {
-    if (step === STEP_CONFIRM) submit();
-    else setStep((s) => s + 1);
+    if (step === STEP_CONFIRM) {
+      void submit();
+      return;
+    }
+    setStep((s) => s + 1);
   };
 
   const tryNext = () => {
@@ -373,10 +380,11 @@ export function ParticipantPage() {
     setRounds((prev) => patchRound(prev, roundIdx, patch));
   };
 
-  const submit = () => {
+  const submit = async () => {
     if (!scene || confidence === null) return;
-    addResponse(
-      buildSubmission({
+    try {
+      setIsSubmitting(true);
+      await addResponse(buildSubmission({
         id: uid(),
         createdAt: new Date().toISOString(),
         participantName,
@@ -385,9 +393,13 @@ export function ParticipantPage() {
         sceneId: scene.id,
         rounds,
         confidenceLevel: confidence,
-      }),
-    );
-    setStep(STEP_DONE);
+      }));
+      setStep(STEP_DONE);
+    } catch (err) {
+      setFieldWarn(err instanceof Error ? err.message : "回答の送信に失敗しました");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const rp = stepToRoundPhase(step);
@@ -396,6 +408,9 @@ export function ParticipantPage() {
     <div className="p-shell">
       <section className="p-strip">
         <div className="p-body">
+          {loading && <p className="p-warn">研修データを読み込んでいます。</p>}
+          {error && <p className="p-warn">{error}</p>}
+
           {!scene && (
             <p className="p-warn">シーンが未設定です。管理者 iframe で登録してください。</p>
           )}
@@ -421,7 +436,7 @@ export function ParticipantPage() {
                       if (fieldWarn) setFieldWarn(null);
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") tryVerifyTrainingCode();
+                      if (e.key === "Enter") void tryVerifyTrainingCode();
                     }}
                     placeholder="例：DEMO-2026"
                     autoComplete="off"
@@ -433,7 +448,8 @@ export function ParticipantPage() {
                 showBack={false}
                 showNext
                 onBack={() => {}}
-                onNext={tryVerifyTrainingCode}
+                onNext={() => void tryVerifyTrainingCode()}
+                submitLabel={isVerifyingCode ? "確認中..." : "next"}
                 warn={fieldWarn}
               />
             </div>
@@ -576,7 +592,7 @@ export function ParticipantPage() {
                 title="送信"
                 onBack={goBack}
                 onNext={tryNext}
-                submitLabel="回答を送信"
+                submitLabel={isSubmitting ? "送信中..." : "回答を送信"}
               />
             </div>
           )}

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   appendSheetResponse,
+  changeAdminTokenViaApi,
   loadSheetResponses,
   loadSheetSettings,
   saveSheetSettings,
@@ -34,8 +35,7 @@ describe("sheetApi 契約", () => {
 
     expect(result.tourUrl).toBe("https://example.com/from-sheet");
     const [url, init] = lastFetchCall();
-    expect(String(url)).toContain("settings");
-    expectUrlHasParams(String(url), { client: TEST_CLIENT });
+    expectUrlHasParams(String(url), { path: "settings", client: TEST_CLIENT });
     expect(init?.method ?? "GET").toBe("GET");
   });
 
@@ -51,8 +51,11 @@ describe("sheetApi 契約", () => {
     });
 
     const [url, init] = lastFetchCall();
-    expect(String(url)).toContain("settings");
-    expectUrlHasParams(String(url), { client: TEST_CLIENT, token: TEST_ADMIN_TOKEN });
+    expectUrlHasParams(String(url), {
+      path: "settings",
+      client: TEST_CLIENT,
+      token: TEST_ADMIN_TOKEN,
+    });
     expect(init?.method).toBe("POST");
     expect(JSON.parse(String(init?.body))).toMatchObject({
       tourUrl: "https://example.com/admin-save",
@@ -74,8 +77,8 @@ describe("sheetApi 契約", () => {
 
     expect(result.map((r) => r.id)).toEqual(["sub-new"]);
     const [url, init] = lastFetchCall();
-    expect(String(url)).toContain("responses");
     expectUrlHasParams(String(url), {
+      path: "responses",
       client: TEST_CLIENT,
       room: TEST_ROOM,
       token: TEST_ADMIN_TOKEN,
@@ -95,14 +98,28 @@ describe("sheetApi 契約", () => {
     });
 
     const [url, init] = lastFetchCall();
-    expect(String(url)).toContain("responses");
-    expectUrlHasParams(String(url), { client: TEST_CLIENT, room: TEST_ROOM });
+    expectUrlHasParams(String(url), { path: "responses", client: TEST_CLIENT, room: TEST_ROOM });
     expect(init?.method).toBe("POST");
     expect(JSON.parse(String(init?.body))).toMatchObject({
       id: "sub-1",
       roomId: TEST_ROOM,
       participantName: submission.participantName,
     });
+  });
+
+  it("POST 系 API は GAS の preflight を避けるため text/plain で JSON 文字列を送る", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ ok: true }));
+
+    await appendSheetResponse({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      roomId: TEST_ROOM,
+      submission: makeSubmission({ roomId: TEST_ROOM }),
+    });
+
+    const [, init] = lastFetchCall();
+    expect((init?.headers as Record<string, string>)["Content-Type"]).toBe("text/plain;charset=utf-8");
+    expect(() => JSON.parse(String(init?.body))).not.toThrow();
   });
 
   it("POST rooms/verify は accessCode を送り、成功時に roomId を返す", async () => {
@@ -116,10 +133,199 @@ describe("sheetApi 契約", () => {
 
     expect(result).toEqual({ roomId: TEST_ROOM });
     const [url, init] = lastFetchCall();
-    expect(String(url)).toContain("rooms/verify");
-    expectUrlHasParams(String(url), { client: TEST_CLIENT });
+    expectUrlHasParams(String(url), { path: "rooms/verify", client: TEST_CLIENT });
     expect(init?.method).toBe("POST");
     expect(JSON.parse(String(init?.body))).toEqual({ accessCode: "DEMO-2026" });
+  });
+
+  it("client 不正で API が 400 を返すと、呼び出し側でエラーになる", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: "bad client" }, 400));
+
+    await expect(loadSheetSettings({
+      apiBaseUrl: API_BASE_URL,
+      clientId: "unknown-client",
+    })).rejects.toThrow("Sheet API request failed: 400");
+  });
+
+  it("API 500 とネットワーク失敗は、呼び出し側でエラーになる", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: "server error" }, 500));
+
+    await expect(loadSheetSettings({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+    })).rejects.toThrow("Sheet API request failed: 500");
+
+    vi.mocked(fetch).mockRejectedValueOnce(new Error("network down"));
+
+    await expect(loadSheetSettings({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+    })).rejects.toThrow("network down");
+  });
+
+  it("GAS が 200 で JSON エラーを返したときも、呼び出し側でエラーになる", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({
+      ok: false,
+      status: 401,
+      error: "Invalid admin token",
+    }));
+
+    await expect(loadSheetSettings({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+    })).rejects.toThrow("Sheet API request failed: 401");
+  });
+
+  it("すべての API 呼び出しに client クエリを付ける", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(jsonResponse(makeSettings()))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+      .mockResolvedValueOnce(jsonResponse({ roomId: TEST_ROOM }))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }));
+
+    await loadSheetSettings({ apiBaseUrl: API_BASE_URL, clientId: TEST_CLIENT });
+    await saveSheetSettings({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      adminToken: TEST_ADMIN_TOKEN,
+      settings: makeSettings(),
+    });
+    await loadSheetResponses({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      roomId: TEST_ROOM,
+      adminToken: TEST_ADMIN_TOKEN,
+    });
+    await appendSheetResponse({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      roomId: TEST_ROOM,
+      submission: makeSubmission({ roomId: TEST_ROOM }),
+    });
+    await verifyTrainingCodeViaApi({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      accessCode: "DEMO-2026",
+    });
+    await changeAdminTokenViaApi({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      adminToken: TEST_ADMIN_TOKEN,
+      nextAdminToken: "admin-next",
+    });
+
+    for (const [url] of vi.mocked(fetch).mock.calls) {
+      expectUrlHasParams(String(url), { client: TEST_CLIENT });
+    }
+  });
+
+  it("GET responses は room ごとに URL を分け、別 room の回答を混ぜない", async () => {
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = new URL(String(input));
+      const room = url.searchParams.get("room");
+      if (room === "room-a") {
+        return jsonResponse([makeSubmission({ id: "sub-room-a", roomId: "room-a" })]);
+      }
+      if (room === "room-b") {
+        return jsonResponse([makeSubmission({ id: "sub-room-b", roomId: "room-b" })]);
+      }
+      return jsonResponse({ error: "bad room" }, 400);
+    });
+
+    const roomA = await loadSheetResponses({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      roomId: "room-a",
+      adminToken: TEST_ADMIN_TOKEN,
+    });
+    const roomB = await loadSheetResponses({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      roomId: "room-b",
+      adminToken: TEST_ADMIN_TOKEN,
+    });
+
+    expect(roomA.map((response) => response.id)).toEqual(["sub-room-a"]);
+    expect(roomB.map((response) => response.id)).toEqual(["sub-room-b"]);
+  });
+
+  it("不正 room の responses 取得はエラーになる", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: "forbidden room" }, 403));
+
+    await expect(loadSheetResponses({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      roomId: "unknown-room",
+      adminToken: TEST_ADMIN_TOKEN,
+    })).rejects.toThrow("Sheet API request failed: 403");
+  });
+
+  it("未登録の研修コードは rooms/verify でエラーになる", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: "unknown access code" }, 403));
+
+    await expect(verifyTrainingCodeViaApi({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      accessCode: "WRONG-CODE",
+    })).rejects.toThrow("Sheet API request failed: 403");
+  });
+
+  it("POST settings は監査ログ対象の管理者操作として token を必ず付ける", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ ok: true, auditLogId: "audit-1" }));
+
+    await saveSheetSettings({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      adminToken: TEST_ADMIN_TOKEN,
+      settings: makeSettings(),
+    });
+
+    const [url] = lastFetchCall();
+    expectUrlHasParams(String(url), { client: TEST_CLIENT, token: TEST_ADMIN_TOKEN });
+  });
+
+  it("不正な管理者 token では管理者 API が 401 エラーになる", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: "bad token" }, 401));
+
+    await expect(loadSheetResponses({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      roomId: TEST_ROOM,
+      adminToken: "wrong-admin-token",
+    })).rejects.toThrow("Sheet API request failed: 401");
+  });
+
+  it("管理者コード変更は現行 token と新しい token を送る", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ ok: true }));
+
+    await changeAdminTokenViaApi({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      adminToken: TEST_ADMIN_TOKEN,
+      nextAdminToken: "admin-next",
+    });
+
+    const [url, init] = lastFetchCall();
+    expectUrlHasParams(String(url), {
+      path: "admin/token",
+      client: TEST_CLIENT,
+      token: TEST_ADMIN_TOKEN,
+    });
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(String(init?.body))).toEqual({ nextAdminToken: "admin-next" });
+  });
+
+  it("管理者コード変更は現行 token 不一致なら 401 エラーになる", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: "bad token" }, 401));
+
+    await expect(changeAdminTokenViaApi({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      adminToken: "wrong-admin-token",
+      nextAdminToken: "admin-next",
+    })).rejects.toThrow("Sheet API request failed: 401");
   });
 });
 
@@ -134,7 +340,7 @@ function lastFetchCall(): [RequestInfo | URL, RequestInit | undefined] {
   const calls = vi.mocked(fetch).mock.calls;
   const call = calls[calls.length - 1];
   if (!call) throw new Error("fetch was not called");
-  return call;
+  return [call[0], call[1]];
 }
 
 function expectUrlHasParams(url: string, params: Record<string, string>): void {

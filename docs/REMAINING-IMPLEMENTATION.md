@@ -47,7 +47,7 @@
 - シーン・カード編集
 - 回答一覧・詳細
 
-**未完了** — 本番 Sheet API への正式配線、PDF / OJT UI
+**未完了** — Sheet backend の研修コード変更 UI、PDF / OJT UI
 
 ### shared ロジック
 
@@ -60,12 +60,12 @@
 - `selection`
 - `validateStep`
 - `submission`
-- `storage`（local）
-- `storage/sheet.ts`（Sheet API 入口）
+- `storage`（local / sheet 切替）
+- `storage/sheet.ts`（Sheet API）
 - `pdfExport`（生成 payload と `Uint8Array` の入口）
 - `ojtExport`（確認項目テキスト生成の入口）
 
-**テスト** — `npm test` は 13 files / 63 tests Green
+**テスト** — `npm test` は 13 files / 75 tests Green
 
 ### Playwright
 
@@ -76,9 +76,9 @@
 - `e2e/embed-layout.spec.ts`
 - `npm run test:e2e`
 
-**状態** — 4 tests Green
+**状態** — 4 tests Green（E2E 用共有ストレージ経由）
 
-**注意** — 受講者 → 管理者共有は、現時点では E2E 用の暫定共有ストレージで Green にしている。本番 Sheet API の Green ではない。
+**注意** — 受講者 → 管理者共有の本番同等確認は、ライブ GAS の手動疎通では Green。Playwright はまだ E2E 用の暫定共有ストレージで Green にしている。
 
 ---
 
@@ -110,7 +110,7 @@
 
 ### A. 本番永続化（GAS + Google スプレッドシート）
 
-**未実装**
+**最小実装済み**
 
 - GAS Web App
 - Google スプレッドシートへの実保存・実読込
@@ -120,6 +120,13 @@
 - `roomId` による研修回分離
 - 管理者 `token` 照合
 - 研修コードのハッシュ照合
+
+**残り**
+
+- 管理画面からの研修コード変更（`rooms.accessCodeHash` 更新）
+- 複数 `client` / 複数 `room` の手動分離確認
+- Sheet backend の Playwright 化
+- 本番運用向けの監査・バックアップ・エラー文言整理
 
 **目的** — 受講者・管理者・別端末が同じ研修データを共有し、契約組織と研修回ごとにデータを分離する。
 
@@ -159,14 +166,17 @@
 
 ### B. storage 正式設計（local / sheet 切替）
 
-**未実装**
+**最小実装済み**
 
 - `VITE_STORAGE_BACKEND=local|sheet`
-- `shared/src/storage/local.ts`
-- `shared/src/storage/index.ts`
-- `shared/src/storage.ts` の責務整理
-- 同期 / 非同期 API の方針決定
-- `useAppData` のローディング・エラー設計
+- `shared/src/storage.ts` の async API
+- 受講者・管理者 `useAppData` のローディング・エラー設計
+
+**残り**
+
+- 必要なら `storage/local.ts` / `storage/index.ts` へ分割
+- Sheet backend の保存中 UI の細分化
+- E2E 用共有ストレージ分岐の置き換え
 
 **目的** — 画面側が保存先の物理実装を意識せず、開発では local、本番では Sheet API を使えるようにする。
 

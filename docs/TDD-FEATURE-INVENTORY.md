@@ -13,7 +13,7 @@
 
 **関連**: [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md)、[SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)、[README.md](../README.md)
 
-**現状**: **Vitest 導入済み**（ルート `npm test`）。Phase 0 / 1 / 2 は Green。Phase 2.5 は Sheet API 契約テストと `storage/sheet.ts` の入口のみ実装済み（GAS・切替・画面配線は継続）。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口まで Green（UI・jsPDF 本実装・ファイル出力は未）
+**現状**: **Vitest 導入済み**（ルート `npm test`）。Phase 0 / 1 / 2 は Green。Phase 2.5 は Sheet API 契約、GAS、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線まで最小実装済み（Sheet backend Playwright は継続）。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口まで Green（UI・jsPDF 本実装・ファイル出力は未）
 
 ## 目次
 
@@ -395,17 +395,17 @@
 
 ### 2.2 Sheet API → スプレッドシート 【実装済み・入口】
 
-**現状** — `sheetApi.test.ts` と `storage/sheet.ts` で TC-001〜004、TC-010 相当の入口は Green。GAS、`VITE_STORAGE_BACKEND`、`storage.ts` 統合、画面配線、残り TC は未実装。
+**現状** — `sheetApi.test.ts` と `storage/sheet.ts` で TC-001〜004、TC-010 相当は Green。GAS、`VITE_STORAGE_BACKEND=sheet`、`storage.ts` async 統合、画面配線は最小実装済み。残り TC と Sheet backend Playwright は未実装。
 
 **SH-01** — `?client={clientId}` を全 API に付与（入口 Green）
 
 **SH-02** — `GET settings` → `AppSettings`（`settings` シート）（入口 Green）
 
-**SH-03** — `POST settings` → 管理者保存がシートに反映（フロント送信契約は入口 Green。GAS 反映は未）
+**SH-03** — `POST settings` → 管理者保存がシートに反映（GAS と画面配線は最小実装済み）
 
 **SH-04** — `GET responses` → 一覧（新しい順）（フロント取得契約は入口 Green。ソート保証は未）
 
-**SH-05** — `POST responses` → 受講者 1 送信 = 1 行追加（フロント送信契約は入口 Green。GAS 追記は未）
+**SH-05** — `POST responses` → 受講者 1 送信 = 1 行追加（GAS 追記と画面配線は最小実装済み）
 
 **SH-06** — 不正 `client` / 401 → 画面でエラー（落ちない）
 
@@ -419,7 +419,7 @@
 
 **SH-11** — マスター `clients` で `spreadsheetId` 解決・`enabled` チェック
 
-**SH-12** — `rooms.accessCodeHash` で研修コード検証（平文をシートに保存しない）。失敗時 UI: **正しい研修コードを入力してください**（`rooms/verify` のフロント契約入口は Green。GAS hash 照合は未）
+**SH-12** — `rooms.accessCodeHash` で研修コード検証（平文をシートに保存しない）。失敗時 UI: **正しい研修コードを入力してください**（GAS hash 照合と画面配線は最小実装済み）
 
 **SH-13** — 管理者操作で **管理者コード**（`adminTokenHash`）照合。管理者の入室に研修コードは不要
 
@@ -703,7 +703,7 @@
 
 **Phase 2** — localStorage 永続化・管理者正規化（完了）
 
-**Phase 2.5** — Sheet API 契約 + 本番切替（契約入口は Green、切替・GAS・UI 配線は継続）
+**Phase 2.5** — Sheet API 契約 + 本番切替（最小実装済み、Sheet backend Playwright は継続）
 
 **Phase 3** — F7 PDF（jsPDF）・UI 配線・OJT（F8）。共有ロジック入口は Green、UI・ファイル出力は継続
 

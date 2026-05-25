@@ -1,4 +1,5 @@
 export const SESSION_ADMIN_AUTH_KEY = "expertEye360:adminAuth";
+export const SESSION_ADMIN_TOKEN_KEY = "expertEye360:adminToken";
 
 export function verifyAdminCode(input: string, expectedAccessCode: string): boolean {
   const a = input.trim();
@@ -18,7 +19,27 @@ export function isAdminSessionActive(): boolean {
 export function setAdminSessionActive(active: boolean): void {
   try {
     if (active) sessionStorage.setItem(SESSION_ADMIN_AUTH_KEY, "1");
-    else sessionStorage.removeItem(SESSION_ADMIN_AUTH_KEY);
+    else {
+      sessionStorage.removeItem(SESSION_ADMIN_AUTH_KEY);
+      sessionStorage.removeItem(SESSION_ADMIN_TOKEN_KEY);
+    }
+  } catch {
+    /* private mode 等 */
+  }
+}
+
+export function getAdminSessionToken(): string | null {
+  try {
+    return sessionStorage.getItem(SESSION_ADMIN_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAdminSessionToken(token: string | null): void {
+  try {
+    if (token?.trim()) sessionStorage.setItem(SESSION_ADMIN_TOKEN_KEY, token.trim());
+    else sessionStorage.removeItem(SESSION_ADMIN_TOKEN_KEY);
   } catch {
     /* private mode 等 */
   }
