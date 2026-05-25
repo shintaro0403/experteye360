@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   appendResponse,
+  changeTrainingCodeAsync,
   loadResponses,
   loadSettings,
   resetDemoData,
@@ -13,6 +14,8 @@ import { makeSettings, makeSubmission } from "./test/fixtures";
 describe("storage（local）", () => {
   beforeEach(() => {
     localStorage.clear();
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
     document.cookie
       .split(";")
       .map((part) => part.split("=")[0]?.trim())
@@ -20,6 +23,11 @@ describe("storage（local）", () => {
       .forEach((name) => {
         document.cookie = `${name}=; path=/; max-age=0`;
       });
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
   });
 
   it("初回 loadSettings ではデモ設定を返して localStorage に保存する", () => {
@@ -118,4 +126,38 @@ describe("storage（local）", () => {
     expect(loadSettings().tourUrl).toBe(DEFAULT_SETTINGS.tourUrl);
     expect(loadResponses()).toEqual([]);
   });
+
+  it("Sheet backend の研修コード変更は API に委譲し、保存イベントを発火する", async () => {
+    vi.stubEnv("VITE_STORAGE_BACKEND", "sheet");
+    vi.stubEnv("VITE_SHEET_API_BASE", "https://script.google.com/macros/s/dev/exec");
+    vi.stubEnv("VITE_CLIENT_ID", "client-a");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse({ ok: true })));
+    const listener = vi.fn();
+    window.addEventListener("expertEye360-storage", listener);
+
+    await changeTrainingCodeAsync({
+      adminToken: " admin-token ",
+      roomId: " room-a ",
+      nextAccessCode: " DEMO-2027 ",
+    });
+
+    window.removeEventListener("expertEye360-storage", listener);
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    const parsed = new URL(String(url));
+    expect(parsed.searchParams.get("path")).toBe("rooms/access-code");
+    expect(parsed.searchParams.get("client")).toBe("client-a");
+    expect(parsed.searchParams.get("token")).toBe("admin-token");
+    expect(JSON.parse(String(init?.body))).toEqual({
+      roomId: "room-a",
+      nextAccessCode: "DEMO-2027",
+    });
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
 });
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}

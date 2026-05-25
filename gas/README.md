@@ -133,6 +133,22 @@ POST {VITE_SHEET_API_BASE}?path=rooms/verify&client=lipronext-demo
 { "roomId": "demo-room-001" }
 ```
 
+### POST rooms/access-code
+
+```text
+POST {VITE_SHEET_API_BASE}?path=rooms/access-code&client=lipronext-demo&token=admin-demo-2026
+```
+
+**body**:
+
+```json
+{ "roomId": "demo-room-001", "nextAccessCode": "demo-2027" }
+```
+
+**成功** — `{ "ok": true }`
+
+平文の研修コードは保存せず、`rooms.accessCodeHash` だけを更新します。
+
 ### POST admin/token
 
 ```text

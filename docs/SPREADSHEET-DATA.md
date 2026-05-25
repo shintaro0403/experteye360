@@ -635,6 +635,13 @@ POST ボディは JSON。GAS はマスター `clients` で `spreadsheetId` を�
 - **用途**: 受講者の研修コード検証 → 成功時 `roomId` を返す
 - **ボディ**: `accessCode`（平文はログに残さない）
 
+#### POST `rooms/access-code`
+
+- **用途**: 管理者による既存 room の研修コード変更
+- **認証**: `client` + 管理者 `token`
+- **ボディ**: `roomId`, `nextAccessCode`
+- **副作用**: `rooms.accessCodeHash` のみ更新し、`audit_logs` に記録する。平文の研修コードは保存しない
+
 #### POST `reset`
 
 - **用途**: デモリセット（管理者のみ）

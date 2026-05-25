@@ -63,6 +63,7 @@ function handleRequest_(e, method) {
     if (method === "GET" && route === "responses") return json_(handleGetResponses_(e));
     if (method === "POST" && route === "responses") return json_(handlePostResponses_(e));
     if (method === "POST" && route === "rooms/verify") return json_(handleVerifyRoom_(e));
+    if (method === "POST" && route === "rooms/access-code") return json_(handleChangeRoomAccessCode_(e));
     if (method === "POST" && route === "admin/token") return json_(handleChangeAdminToken_(e));
     throw apiError_(404, `Unknown route: ${method} ${route}`);
   } catch (error) {
@@ -150,6 +151,27 @@ function handleVerifyRoom_(e) {
   if (!room) throw apiError_(403, "Invalid training code");
 
   return { roomId: room.roomId };
+}
+
+function handleChangeRoomAccessCode_(e) {
+  const context = resolveClient_(requiredParam_(e, "client"));
+  verifyAdminToken_(context.clientRecord, requiredParam_(e, "token"));
+
+  const body = readJsonBody_(e);
+  const roomId = normalizeSecret_(body.roomId);
+  const nextAccessCode = normalizeSecret_(body.nextAccessCode);
+  if (!roomId) throw apiError_(400, "roomId is required");
+  if (!nextAccessCode) throw apiError_(400, "nextAccessCode is required");
+
+  verifyRoomId_(context.clientBook, roomId);
+  updateRowByKey_(getSheet_(context.clientBook, "rooms"), "roomId", roomId, {
+    accessCodeHash: hashSecret_(nextAccessCode),
+  });
+  appendAuditLog_(context.clientBook, "admin", "room.accessCode.change", `room:${roomId}`, {
+    changedAt: nowIso_(),
+  });
+
+  return { ok: true };
 }
 
 function handleChangeAdminToken_(e) {

@@ -602,6 +602,30 @@
 
 **仕様** — `rooms` の追加・`accessCode`（研修コード）の設定・有効化は、**管理者コード検証済み**のセッションでのみ。回答閲覧は `client` 配下。`room` 単位の絞り込みは UI の研修回選択（一覧）で行い、**研修コードの再入力は不要**（§1.3 **D-21** で詳細を詰めても可）
 
+#### Sheet backend の研修コード変更
+
+**目的** — 管理者が受講者向けの研修コードを変更でき、変更後は旧コードで入室できず、新コードだけで対象 `roomId` に入室できるようにする。
+
+**受け入れ条件** — 管理者操作には `client` と現行の管理者 `token` が必須。対象 room は body の `roomId` で指定する。新しい研修コードは body の `nextAccessCode` で送る。平文の研修コードはシートに保存せず、GAS 側で `rooms.accessCodeHash` だけを更新する。
+
+**成功条件** — 正しい `token` では API が成功し、以降 `rooms/verify` は新コードだけを受け付ける。不正 `token` では 401 相当のエラーになり、既存コードは変更されない。存在しない `roomId` では 403 または 404 相当のエラーになる。
+
+**どのようにテストするか** — まず `sheetApi.test.ts` で fetch mock を使い、`POST ?path=rooms/access-code&client=...&token=...`、body `{ roomId, nextAccessCode }`、不正 token のエラー処理を Red → Green で固定する。その後 GAS 側を同じ契約に合わせる。画面 UI は API 契約が Green になってから別テストで扱う。
+
+**コード上の期待値** — `changeTrainingCodeViaApi({ apiBaseUrl, clientId, adminToken, roomId, nextAccessCode })` が `text/plain;charset=utf-8` で JSON body を POST する。呼び出し側は HTTP エラーと GAS の `{ ok: false, status }` JSON エラーを例外として扱う。
+
+#### 管理画面 UI からの研修コード変更
+
+**目的** — Sheet backend 利用時も、管理者が管理画面の「研修コードを保存」から既存 room の研修コードを変更できるようにする。
+
+**受け入れ条件** — 管理者ログイン済みで、保存対象は `primaryTrainingRoom(settings).roomId`。入力値は前後空白を除いて `nextAccessCode` として送る。空文字は送信せず「研修コードを入力してください」を表示する。Sheet backend では現行の管理者 token を使って `changeTrainingCodeAsync` を呼ぶ。local backend では従来どおり `settings.rooms[].accessCode` を更新する。
+
+**成功条件** — Sheet backend で保存に成功したら `refresh()` を呼び、成功メッセージ「研修コードを保存しました。受講者に新しいコードを案内してください。」を表示する。失敗時は成功扱いにせず、ユーザーに保存失敗を伝える。未実装 alert は残さない。
+
+**どのようにテストするか** — まず `storage.test.ts` で `changeTrainingCodeAsync` が Sheet backend 時に env の API 設定・管理者 token・`roomId`・`nextAccessCode` で API を呼び、保存後に storage event を発火することを Red → Green で固定する。次に `AdminPage.test.tsx` で Sheet backend の管理者ログイン済み状態を作り、入力変更 → 「研修コードを保存」で `changeTrainingCodeAsync` が呼ばれ、`refresh()` と成功メッセージに進むことを Red → Green で固定する。
+
+**コード上の期待値** — `changeTrainingCodeAsync({ adminToken, roomId, nextAccessCode })` を `@shared/storage` から export する。`AdminPage` は Sheet backend の場合、未実装 alert ではなくこの関数を await し、成功時のみ `refresh()` する。
+
 #### **管理者コードの変更**
 
 **仕様** — **現在の管理者コードを知っている者のみ**変更可能（変更 API／画面は旧コード（現行 `token`）の再入力を必須とする）

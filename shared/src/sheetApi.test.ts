@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   appendSheetResponse,
   changeAdminTokenViaApi,
+  changeTrainingCodeViaApi,
   loadSheetResponses,
   loadSheetSettings,
   saveSheetSettings,
@@ -315,6 +316,43 @@ describe("sheetApi 契約", () => {
     });
     expect(init?.method).toBe("POST");
     expect(JSON.parse(String(init?.body))).toEqual({ nextAdminToken: "admin-next" });
+  });
+
+  it("研修コード変更は roomId と新しい研修コードを送り、管理者 token を必ず付ける", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ ok: true }));
+
+    await changeTrainingCodeViaApi({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      adminToken: TEST_ADMIN_TOKEN,
+      roomId: TEST_ROOM,
+      nextAccessCode: "DEMO-2027",
+    });
+
+    const [url, init] = lastFetchCall();
+    expectUrlHasParams(String(url), {
+      path: "rooms/access-code",
+      client: TEST_CLIENT,
+      token: TEST_ADMIN_TOKEN,
+    });
+    expect(init?.method).toBe("POST");
+    expect((init?.headers as Record<string, string>)["Content-Type"]).toBe("text/plain;charset=utf-8");
+    expect(JSON.parse(String(init?.body))).toEqual({
+      roomId: TEST_ROOM,
+      nextAccessCode: "DEMO-2027",
+    });
+  });
+
+  it("研修コード変更は現行 token 不一致なら 401 エラーになる", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: "bad token" }, 401));
+
+    await expect(changeTrainingCodeViaApi({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      adminToken: "wrong-admin-token",
+      roomId: TEST_ROOM,
+      nextAccessCode: "DEMO-2027",
+    })).rejects.toThrow("Sheet API request failed: 401");
   });
 
   it("管理者コード変更は現行 token 不一致なら 401 エラーになる", async () => {

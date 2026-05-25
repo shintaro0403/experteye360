@@ -4,6 +4,7 @@ import { DEFAULT_SETTINGS } from "./seed";
 import {
   appendSheetResponse,
   changeAdminTokenViaApi,
+  changeTrainingCodeViaApi,
   loadSheetResponses,
   loadSheetSettings,
   saveSheetSettings,
@@ -42,8 +43,21 @@ type ChangeAdminTokenAsyncInput = {
   nextAdminToken: string;
 };
 
+type ChangeTrainingCodeAsyncInput = {
+  adminToken: string;
+  roomId: string;
+  nextAccessCode: string;
+};
+
 function getStorageEnv(): StorageEnv {
-  return ((import.meta as ImportMeta & { env?: StorageEnv }).env ?? {}) as StorageEnv;
+  const viteEnv = ((import.meta as ImportMeta & { env?: StorageEnv }).env ?? {}) as StorageEnv;
+  const nodeEnv =
+    typeof process === "undefined" ? {} : (process.env as Record<string, string | undefined>);
+  return {
+    VITE_STORAGE_BACKEND: viteEnv.VITE_STORAGE_BACKEND ?? nodeEnv.VITE_STORAGE_BACKEND,
+    VITE_SHEET_API_BASE: viteEnv.VITE_SHEET_API_BASE ?? nodeEnv.VITE_SHEET_API_BASE,
+    VITE_CLIENT_ID: viteEnv.VITE_CLIENT_ID ?? nodeEnv.VITE_CLIENT_ID,
+  };
 }
 
 export function isSheetStorageBackend(): boolean {
@@ -277,4 +291,23 @@ export async function changeAdminTokenAsync(input: ChangeAdminTokenAsyncInput): 
     adminToken: input.adminToken,
     nextAdminToken: input.nextAdminToken,
   });
+}
+
+export async function changeTrainingCodeAsync(input: ChangeTrainingCodeAsyncInput): Promise<void> {
+  if (!isSheetStorageBackend()) {
+    throw new Error("Changing training code via API requires sheet backend");
+  }
+  const adminToken = input.adminToken.trim();
+  const roomId = input.roomId.trim();
+  const nextAccessCode = input.nextAccessCode.trim();
+  if (!adminToken) throw new Error("Admin token is required to change training code");
+  if (!roomId) throw new Error("roomId is required to change training code");
+  if (!nextAccessCode) throw new Error("nextAccessCode is required to change training code");
+  await changeTrainingCodeViaApi({
+    ...sheetApiConfig(),
+    adminToken,
+    roomId,
+    nextAccessCode,
+  });
+  window.dispatchEvent(new Event("expertEye360-storage"));
 }

@@ -42,6 +42,11 @@ export type ChangeAdminTokenViaApiInput = AdminSheetApiBase & {
   nextAdminToken: string;
 };
 
+export type ChangeTrainingCodeViaApiInput = AdminSheetApiBase & {
+  roomId: string;
+  nextAccessCode: string;
+};
+
 export async function loadSheetSettings(input: LoadSheetSettingsInput): Promise<AppSettings> {
   return requestJson<AppSettings>(buildUrl(input.apiBaseUrl, "settings", {
     client: input.clientId,
@@ -98,6 +103,21 @@ export async function changeAdminTokenViaApi(input: ChangeAdminTokenViaApiInput)
       token: input.adminToken,
     }),
     postJson({ nextAdminToken: input.nextAdminToken }),
+  );
+}
+
+export async function changeTrainingCodeViaApi(
+  input: ChangeTrainingCodeViaApiInput,
+): Promise<void> {
+  await requestJson<unknown>(
+    buildUrl(input.apiBaseUrl, "rooms/access-code", {
+      client: input.clientId,
+      token: input.adminToken,
+    }),
+    postJson({
+      roomId: input.roomId,
+      nextAccessCode: input.nextAccessCode,
+    }),
   );
 }
 

@@ -7,7 +7,7 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   test: {
     environment: "happy-dom",
-    include: ["shared/src/**/*.test.ts"],
+    include: ["shared/src/**/*.test.ts", "admin-web/src/**/*.test.tsx"],
   },
   resolve: {
     alias: {

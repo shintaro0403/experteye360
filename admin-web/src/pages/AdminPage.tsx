@@ -12,6 +12,7 @@ import { getConfidenceLabel } from "@shared/confidence";
 import { getSubmissionRounds, JUDGMENT_ROUND_COUNT } from "@shared/judgmentFlow";
 import {
   changeAdminTokenAsync,
+  changeTrainingCodeAsync,
   isSheetStorageBackend,
   verifyAdminTokenAsync,
 } from "@shared/storage";
@@ -236,16 +237,26 @@ export function AdminPage() {
   };
 
   const saveTrainingCode = async () => {
-    if (isSheetStorageBackend()) {
-      alert("Sheet API 利用時の研修コード変更は未実装です。現在は demo-2026 を使ってください。");
-      return;
-    }
     const code = trainingCodeDraft.trim();
     if (!code) {
       alert("研修コードを入力してください");
       return;
     }
     const room = primaryTrainingRoom(settings);
+    if (isSheetStorageBackend()) {
+      try {
+        await changeTrainingCodeAsync({
+          adminToken,
+          roomId: room.roomId,
+          nextAccessCode: code,
+        });
+        await refresh();
+        alert("研修コードを保存しました。受講者に新しいコードを案内してください。");
+      } catch {
+        alert("研修コードの保存に失敗しました。管理者コードを確認して再度お試しください。");
+      }
+      return;
+    }
     const nextRooms =
       settings.rooms.length > 0
         ? settings.rooms.map((r) =>
