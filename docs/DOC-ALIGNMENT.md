@@ -2,7 +2,7 @@
 
 README・各 `docs/*.md`・コードの食い違いをなくすための **参照順** と **現状の一言** をまとめる。更新したら本ファイルの **最終確認日** も直す。
 
-**最終確認日**: 2026-05-25（Phase 2 / 2.5 の実装・テスト状態を反映）
+**最終確認日**: 2026-05-25（Phase 2 / 2.5 / Phase 3 入口の実装・テスト状態を反映）
 
 ---
 
@@ -119,18 +119,18 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 
 **F7 PDF**
 
-- **実装** — なし
-- **自動テスト** — なし
-- **備考** — §6 README・Phase 3
+- **実装** — 共有ロジックの最小実装あり（`shared/src/pdfExport.ts`）
+- **自動テスト** — `pdfExport.test` あり
+- **備考** — jsPDF 本レイアウト、管理者ダウンロード UI、実 PDF 目視は未
 
 **F8 OJT**
 
-- **実装** — なし
-- **自動テスト** — なし
-- **備考** — README §7 は **将来**
+- **実装** — 共有ロジックの最小実装あり（`shared/src/ojtExport.ts`）
+- **自動テスト** — `ojtExport.test` あり
+- **備考** — UI・ファイル出力は未
 
 ```bash
-npm test          # ルート Vitest（shared）。現状 11 files / 56 tests Green
+npm test          # ルート Vitest（shared）。現状 13 files / 63 tests Green
 npm run test:watch
 ```
 
@@ -172,7 +172,7 @@ npm run test:watch
 **OJT**
 
 - **誤りやすい** — README §7 がある
-- **正しい現状** — **説明は将来用**。実装・テストは **なし**（Phase 3）
+- **正しい現状** — 共有ロジックとテストは **Phase 3 入口として Green**。未なのは **管理者 UI・ファイル出力**
 
 **テストの書き方**
 

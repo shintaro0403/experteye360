@@ -9,9 +9,11 @@
     "dev:admin": "npm run dev --prefix admin-web",
     "build:all": "npm run build --prefix participant-web && npm run build --prefix admin-web",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "test:watch": "vitest"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/node": "^22.19.19",
     "happy-dom": "^17.4.4",
     "typescript": "5.7.3",

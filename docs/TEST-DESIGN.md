@@ -46,8 +46,8 @@
   - [4.4 shared/src/types.ts](#44-shared/src/typests)
   - [4.5 shared/src/submission.ts（新規）→ submission.test.ts](#45-shared/src/submissionts-submissiontestts)
   - [4.6 shared/src/normalizeScene.ts（新規）→ normalizeScene.test.ts](#46-shared/src/normalizeScenets-normalizeScenetestts)
-  - [4.7 shared/src/pdfExport.ts（新規）→ pdfExport.test.ts](#47-shared/src/pdfExportts-pdfExporttestts)
-  - [4.8 shared/src/ojtExport.ts（新規）→ ojtExport.test.ts](#48-shared/src/ojtExportts-ojtExporttestts)
+  - [4.7 shared/src/pdfExport.ts → pdfExport.test.ts](#47-shared/src/pdfExportts-pdfExporttestts)
+  - [4.8 shared/src/ojtExport.ts → ojtExport.test.ts](#48-shared/src/ojtExportts-ojtExporttestts)
   - [4.9 shared/src/test/fixtures.ts（補助）](#49-shared/src/test/fixturests)
   - [4.10 participant-web/src/hooks/useAppData.ts → useAppData.test.ts](#410-participant-web/src/hooks/useAppDatats-useAppDatatestts)
   - [4.11 participant-web/src/pages/ParticipantPage.tsx → ParticipantPage.test.tsx](#411-participant-web/src/pages/ParticipantPagetsx-ParticipantPagetesttsx)
@@ -121,7 +121,7 @@
 - **対象**: `shared/src`（最優先）→ `participant-web` / `admin-web`
 - **関連仕様**: [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md) §3.2.3・§3.2.4（iframe レイアウト）、§4（F3〜F8）、§5（永続化）
 - **永続化仕様**: [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)
-- **現状**: **Vitest 導入済み**（ルート `npm test`）。Phase 0 / 1 / 2 は Green。Sheet API は `sheetApi.test.ts` と `storage/sheet.ts` の入口のみ Green（GAS・`VITE_STORAGE_BACKEND`・画面配線は未）。入室 UI（研修コード・管理者コード）は **local 実装済み**
+- **現状**: **Vitest 導入済み**（ルート `npm test`）。Phase 0 / 1 / 2 は Green。Sheet API は `sheetApi.test.ts` と `storage/sheet.ts` の入口のみ Green（GAS・`VITE_STORAGE_BACKEND`・画面配線は未）。入室 UI（研修コード・管理者コード）は **local 実装済み**。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口まで Green（jsPDF 本実装・UI 配線・ファイル出力は未）
 
 ### 1.1 改訂履歴
 
@@ -179,7 +179,7 @@
 
 **役割** — 振る舞い ID（C-01、V-04 等）とファイル対応の辞書。**Phase は書かない**
 
-**現在のマイルストーン**: **Phase 2.5**（本番永続化。Sheet API 契約入口は Green、統合は継続）
+**現在のマイルストーン**: **Phase 2.5 継続 + Phase 3 入口 Green**（本番永続化は Sheet API 契約入口まで Green、統合は継続。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口まで Green）
 
 **2 つの優先軸**（混同しない）
 
@@ -231,7 +231,7 @@
 
 **Phase** — **3**
 **ゴール（1行）** — F7 PDF・UI 配線・OJT
-**含めるもの** — `pdfExport`（jsPDF）、`AdminPage` エクスポート UI、薄い `*.test.tsx`、`ojtExport`（F8）
+**含めるもの** — `pdfExport`（入口実装済み。jsPDF 本実装は継続）、`AdminPage` エクスポート UI、薄い `*.test.tsx`、`ojtExport`（F8・入口実装済み）
 **含めないもの** — Playwright 本格（Phase 4）
 **完了条件** — §8「Phase 3」
 
@@ -302,7 +302,7 @@
 
 **README / 機能** — §6 講師・管理者画面（F7）
 **現行実装** — 回答済み一覧・詳細のみ
-**今回マイルストーン** — 一覧は現状、PDF Phase 3
+**今回マイルストーン** — 一覧は現状、PDF 共有ロジック入口は Phase 3 で Green。管理者 UI / jsPDF 本実装は Phase 3 継続
 **主なテスト** — `sheetApi`, `AdminPage`, `pdfExport`
 **備考** — §1.4。一覧は回答済みのみ・保存順表示
 
@@ -310,7 +310,7 @@
 
 **README / 機能** — §7 OJT 整理
 **現行実装** — **なし**
-**今回マイルストーン** — Phase 3（F8）
+**今回マイルストーン** — Phase 3（F8）。共有ロジック入口は Green、UI / ファイル出力は継続
 **主なテスト** — `ojtExport`
 **備考** — PDF（F7）とは別機能
 
@@ -390,10 +390,10 @@
 
 #### Phase 3 — 作業順（F7 PDF・F8 OJT）
 
-1. `shared/src/pdfExport.ts`（jsPDF。§1.4）→ `pdfExport.test.ts`（ID: PDF）
+1. `shared/src/pdfExport.ts`（入口実装済み。jsPDF 本実装は継続。§1.4）→ `pdfExport.test.ts`（ID: PDF）
 2. `admin-web` 回答済み一覧から **1 件選択 → PDF ダウンロード**（手動 **B**、代表ケース **A**）
 3. `useAppData.test.ts`（両 Web）
-4. `ojtExport.test.ts`（F8・OJT 用。F7 PDF とは別ファイル）
+4. `ojtExport.test.ts`（F8・OJT 用。F7 PDF とは別ファイル。入口実装済み）
 5. 薄い `*.test.tsx` スモーク
 
 #### Phase 4 — 概要
@@ -1375,18 +1375,18 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 - **重要度**: **B**（手動 ADM-M は **A**）
 - **関連機能**: マルチテナント・管理者入室（§1.5）
 
-#### pdfExport.ts（新規）
+#### pdfExport.ts
 
 - **テスト**: `pdfExport.test.ts`
-- **状態**: 未
+- **状態**: 入口 Green（生成用 payload と空でない `Uint8Array`。jsPDF 本実装・管理者 UI は未）
 - **重要度**: **B**（代表 DL は **A**・§1.4）
 - **関連機能**: F7
 - **備考**: 依存 `jspdf`。入力は `ParticipantSubmission` + `Scene`
 
-#### ojtExport.ts（新規）
+#### ojtExport.ts
 
 - **テスト**: `ojtExport.test.ts`
-- **状態**: 未
+- **状態**: 入口 Green（OJT 確認項目テキスト生成。UI・ファイル出力は未）
 - **重要度**: **C**
 - **関連機能**: F8
 
@@ -1722,13 +1722,13 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 - **内容**: 空行除去
 - **関連**: F3
 
-### 4.7 `shared/src/pdfExport.ts`（新規）→ `pdfExport.test.ts`
+### 4.7 `shared/src/pdfExport.ts` → `pdfExport.test.ts`
 
 **重要度**: ファイル既定 **B**（§2.4）。代表 1 件のダウンロード確認は **A**（手動）
 
 **関連仕様**: [§1.4 F7 ダッシュボード・PDF](#14-f7-講師管理者ダッシュボードと-pdf-エクスポート)、F7
 
-**依存**: `jspdf`（`participant-web` / `admin-web` のいずれか、または `shared` に追加）。Vitest では **生成関数の戻り値**（`Uint8Array` / ヘッダ `%PDF`）を assert し、実ファイルの目視は手動 **A**。
+**依存**: 最終形は `jspdf`（`participant-web` / `admin-web` のいずれか、または `shared` に追加）。現状は最小実装として **生成関数の戻り値**（`Uint8Array` / ヘッダ `%PDF` 相当）と生成用 payload を assert している。実ファイルの目視は手動 **A**。
 
 ### TC-001（PDF-01）
 
@@ -1773,7 +1773,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 
 ---
 
-### 4.8 `shared/src/ojtExport.ts`（新規）→ `ojtExport.test.ts`
+### 4.8 `shared/src/ojtExport.ts` → `ojtExport.test.ts`
 
 **重要度**: **C**（§2.4）
 
@@ -1990,9 +1990,9 @@ shared/src/
 ├── roomEntry.test.ts
 ├── adminEntry.ts              # 新規（管理者コード）
 ├── adminEntry.test.ts
-├── pdfExport.ts               # 新規（F7・jsPDF）
+├── pdfExport.ts               # F7・PDF 生成入口
 ├── pdfExport.test.ts
-├── ojtExport.ts               # 新規（F8・OJT）
+├── ojtExport.ts               # F8・OJT 生成入口
 ├── ojtExport.test.ts
 └── test/
     └── fixtures.ts
@@ -2066,12 +2066,13 @@ admin-web/src/
 
 #### Phase 3 — F7 PDF・UI・OJT
 
-- [ ] `pdfExport.test.ts` 全 TC Green（§4.7 / §1.4）
-- [ ] **B** — 管理者画面から回答済み 1 件の PDF ダウンロード（`jspdf`）
+- [x] `pdfExport.test.ts` 入口 Green（§4.7 / §1.4。生成用 payload と空でない `Uint8Array`）
+- [ ] **B** — `pdfExport.ts` を `jspdf` 本実装へ置き換え
+- [ ] **B** — 管理者画面から回答済み 1 件の PDF ダウンロード
 - [ ] **A** — 代表 1 件の PDF を目視し ①〜⑤ が含まれること
 - [ ] `useAppData.test.ts`（両 Web）
 - [ ] `ParticipantPage.test.tsx` / `AdminPage.test.tsx` スモーク（F7 TC-003 含む）
-- [ ] `ojtExport.test.ts`（F8）
+- [x] `ojtExport.test.ts`（F8・共有ロジック入口）
 
 ---
 

@@ -13,7 +13,7 @@
 
 **関連**: [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md)、[SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)、[README.md](../README.md)
 
-**現状**: **Vitest 導入済み**（ルート `npm test`）。Phase 0 / 1 / 2 は Green。入室 UI 実装済み。永続化の画面配線は **localStorage**、Sheet API は契約テストと `storage/sheet.ts` の入口のみ実装済み（GAS・切替・画面配線は Phase 2.5 継続）
+**現状**: **Vitest 導入済み**（ルート `npm test`）。Phase 0 / 1 / 2 は Green。Phase 2.5 は Sheet API 契約テストと `storage/sheet.ts` の入口のみ実装済み（GAS・切替・画面配線は継続）。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口まで Green（UI・jsPDF 本実装・ファイル出力は未）
 
 ## 目次
 
@@ -33,7 +33,7 @@
   - [1.7 step バリデーション — validateStep.ts 【実装済み】](#17-step-バリデーション-—-validateStepts-【実装済み】)
   - [1.8 送信ペイロード組み立て — submission.ts 【実装済み】](#18-送信ペイロード組み立て-—-submissionts-【実装済み】)
   - [1.9 確信度 — 【要抽出】](#19-確信度-—-【要抽出】)
-  - [1.10 OJT 出力 — 【未実装】（README §7・F8。Phase 3）](#110-OJT-出力-—-【未実装】)
+  - [1.10 OJT 出力 — 【実装済み・入口】（README §7・F8。Phase 3）](#110-OJT-出力-—-【実装済み入口】)
 - [2. 永続化](#2-永続化)
   - [2.1 storage — localStorage 【実装済み・開発用】](#21-storage-—-localStorage-【実装済み開発用】)
   - [2.2 Sheet API → スプレッドシート 【実装済み・入口】](#22-Sheet-API-スプレッドシート-【実装済み入口】)
@@ -109,7 +109,7 @@
 
 - **【実装済み】** … 動くコードあり
 - **【要抽出】** … ページ内ロジック。shared 移動後にテスト
-- **【未実装】** … これから作る（F8 OJT、Sheet API、PDF 等）
+- **【未実装】** … これから作る（GAS、画面配線、PDF ダウンロード UI 等）
 - **【UI なし】** … ロジック・型のみ。画面・テスト対象外
 
 ---
@@ -355,9 +355,9 @@
 
 **CF-02** — 1 未満 → 1、5 超 → 5（または拒否。仕様で固定）
 
-### 1.10 OJT 出力 — 【未実装】（README §7・F8。Phase 3）
+### 1.10 OJT 出力 — 【実装済み・入口】（README §7・F8。Phase 3）
 
-新規: `shared/src/ojtExport.ts`（予定）。現行画面には **ない**。
+現状: `shared/src/ojtExport.ts` と `ojtExport.test.ts` の最小実装は Green。現行画面・ファイル出力には **ない**。
 
 **O-01** — 受講者回答内容から OJT 確認項目テキスト配列を生成
 
@@ -621,7 +621,7 @@
 主なテスト ID: CF, S
 
 **F7** — 講師・管理者画面（README §6）  
-現行: **回答済み**一覧・詳細（実装済み）。保存順表示。PDF（jsPDF・①〜⑤）は **未実装**  
+現行: **回答済み**一覧・詳細（実装済み）。保存順表示。PDF 生成ロジック入口は `pdfExport.ts` / `pdfExport.test.ts` で Green。jsPDF 本レイアウト、管理者ダウンロード UI、目視確認は **未実装**  
 主なテスト ID: A-40, A-53, PDF, ST
 
 **F8** — OJT 引き継ぎ  
@@ -705,7 +705,7 @@
 
 **Phase 2.5** — Sheet API 契約 + 本番切替（契約入口は Green、切替・GAS・UI 配線は継続）
 
-**Phase 3** — F7 PDF（jsPDF）・UI 配線・OJT（F8）
+**Phase 3** — F7 PDF（jsPDF）・UI 配線・OJT（F8）。共有ロジック入口は Green、UI・ファイル出力は継続
 
 **Phase 4** — Playwright・回帰
 

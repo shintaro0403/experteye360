@@ -508,7 +508,7 @@ describe("ParticipantPage", () => {
 #### PDF
 
 - **主テンプレ**: T1 + T5
-- **ファイル（予定）**: `pdfExport.test.ts`
+- **ファイル**: `pdfExport.test.ts`
 - **TC / ID**: PDF
 
 #### 入室 UI

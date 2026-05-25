@@ -13,6 +13,13 @@ import { makeSettings, makeSubmission } from "./test/fixtures";
 describe("storage（local）", () => {
   beforeEach(() => {
     localStorage.clear();
+    document.cookie
+      .split(";")
+      .map((part) => part.split("=")[0]?.trim())
+      .filter((name) => name?.startsWith("expertEye360Responses"))
+      .forEach((name) => {
+        document.cookie = `${name}=; path=/; max-age=0`;
+      });
   });
 
   it("初回 loadSettings ではデモ設定を返して localStorage に保存する", () => {
