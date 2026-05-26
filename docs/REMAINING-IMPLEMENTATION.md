@@ -78,7 +78,7 @@
 - `e2e/embed-layout.spec.ts`
 - `npm run test:e2e`
 
-**状態** — 5 tests Green（Sheet API mock 経由 / `VITE_STORAGE_BACKEND=sheet`）
+**状態** — mock E2E 6 tests Green + 実 GAS / 実シート 1 test Green
 
 **注意** — 受講者 → 管理者共有の本番同等確認は、ライブ GAS の手動疎通と Sheet API mock の Playwright では Green。複数 `client` / 複数 `room` の実環境分離確認はまだ残る。
 
@@ -328,12 +328,12 @@
 - 別 `room` に漏れない代表確認（mock 管理 endpoint）
 - 別 `client` の同一 `room` に漏れない代表確認（mock 管理 endpoint）
 - 研修コード変更後の旧コード拒否・新コード入室確認（Sheet API mock）
+- 管理者コード変更後の旧コード拒否・新コード再入室確認（Sheet API mock）
+- 実 GAS / 実シートで `client` / `room` 不一致時に回答が返らない代表確認
 
 **残り**
 
-- dev GAS / 実 GAS 経路での Playwright または手動確認
-- 複数 `client` に漏れない実 GAS / 実シート確認
-- 不正研修コード・不正管理者コードの E2E
+- 実在する複数 `client` / 複数 `room` を用意した手動確認
 
 **目的** — リリース前に、人間の代表操作に近い形で本番の主要リスクを自動確認する。
 
@@ -376,6 +376,34 @@
 **コード上の期待値** — Sheet API mock は `POST rooms/access-code?client=...&token=...` を受け取り、`roomId` と `nextAccessCode` で該当 room の `accessCode` を更新する。`POST rooms/verify` は更新後の room 設定で照合する。
 
 **状態** — 完了済み（Sheet API mock / `npm run test:e2e` Green）
+
+#### 次の TDD スライス（管理者コード変更）
+
+**目的** — 管理者コードを変更したあと、旧コードでは管理 UI に入れず、新コードだけで再入室できることを固定する。
+
+**受け入れ条件** — 管理者が現行コード `admin-demo` と新コード `admin-next` を入力して保存できる。ロック後、旧コード `admin-demo` は拒否され、新コード `admin-next` では管理 UI に戻れる。
+
+**成功条件** — `npm run test:e2e` が Green になり、失敗時は管理者コード変更後の旧コード拒否 / 新コード入室のどちらが壊れたか分かる。
+
+**どのようにテストするか** — Playwright で管理者ログイン後、管理者コード変更フォームを操作する。ロックして旧コードで入室失敗を assert し、その後新コードで入室成功を assert する。
+
+**コード上の期待値** — Sheet API mock は `POST admin/token?client=...&token=...` を受け取り、`nextAdminToken` で管理者 token を更新する。`GET responses` や `rooms/access-code` の token 照合は更新後の token を使う。
+
+**状態** — 完了済み（Sheet API mock / `npm run test:e2e` Green）
+
+#### 次の TDD スライス（実 GAS / 実シート分離）
+
+**目的** — Sheet API mock ではなく、実 GAS / 実 Google スプレッドシートで `client` / `room` 不一致時に回答が返らないことを確認する。
+
+**受け入れ条件** — 実 GAS の `rooms/verify` で研修コードを検証し、得られた `roomId` に一意な E2E 回答を `POST responses` で保存できる。同じ `client` + `room` + 管理者 token ではその回答が取得できる。別 `client` または別 `room` への `GET responses` では、その回答 ID が返らない。
+
+**成功条件** — opt-in の実環境テスト `npm run test:e2e:real-sheet` が Green。通常の `npm run test:e2e` は実データに触れず、mock E2E のまま Green。
+
+**どのようにテストするか** — Playwright の API テストとして実 GAS URL へ直接 fetch する。`.env.development` の `VITE_SHEET_API_BASE` / `VITE_CLIENT_ID` と、実環境用の管理者 token / 研修コードを runner で `E2E_REAL_*` に渡す。テスト用回答 ID は毎回一意にし、別 `client` / 別 `room` のレスポンス本文に含まれないことを assert する。
+
+**コード上の期待値** — 実環境テストは `E2E_REAL_SHEET=1` のときだけ実行する。`storage/sheet.ts` と同じ `?path=...&client=...&room=...&token=...`、`text/plain;charset=utf-8` JSON body を使い、GAS の `{ ok: false, status, error }` はエラー応答として扱う。
+
+**状態** — 完了済み（`npm run test:e2e:real-sheet` Green）
 
 **受け入れ条件**
 
@@ -641,10 +669,10 @@ flowchart TD
 
 ## 5. 次に着手するなら
 
-**最初の作業** — 複数 `client` / 複数 `room` の実環境分離確認を行う。
+**最初の作業** — PDF 出力 UI テスト、または実在する複数 `client` / 複数 `room` を用意した手動確認を行う。
 
-**理由** — Sheet API mock 経由の SH-07 は Green になったため、次は実 GAS / 実シートで `client` / `room` 漏洩がないことを確認する。
+**理由** — Sheet API mock と実 GAS / 実シートの代表分離確認は Green。次はユーザー向け出力機能か、実在データを複数用意する運用寄りの確認に進む。
 
-**その次** — 研修コード変更後の旧コード拒否・新コード入室確認を、Sheet backend 実環境で行う。
+**その次** — OJT 出力 UI または専用 `adminEntry.test.ts` を追加する。
 
 **推奨** — PDF / OJT UI は、Sheet backend の本番近似確認後に進める。

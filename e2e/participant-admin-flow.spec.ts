@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const PARTICIPANT_URL = "http://127.0.0.1:5175/participant/";
-const ADMIN_URL = "http://127.0.0.1:5176/admin/";
+const PARTICIPANT_URL = "http://127.0.0.1:5275/participant/";
+const ADMIN_URL = "http://127.0.0.1:5276/admin/";
 const SHEET_MOCK_ADMIN_URL = "http://127.0.0.1:5198/__admin";
 
 const awarenessByRound = [
@@ -161,5 +161,24 @@ test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
     await verifyTrainingCodeOnParticipant(newCodeParticipant, "NEXT-2026");
     await expect(newCodeParticipant.getByPlaceholder("例：山田 太郎")).toBeVisible();
     await newCodeParticipant.close();
+  });
+
+  test("管理者が変更した管理者コードだけで再入室できる", async ({ page }) => {
+    await resetSheetMock();
+    await loginAdmin(page);
+
+    await page.getByPlaceholder("現在のコード").fill("admin-demo");
+    await page.getByPlaceholder("4文字以上").fill("admin-next");
+    await page.getByRole("button", { name: "管理者コードを変更" }).click();
+    await expect(page.getByRole("status")).toContainText("管理者コードを変更しました");
+
+    await page.getByRole("button", { name: "ロック" }).click();
+    await page.getByPlaceholder("管理者コード").fill("admin-demo");
+    await page.getByRole("button", { name: "入室する" }).click();
+    await expect(page.getByRole("alert")).toContainText("管理者コードが正しくありません");
+
+    await page.getByPlaceholder("管理者コード").fill("admin-next");
+    await page.getByRole("button", { name: "入室する" }).click();
+    await expect(page.getByRole("button", { name: "ロック" })).toBeVisible();
   });
 });

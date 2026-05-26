@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test.describe("Phase 4 E2E: iframe レイアウト", () => {
   test("受講者 iframe は 25% 帯の中でアプリを 100% 表示する", async ({ page }) => {
-    await page.goto("http://127.0.0.1:5175/participant/embed-preview.html");
+    await page.goto("http://127.0.0.1:5275/participant/embed-preview.html");
 
     const frame = page.frameLocator("iframe");
     await expect(frame.getByText("研修コード")).toBeVisible();
@@ -28,7 +28,7 @@ test.describe("Phase 4 E2E: iframe レイアウト", () => {
   });
 
   test("管理者 iframe は 40% パネルの中でアプリを 100% 表示する", async ({ page }) => {
-    await page.goto("http://127.0.0.1:5176/admin/embed-preview.html");
+    await page.goto("http://127.0.0.1:5276/admin/embed-preview.html");
 
     const frame = page.frameLocator("iframe");
     await expect(frame.getByText("管理者コード").first()).toBeVisible();

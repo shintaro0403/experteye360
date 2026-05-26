@@ -68,6 +68,7 @@ function createInitialState() {
     },
     responsesByClientRoom: {},
     requestLog: [],
+    adminToken: ADMIN_TOKEN,
   };
 }
 
@@ -120,7 +121,7 @@ function settingsForClient(client) {
 }
 
 function isAuthorized(url) {
-  return url.searchParams.get("token") === ADMIN_TOKEN;
+  return url.searchParams.get("token") === state.adminToken;
 }
 
 async function handleSheetApi(req, res, url) {
@@ -172,6 +173,23 @@ async function handleSheetApi(req, res, url) {
       return;
     }
     room.accessCode = nextAccessCode;
+    sendJson(res, 200, { ok: true });
+    return;
+  }
+
+  if (req.method === "POST" && path === "admin/token") {
+    if (!isAuthorized(url)) {
+      sendJson(res, 403, { ok: false, error: "invalid_admin_token" });
+      return;
+    }
+    const body = await readJson(req);
+    const nextAdminToken = typeof body.nextAdminToken === "string" ? body.nextAdminToken.trim() : "";
+    if (nextAdminToken.length < 4) {
+      sendJson(res, 400, { ok: false, error: "invalid_next_admin_token" });
+      return;
+    }
+    state.adminToken = nextAdminToken;
+    settings.adminAccessCode = nextAdminToken;
     sendJson(res, 200, { ok: true });
     return;
   }
