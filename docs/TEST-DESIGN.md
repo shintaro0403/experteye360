@@ -121,7 +121,7 @@
 - **対象**: `shared/src`（最優先）→ `participant-web` / `admin-web`
 - **関連仕様**: [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md) §3.2.3・§3.2.4（iframe レイアウト）、§4（F3〜F8）、§5（永続化）
 - **永続化仕様**: [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)
-- **現状**: **Vitest 導入済み**（ルート `npm test` は 14 files / 80 tests Green）。Phase 0 / 1 / 2 は Green。Sheet API は GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線、管理画面からの研修コード変更まで最小実装済み。入室 UI（研修コード・管理者コード）は **local / sheet** 対応。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口まで Green（jsPDF 本実装・UI 配線・ファイル出力は未）
+- **現状**: **Vitest 導入済み**（ルート `npm test` は 14 files / 83 tests Green）。Phase 0 / 1 / 2 は Green。Sheet API は GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線、管理画面からの研修コード変更まで最小実装済み。入室 UI（研修コード・管理者コード）は **local / sheet** 対応。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口、PDF ダウンロード UI 代表テスト、開ける最小 PDF 構造、日本語対応・最低限の装飾まで Green（実 PDF 目視・OJT UI は未）
 
 ### 1.1 改訂履歴
 
@@ -163,7 +163,7 @@
 
 **2.0**（2026-05-25）— Phase 2 の `storage` / `seed` テスト追加と、Phase 2.5 の Sheet API 契約入口・`storage/sheet.ts` 最小実装を反映
 
-**2.1**（2026-05-26）— Sheet API 契約 TC-005〜013、`rooms/access-code`、管理画面の研修コード変更 UI テスト、14 files / 80 tests Green を反映
+**2.1**（2026-05-26）— Sheet API 契約 TC-005〜013、`rooms/access-code`、管理画面の研修コード変更 UI テスト、PDF ダウンロード UI 代表テスト、開ける最小 PDF 構造・日本語対応・装飾テスト、14 files / 83 tests Green を反映
 
 ### 1.2 テストスコープとマイルストーン
 
@@ -233,7 +233,7 @@
 
 **Phase** — **3**
 **ゴール（1行）** — F7 PDF・UI 配線・OJT
-**含めるもの** — `pdfExport`（入口実装済み。jsPDF 本実装は継続）、`AdminPage` エクスポート UI、薄い `*.test.tsx`、`ojtExport`（F8・入口実装済み）
+**含めるもの** — `pdfExport`（入口実装済み。PDF 本レイアウトと目視確認は継続）、`AdminPage` エクスポート UI、薄い `*.test.tsx`、`ojtExport`（F8・入口実装済み）
 **含めないもの** — Playwright 本格（Phase 4）
 **完了条件** — §8「Phase 3」
 
@@ -304,7 +304,7 @@
 
 **README / 機能** — §6 講師・管理者画面（F7）
 **現行実装** — 回答済み一覧・詳細のみ
-**今回マイルストーン** — 一覧は現状、PDF 共有ロジック入口は Phase 3 で Green。管理者 UI / jsPDF 本実装は Phase 3 継続
+**今回マイルストーン** — 一覧は現状、PDF 共有ロジック入口と管理者 UI は Phase 3 で Green。PDF 本レイアウトと目視確認は Phase 3 継続
 **主なテスト** — `sheetApi`, `AdminPage`, `pdfExport`
 **備考** — §1.4。一覧は回答済みのみ・保存順表示
 
@@ -392,7 +392,7 @@
 
 #### Phase 3 — 作業順（F7 PDF・F8 OJT）
 
-1. `shared/src/pdfExport.ts`（入口実装済み。jsPDF 本実装は継続。§1.4）→ `pdfExport.test.ts`（ID: PDF）
+1. `shared/src/pdfExport.ts`（入口実装済み。PDF 本レイアウトと目視確認は継続。§1.4）→ `pdfExport.test.ts`（ID: PDF）
 2. `admin-web` 回答済み一覧から **1 件選択 → PDF ダウンロード**（手動 **B**、代表ケース **A**）
 3. `useAppData.test.ts`（両 Web）
 4. `ojtExport.test.ts`（F8・OJT 用。F7 PDF とは別ファイル。入口実装済み）
@@ -1404,7 +1404,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 #### pdfExport.ts
 
 - **テスト**: `pdfExport.test.ts`
-- **状態**: 入口 Green（生成用 payload と空でない `Uint8Array`。jsPDF 本実装・管理者 UI は未）
+- **状態**: 入口 Green（生成用 payload、開ける最小 PDF 構造、日本語対応・最低限の装飾を持つ `Uint8Array`。管理者回答詳細からの PDF ダウンロード UI 代表テストも Green。実 PDF 目視は未）
 - **重要度**: **B**（代表 DL は **A**・§1.4）
 - **関連機能**: F7
 - **備考**: 依存 `jspdf`。入力は `ParticipantSubmission` + `Scene`
@@ -1455,7 +1455,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 #### [pages/AdminPage.tsx](../admin-web/src/pages/AdminPage.tsx)
 
 - **テスト**: `pages/AdminPage.test.tsx`
-- **状態**: Green（Sheet backend の研修コード変更 UI）。回答一覧・PDF/OJT UI のスモークは未
+- **状態**: Green（Sheet backend の研修コード変更 UI、回答詳細からの PDF ダウンロード UI）。OJT UI のスモークは未
 - **重要度**: **B**
 - **備考**: 保存正規化は `sceneQuestions.test.ts`
 
@@ -2092,12 +2092,12 @@ admin-web/src/
 
 #### Phase 3 — F7 PDF・UI・OJT
 
-- [x] `pdfExport.test.ts` 入口 Green（§4.7 / §1.4。生成用 payload と空でない `Uint8Array`）
+- [x] `pdfExport.test.ts` 入口 Green（§4.7 / §1.4。生成用 payload、開ける最小 PDF 構造、日本語対応・最低限の装飾を持つ `Uint8Array`）
 - [ ] **B** — `pdfExport.ts` を `jspdf` 本実装へ置き換え
-- [ ] **B** — 管理者画面から回答済み 1 件の PDF ダウンロード
+- [x] **B** — 管理者画面から回答済み 1 件の PDF ダウンロード（代表 UI テスト Green）
 - [ ] **A** — 代表 1 件の PDF を目視し ①〜⑤ が含まれること
 - [ ] `useAppData.test.ts`（両 Web）
-- [ ] `ParticipantPage.test.tsx` スモーク、`AdminPage.test.tsx` の回答一覧・PDF/OJT スモーク（研修コード変更 UI の `AdminPage.test.tsx` は Green）
+- [ ] `ParticipantPage.test.tsx` スモーク、`AdminPage.test.tsx` の回答一覧・OJT スモーク（研修コード変更 UI と PDF ダウンロード UI の `AdminPage.test.tsx` は Green）
 - [x] `ojtExport.test.ts`（F8・共有ロジック入口）
 
 ---

@@ -4,7 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SESSION_ADMIN_AUTH_KEY, SESSION_ADMIN_TOKEN_KEY } from "@shared/adminEntry";
 import { primaryTrainingRoom } from "@shared/appSettings";
 import { DEFAULT_SETTINGS } from "@shared/seed";
+import { generateParticipantPdf } from "@shared/pdfExport";
 import { changeTrainingCodeAsync } from "@shared/storage";
+import { makeScene, makeSettings, makeSubmission } from "@shared/test/fixtures";
 import { useAppData } from "../hooks/useAppData";
 import { AdminPage } from "./AdminPage";
 
@@ -21,6 +23,10 @@ vi.mock("@shared/storage", async (importOriginal) => {
 
 vi.mock("../hooks/useAppData", () => ({
   useAppData: vi.fn(),
+}));
+
+vi.mock("@shared/pdfExport", () => ({
+  generateParticipantPdf: vi.fn(() => new Uint8Array([37, 80, 68, 70])),
 }));
 
 describe("AdminPage", () => {
@@ -100,6 +106,45 @@ describe("AdminPage", () => {
     expect(window.alert).toHaveBeenCalledWith("研修コードの保存に失敗しました。管理者コードを確認して再度お試しください。");
   });
 
+  it("回答詳細から選択中回答の PDF を生成できる", async () => {
+    const submission = makeSubmission({
+      id: "pdf-response-1",
+      participantName: "PDF 太郎",
+      sceneId: "scene-pdf",
+    });
+    const settings = makeSettings({
+      scenes: [makeScene({ id: "scene-pdf", displayName: "PDF 確認シーン" })],
+    });
+    vi.mocked(useAppData).mockReturnValue({
+      settings,
+      setSettings: vi.fn().mockResolvedValue(undefined),
+      responses: [submission],
+      addResponse: vi.fn().mockResolvedValue(undefined),
+      replaceResponses: vi.fn().mockResolvedValue(undefined),
+      refresh,
+      loading: false,
+      error: null,
+    });
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:pdf");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+
+    await render();
+    await act(async () => {
+      getButton("回答").click();
+    });
+    await act(async () => {
+      getButtonContaining("PDF 太郎").click();
+    });
+    await act(async () => {
+      getButton("PDFをダウンロード").click();
+    });
+
+    expect(generateParticipantPdf).toHaveBeenCalledWith({
+      submission,
+      scene: settings.scenes[0],
+    });
+  });
+
   async function render() {
     root = createRoot(container);
     await act(async () => {
@@ -118,6 +163,14 @@ describe("AdminPage", () => {
       (candidate) => candidate.textContent?.trim() === name,
     );
     if (!(button instanceof HTMLButtonElement)) throw new Error(`button not found: ${name}`);
+    return button;
+  }
+
+  function getButtonContaining(text: string): HTMLButtonElement {
+    const button = Array.from(container.querySelectorAll("button")).find(
+      (candidate) => candidate.textContent?.includes(text),
+    );
+    if (!(button instanceof HTMLButtonElement)) throw new Error(`button not found containing: ${text}`);
     return button;
   }
 

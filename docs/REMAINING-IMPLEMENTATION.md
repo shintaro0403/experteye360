@@ -48,7 +48,7 @@
 - シーン・カード編集
 - 回答一覧・詳細
 
-**未完了** — Sheet backend の実環境 E2E / 分離確認、PDF / OJT UI
+**未完了** — 実在する複数 `client` / 複数 `room` の手動確認、PDF 本レイアウト・目視確認、OJT UI
 
 ### shared ロジック
 
@@ -67,7 +67,7 @@
 - `pdfExport`（生成 payload と `Uint8Array` の入口）
 - `ojtExport`（確認項目テキスト生成の入口）
 
-**テスト** — `npm test` は 14 files / 80 tests Green
+**テスト** — `npm test` は 14 files / 83 tests Green
 
 ### Playwright
 
@@ -437,10 +437,14 @@
 
 ### F. PDF
 
+**最小実装済み**
+
+- 管理者画面の PDF ダウンロード UI（回答詳細から `generateParticipantPdf` を呼ぶ代表導線）
+- 開ける最小 PDF 構造（`xref` / `trailer` / `startxref` / `%%EOF`）
+- 日本語・英語・数字の UTF-16BE text 出力と最低限の装飾（タイトル帯・区切り線）
+
 **未実装**
 
-- `jsPDF` 本実装
-- 管理者画面の PDF ダウンロード UI
 - ファイル名ルール
 - 実 PDF の目視確認
 - PDF に含める項目の最終レイアウト
@@ -478,6 +482,48 @@
 - `buildParticipantPdfPayload()` は trim 済みの `participantName` / `affiliation` を含む。
 - `confidenceLevel` は `getConfidenceLabel()` の表示文言に変換される。
 - 管理者 UI は選択中回答と `sceneId` に対応する `Scene` を渡す。
+
+#### 今回の TDD スライス
+
+**目的** — 管理者が回答詳細から PDF 生成を実行できる UI 導線を固定する。
+
+**受け入れ条件** — 管理者画面の回答一覧で 1 件を選択すると、回答詳細に PDF ダウンロードボタンが表示される。クリックすると選択中の `ParticipantSubmission` と対応する `Scene` が `generateParticipantPdf` に渡る。
+
+**成功条件** — `AdminPage.test.tsx` が Green。既存の `pdfExport.test.ts`、`npm test`、必要な E2E が Green。
+
+**どのようにテストするか** — `AdminPage.test.tsx` で `useAppData` に 1 件の回答と対応シーンを返させる。回答タブを開き、回答を選択して PDF ボタンをクリックし、`generateParticipantPdf({ submission, scene })` が呼ばれたことを assert する。
+
+**コード上の期待値** — `AdminPage` は回答詳細表示時だけ PDF ボタンを出す。ボタンは `@shared/pdfExport` の `generateParticipantPdf` を呼び、返った `Uint8Array` を `Blob` 化して `download` 付きリンクで保存させる。シーンが見つからない回答ではボタンを出さない。
+
+**状態** — 完了済み（`AdminPage.test.tsx` / `npm test` Green）
+
+#### 次の TDD スライス（開ける PDF）
+
+**目的** — ダウンロードした PDF が PDF ビューアで壊れたファイルとして扱われないように、最低限の PDF ファイル構造を固定する。
+
+**受け入れ条件** — `generateParticipantPdf()` が返すバイナリは `%PDF-1.4` で始まり、`xref`、`trailer`、`startxref`、`%%EOF` を含む。`startxref` の値は実際の `xref` 位置を指す。
+
+**成功条件** — `pdfExport.test.ts` が Green。管理者画面の PDF ダウンロード UI テスト、`npm test`、必要な E2E が Green。
+
+**どのようにテストするか** — `pdfExport.test.ts` で `generateParticipantPdf()` の戻り値を Latin-1 文字列に変換し、PDF ヘッダ・xref・trailer・startxref・EOF と、xref offset の整合を assert する。
+
+**コード上の期待値** — `generateParticipantPdf()` は JSON 文字列をそのまま返すのではなく、Catalog / Pages / Page / Font / Contents オブジェクト、xref table、trailer、startxref を持つ最小 PDF を生成する。
+
+**状態** — 完了済み（`pdfExport.test.ts` / `npm test` Green）
+
+#### 次の TDD スライス（日本語対応・装飾）
+
+**目的** — PDF 内の日本語が `?` などに置き換わらず、英語・数字と一緒に読める形で出力され、結果票として見やすい最低限の装飾を持つようにする。
+
+**受け入れ条件** — `generateParticipantPdf()` が Type0 / `UniJIS-UTF16-H` の日本語対応フォント指定を持ち、日本語・英語・数字を UTF-16BE の PDF text として出力する。タイトル、基本情報、設問ブロックには背景色や区切り線などの装飾命令が含まれる。
+
+**成功条件** — `pdfExport.test.ts` が Green。管理者画面の PDF ダウンロード UI テスト、`npm test`、必要な E2E が Green。
+
+**どのようにテストするか** — `pdfExport.test.ts` で PDF 本文を Latin-1 文字列として読み、Type0 font / `UniJIS-UTF16-H`、UTF-16BE hex 化された日本語・英語・数字、背景矩形や罫線の描画命令を assert する。
+
+**コード上の期待値** — `generateParticipantPdf()` は Helvetica 前提の ASCII 置換ではなく、CJK Type0 font と UTF-16BE hex string を使って text operator を出力する。本文はタイトル帯、基本情報、設問ごとの区切りを持つ。
+
+**状態** — 完了済み（`pdfExport.test.ts` / `npm test` Green）
 
 ---
 
@@ -669,7 +715,7 @@ flowchart TD
 
 ## 5. 次に着手するなら
 
-**最初の作業** — PDF 出力 UI テスト、または実在する複数 `client` / 複数 `room` を用意した手動確認を行う。
+**最初の作業** — PDF 本レイアウト・実 PDF 目視確認、または実在する複数 `client` / 複数 `room` を用意した手動確認を行う。
 
 **理由** — Sheet API mock と実 GAS / 実シートの代表分離確認は Green。次はユーザー向け出力機能か、実在データを複数用意する運用寄りの確認に進む。
 

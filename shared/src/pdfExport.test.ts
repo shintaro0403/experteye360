@@ -15,6 +15,52 @@ describe("pdfExport", () => {
     expect(pdf.byteLength).toBeGreaterThan(0);
   });
 
+  it("PDF ビューアで開ける最小構造を持つ", () => {
+    const scene = makeScene();
+    const submission = makeSubmission();
+
+    const pdf = generateParticipantPdf({ submission, scene });
+    const text = new TextDecoder("latin1").decode(pdf);
+    const startXrefMatch = text.match(/startxref\s+(\d+)\s+%%EOF\s*$/);
+
+    expect(text.startsWith("%PDF-1.4\n")).toBe(true);
+    expect(text).toContain("\nxref\n");
+    expect(text).toContain("\ntrailer\n");
+    expect(startXrefMatch).not.toBeNull();
+    expect(Number(startXrefMatch?.[1])).toBe(text.indexOf("xref"));
+  });
+
+  it("日本語・英語・数字を UTF-16BE テキストとして持ち、見出しと区切りを装飾する", () => {
+    const scene = makeScene({ displayName: "検査 Area 360" });
+    const submission = makeSubmission({
+      participantName: "山田 Taro 123",
+      affiliation: "品質 QA 1",
+      rounds: [
+        {
+          awarenessSelection: ["気づき A1"],
+          actionSelection: ["班長へ相談する Action 2"],
+          criteriaOrdered: ["品質 C3"],
+          roundNote: "メモ Note 4",
+        },
+      ],
+    });
+
+    const pdf = generateParticipantPdf({ submission, scene });
+    const text = new TextDecoder("latin1").decode(pdf);
+
+    expect(text).toContain("/Subtype /Type0");
+    expect(text).toContain("/Encoding /UniJIS-UTF16-H");
+    expect(text).toContain(`<${utf16BeHex("研修結果 / Training Result")}>`);
+    expect(text).toContain(`<${utf16BeHex("シーン / Scene: 検査 Area 360")}>`);
+    expect(text).toContain(`<${utf16BeHex("名前 / Name: 山田 Taro 123")}>`);
+    expect(text).toContain(`<${utf16BeHex("所属 / Affiliation: 品質 QA 1")}>`);
+    expect(text).toContain(`<${utf16BeHex("設問 1 / Question 1")}>`);
+    expect(text).toContain("0.92 0.96 1 rg");
+    expect(text).toContain(" re f");
+    expect(text).toContain("0.2 0.35 0.65 RG");
+    expect(text).toContain(" S\n");
+  });
+
   it("生成用ペイロードにシーン表示名・名前・所属・確信度ラベルを含める", () => {
     const scene = makeScene({ displayName: "出荷前検査エリア" });
     const submission = makeSubmission({
@@ -95,3 +141,9 @@ describe("pdfExport", () => {
     });
   });
 });
+
+function utf16BeHex(value: string): string {
+  return Array.from({ length: value.length }, (_, index) =>
+    value.charCodeAt(index).toString(16).toUpperCase().padStart(4, "0"),
+  ).join("");
+}

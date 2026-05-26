@@ -13,7 +13,7 @@
 
 **関連**: [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md)、[SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)、[README.md](../README.md)
 
-**現状**: **Vitest 導入済み**（ルート `npm test` は 14 files / 80 tests Green）。Phase 0 / 1 / 2 は Green。Phase 2.5 は Sheet API 契約、GAS、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線、管理画面からの研修コード変更、Sheet API mock 経由の Playwright まで最小実装済み。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口まで Green（UI・jsPDF 本実装・ファイル出力は未）
+**現状**: **Vitest 導入済み**（ルート `npm test` は 14 files / 83 tests Green）。Phase 0 / 1 / 2 は Green。Phase 2.5 は Sheet API 契約、GAS、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線、管理画面からの研修コード変更、Sheet API mock 経由の Playwright まで最小実装済み。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口、PDF ダウンロード UI 代表テスト、開ける最小 PDF 構造、日本語対応・最低限の装飾まで Green（実 PDF 目視・OJT UI は未）
 
 ## 目次
 
@@ -621,7 +621,7 @@
 主なテスト ID: CF, S
 
 **F7** — 講師・管理者画面（README §6）  
-現行: **回答済み**一覧・詳細（実装済み）。保存順表示。PDF 生成ロジック入口は `pdfExport.ts` / `pdfExport.test.ts` で Green。jsPDF 本レイアウト、管理者ダウンロード UI、目視確認は **未実装**  
+現行: **回答済み**一覧・詳細（実装済み）。保存順表示。PDF 生成ロジック入口は `pdfExport.ts` / `pdfExport.test.ts` で Green。管理者回答詳細からの PDF ダウンロード UI 代表テスト、開ける最小 PDF 構造、日本語対応・最低限の装飾も Green。実 PDF 目視確認は **未実装**
 主なテスト ID: A-40, A-53, PDF, ST
 
 **F8** — OJT 引き継ぎ  

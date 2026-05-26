@@ -10,6 +10,7 @@ import {
 } from "@shared/adminEntry";
 import { getConfidenceLabel } from "@shared/confidence";
 import { getSubmissionRounds, JUDGMENT_ROUND_COUNT } from "@shared/judgmentFlow";
+import { generateParticipantPdf } from "@shared/pdfExport";
 import {
   changeAdminTokenAsync,
   changeTrainingCodeAsync,
@@ -91,6 +92,10 @@ function editorDraftToScene(base: Scene, draft: SceneEditorDraft): Scene {
 
 function uid() {
   return crypto.randomUUID();
+}
+
+function safeFilePart(value: string): string {
+  return value.trim().replace(/[\\/:*?"<>|]+/g, "_") || "unknown";
 }
 
 const EMPTY_VETERAN_TEMPLATE = {
@@ -400,6 +405,21 @@ export function AdminPage() {
   const selectedResponse = responses.find((r) => r.id === selectedResponseId) ?? null;
   const selectedResponseScene =
     selectedResponse && settings.scenes.find((s) => s.id === selectedResponse.sceneId);
+
+  const downloadSelectedResponsePdf = () => {
+    if (!selectedResponse || !selectedResponseScene) return;
+    const pdf = generateParticipantPdf({
+      submission: selectedResponse,
+      scene: selectedResponseScene,
+    });
+    const blob = new Blob([pdf], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `experteye360-${safeFilePart(selectedResponse.participantName)}-${safeFilePart(selectedResponse.id)}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   if (!adminAuthed) {
     return (
@@ -772,7 +792,14 @@ export function AdminPage() {
               )}
               {selectedResponse && !selectedResponseScene && <p>シーンが見つかりません。</p>}
               {selectedResponse && selectedResponseScene && (
-                <ResponseDetail response={selectedResponse} sceneLabel={selectedResponseScene.displayName} />
+                <>
+                  <div className="a-actions" style={{ marginBottom: "0.75rem" }}>
+                    <button type="button" className="a-btn a-btn--primary" onClick={downloadSelectedResponsePdf}>
+                      PDFをダウンロード
+                    </button>
+                  </div>
+                  <ResponseDetail response={selectedResponse} sceneLabel={selectedResponseScene.displayName} />
+                </>
               )}
             </div>
           </section>
