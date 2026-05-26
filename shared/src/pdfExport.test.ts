@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildParticipantPdfPayload, generateParticipantPdf } from "./pdfExport";
 import { getConfidenceLabel } from "./confidence";
@@ -50,15 +51,98 @@ describe("pdfExport", () => {
 
     expect(text).toContain("/Subtype /Type0");
     expect(text).toContain("/Encoding /UniJIS-UTF16-H");
-    expect(text).toContain(`<${utf16BeHex("研修結果 / Training Result")}>`);
-    expect(text).toContain(`<${utf16BeHex("シーン / Scene: 検査 Area 360")}>`);
-    expect(text).toContain(`<${utf16BeHex("名前 / Name: 山田 Taro 123")}>`);
-    expect(text).toContain(`<${utf16BeHex("所属 / Affiliation: 品質 QA 1")}>`);
-    expect(text).toContain(`<${utf16BeHex("設問 1 / Question 1")}>`);
-    expect(text).toContain("0.92 0.96 1 rg");
+    expect(text).toContain(`<${utf16BeHex("研修結果レポート")}>`);
+    expect(text).toContain("(EXPERT EYE 360) Tj");
+    expect(text).toContain(`<${utf16BeHex("検査 Area 360")}>`);
+    expect(text).toContain(`<${utf16BeHex("山田 Taro 123")}>`);
+    expect(text).toContain(`<${utf16BeHex("品質 QA 1")}>`);
+    expect(text).toContain("(01) Tj");
+    expect(text).toContain(`<${utf16BeHex("設問別 回答")}>`);
+    expect(text).toContain("0.059 0.165 0.278 rg");
     expect(text).toContain(" re f");
-    expect(text).toContain("0.2 0.35 0.65 RG");
+    expect(text).toContain("0.059 0.165 0.278 RG");
     expect(text).toContain(" S\n");
+  });
+
+  it("pdf.html の主要なデザイン要素を PDF に反映する", () => {
+    const template = readFileSync("pdf.html", "utf8");
+    const scene = makeScene({ displayName: "検査 Area 360" });
+    const submission = makeSubmission({
+      participantName: "山田 Taro 123",
+      affiliation: "品質 QA 1",
+      confidenceLevel: 4,
+      rounds: [
+        {
+          awarenessSelection: ["置き場の違い"],
+          actionSelection: ["後工程担当へ共有する"],
+          criteriaOrdered: ["記録・証跡"],
+          roundNote: "てっすと",
+        },
+      ],
+    });
+
+    const pdf = generateParticipantPdf({ submission, scene });
+    const text = new TextDecoder("latin1").decode(pdf);
+
+    expect(template).toContain("EXPERT EYE 360");
+    expect(template).toContain("研修結果レポート");
+    expect(template).toContain("--navy:        #0F2A47");
+    expect(template).toContain("設問別 回答");
+    expect(text).toContain("(EXPERT EYE 360) Tj");
+    expect(text).toContain(`<${utf16BeHex("研修結果レポート")}>`);
+    expect(text).toContain(`<${utf16BeHex("シーン")}>`);
+    expect(text).toContain(`<${utf16BeHex("名前")}>`);
+    expect(text).toContain(`<${utf16BeHex("所属")}>`);
+    expect(text).toContain(`<${utf16BeHex("確信度")}>`);
+    expect(text).toContain(`<${utf16BeHex("設問別 回答")}>`);
+    expect(text).toContain("(01) Tj");
+    expect(text).toContain("0.059 0.165 0.278 rg");
+    expect(text).toContain("0.059 0.165 0.278 RG");
+  });
+
+  it("目視フィードバックを反映し、番号・ラベル・ヘッダーを読みやすくする", () => {
+    const scene = makeScene();
+    const submission = makeSubmission({
+      rounds: [
+        {
+          awarenessSelection: ["置き場の違い"],
+          actionSelection: ["後工程担当へ共有する"],
+          criteriaOrdered: ["後工程影響"],
+          roundNote: "うわあああ",
+        },
+      ],
+    });
+
+    const pdf = generateParticipantPdf({ submission, scene });
+    const text = new TextDecoder("latin1").decode(pdf);
+
+    expect(text).toContain("/F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
+    expect(text).not.toContain(`<${utf16BeHex("研修結果 / Training Result")}>`);
+    expect(text).not.toContain(`<${utf16BeHex("DOC EE360-RR-0428  ·  DATE 2025.10.28  ·  PAGE 1 / 1")}>`);
+    expect(text).toContain(["BT", "/F2 8 Tf", "72 782 Td", "(EXPERT EYE 360) Tj", "ET"].join("\n"));
+    expect(text).not.toContain("(DOC EE360-RR-0428) Tj");
+    expect(text).toContain(["BT", "/F2 6 Tf", "404 782 Td", "(DATE 2025.10.28) Tj", "ET"].join("\n"));
+    expect(text).toContain(["BT", "/F2 6 Tf", "500 782 Td", "(PAGE 1 / 1) Tj", "ET"].join("\n"));
+    expect(text).not.toContain("54 733 32 3 re f");
+    expect(text).not.toContain(`<${utf16BeHex("EXPERT EYE 360")}>`);
+    expect(text).not.toContain(`<${utf16BeHex("DATE 2025.10.28")}>`);
+    expect(text).not.toContain(`<${utf16BeHex("PAGE 1 / 1")}>`);
+    expect(text).toContain(["BT", "/F1 8 Tf", "487 598 Td", `<${utf16BeHex("全")}> Tj`, "ET"].join("\n"));
+    expect(text).toContain(["BT", "/F2 8 Tf", "502 598 Td", "(5) Tj", "ET"].join("\n"));
+    expect(text).toContain(["BT", "/F1 8 Tf", "515 598 Td", `<${utf16BeHex("件")}> Tj`, "ET"].join("\n"));
+    expect(text).toContain(["BT", "/F2 14 Tf", "67 541 Td", "(01) Tj", "ET"].join("\n"));
+    expect(text).toContain(
+      [
+        "q",
+        "0.290 0.329 0.384 rg",
+        "BT",
+        "/F1 8 Tf",
+        "112 552 Td",
+        `<${utf16BeHex("気づき")}> Tj`,
+        "ET",
+        "Q",
+      ].join("\n"),
+    );
   });
 
   it("生成用ペイロードにシーン表示名・名前・所属・確信度ラベルを含める", () => {

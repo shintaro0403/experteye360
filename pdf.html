@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>研修結果レポート — Training Result</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:        #0F2A47;
+    --navy-2:      #1E4A7A;
+    --ink:         #1A1F2A;
+    --ink-2:       #4A5462;
+    --mute:        #8892A0;
+    --hair:        #E3E6EB;
+    --hair-2:      #F0F2F5;
+    --bg-soft:     #F7F8FA;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #E9ECF0; }
+
+  body {
+    font-family: "Noto Sans JP", "Inter", system-ui, sans-serif;
+    color: var(--ink);
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    padding: 40px 0;
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    background: #ffffff;
+    padding: 20mm 18mm 16mm;
+    position: relative;
+    box-shadow: 0 12px 40px rgba(15,42,71,0.15);
+  }
+
+  /* ───────── HEADER ───────── */
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--hair);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: "Inter", sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--navy);
+    letter-spacing: 0.08em;
+  }
+  .brand .logo {
+    width: 14px; height: 14px;
+    background: var(--navy);
+    border-radius: 2px;
+  }
+  .doc-id {
+    font-family: "Inter", sans-serif;
+    font-size: 10.5px;
+    color: var(--ink-2);
+    letter-spacing: 0.04em;
+  }
+  .doc-id span { color: var(--mute); margin-right: 4px; }
+
+  .title {
+    margin-top: 26px;
+  }
+  .title h1 {
+    font-family: "Noto Sans JP", sans-serif;
+    font-weight: 700;
+    font-size: 30px;
+    line-height: 1.2;
+    margin: 0;
+    color: var(--ink);
+    letter-spacing: 0.04em;
+  }
+  .title .accent {
+    display: inline-block;
+    width: 32px; height: 3px;
+    background: var(--navy);
+    margin-bottom: 12px;
+  }
+
+  /* ───────── SUMMARY ───────── */
+  .summary {
+    margin-top: 22px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border: 1px solid var(--hair);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .summary .cell {
+    padding: 14px 16px;
+    border-right: 1px solid var(--hair);
+  }
+  .summary .cell:last-child { border-right: none; }
+  .summary .label {
+    font-family: "Noto Sans JP", sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink-2);
+    letter-spacing: 0.04em;
+  }
+  .summary .value {
+    margin-top: 8px;
+    font-family: "Noto Sans JP", sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--ink);
+    line-height: 1.35;
+  }
+
+  /* ───────── SECTION HEADER ───────── */
+  .section-head {
+    margin: 26px 0 12px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--navy);
+  }
+  .section-head .left {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .section-head h2 {
+    font-family: "Noto Sans JP", sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    margin: 0;
+    color: var(--ink);
+  }
+  .section-head .count {
+    font-family: "Inter", sans-serif;
+    font-size: 10.5px;
+    color: var(--ink-2);
+    letter-spacing: 0.04em;
+  }
+  .section-head .count b { color: var(--navy); font-weight: 700; }
+
+  /* ───────── QUESTION CARDS ───────── */
+  .questions { display: flex; flex-direction: column; gap: 8px; }
+
+  .qcard {
+    border: 1px solid var(--hair);
+    border-radius: 4px;
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    overflow: hidden;
+  }
+  .qcard .num {
+    background: var(--navy);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 0;
+    font-family: "Inter", sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    line-height: 1;
+    letter-spacing: 0.02em;
+  }
+  .qcard .body {
+    display: grid;
+    grid-template-columns: 1.3fr 1.3fr 1fr 1.1fr;
+  }
+  .qcard .field {
+    padding: 12px 14px;
+    border-right: 1px solid var(--hair-2);
+  }
+  .qcard .field:last-child { border-right: none; }
+  .qcard .flabel {
+    font-family: "Noto Sans JP", sans-serif;
+    font-size: 10.5px;
+    color: var(--mute);
+    font-weight: 500;
+  }
+  .qcard .fvalue {
+    margin-top: 5px;
+    font-family: "Noto Sans JP", sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.4;
+  }
+  .qcard .fvalue.empty {
+    color: var(--mute);
+    font-weight: 400;
+  }
+
+  @media print {
+    html, body { background: white; padding: 0; }
+    .page { box-shadow: none; margin: 0; width: 210mm; height: 297mm; }
+    @page { size: A4; margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="brand">
+      <span class="logo"></span>
+      <span>EXPERT EYE 360</span>
+    </div>
+    <div class="doc-id">
+      <span>DOC</span>EE360-RR-0428 &nbsp;·&nbsp;
+      <span>DATE</span>2025.10.28 &nbsp;·&nbsp;
+      <span>PAGE</span>1 / 1
+    </div>
+  </div>
+
+  <!-- TITLE -->
+  <div class="title">
+    <span class="accent"></span>
+    <h1>研修結果レポート</h1>
+  </div>
+
+  <!-- SUMMARY GRID -->
+  <div class="summary">
+    <div class="cell">
+      <div class="label">シーン</div>
+      <div class="value">検査エリア（デモ）</div>
+    </div>
+    <div class="cell">
+      <div class="label">名前</div>
+      <div class="value">テスト</div>
+    </div>
+    <div class="cell">
+      <div class="label">所属</div>
+      <div class="value">テスト</div>
+    </div>
+    <div class="cell">
+      <div class="label">確信度</div>
+      <div class="value">ある程度自信あり</div>
+    </div>
+  </div>
+
+  <!-- QUESTIONS -->
+  <div class="section-head">
+    <div class="left">
+      <h2>設問別 回答</h2>
+    </div>
+    <div class="count">全 <b>5</b> 件</div>
+  </div>
+
+  <div class="questions">
+
+    <!-- Q1 -->
+    <div class="qcard">
+      <div class="num">01</div>
+      <div class="body">
+        <div class="field">
+          <div class="flabel">気づき</div>
+          <div class="fvalue">置き場の違い</div>
+        </div>
+        <div class="field">
+          <div class="flabel">共有行動</div>
+          <div class="fvalue">後工程担当へ共有する</div>
+        </div>
+        <div class="field">
+          <div class="flabel">判断基準</div>
+          <div class="fvalue">記録・証跡</div>
+        </div>
+        <div class="field">
+          <div class="flabel">メモ</div>
+          <div class="fvalue">てっすと</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q2 -->
+    <div class="qcard">
+      <div class="num">02</div>
+      <div class="body">
+        <div class="field">
+          <div class="flabel">気づき</div>
+          <div class="fvalue">安全保護具の着用</div>
+        </div>
+        <div class="field">
+          <div class="flabel">共有行動</div>
+          <div class="fvalue">後工程担当へ共有する</div>
+        </div>
+        <div class="field">
+          <div class="flabel">判断基準</div>
+          <div class="fvalue">工程</div>
+        </div>
+        <div class="field">
+          <div class="flabel">メモ</div>
+          <div class="fvalue">て〜すと</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q3 -->
+    <div class="qcard">
+      <div class="num">03</div>
+      <div class="body">
+        <div class="field">
+          <div class="flabel">気づき</div>
+          <div class="fvalue">後工程に影響しそうな状態</div>
+        </div>
+        <div class="field">
+          <div class="flabel">共有行動</div>
+          <div class="fvalue">品質管理へ確認する</div>
+        </div>
+        <div class="field">
+          <div class="flabel">判断基準</div>
+          <div class="fvalue">工程</div>
+        </div>
+        <div class="field">
+          <div class="flabel">メモ</div>
+          <div class="fvalue">てすっと</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q4 -->
+    <div class="qcard">
+      <div class="num">04</div>
+      <div class="body">
+        <div class="field">
+          <div class="flabel">気づき</div>
+          <div class="fvalue">照明・視認性</div>
+        </div>
+        <div class="field">
+          <div class="flabel">共有行動</div>
+          <div class="fvalue">作業を一旦止める</div>
+        </div>
+        <div class="field">
+          <div class="flabel">判断基準</div>
+          <div class="fvalue">工程</div>
+        </div>
+        <div class="field">
+          <div class="flabel">メモ</div>
+          <div class="fvalue empty">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Q5 -->
+    <div class="qcard">
+      <div class="num">05</div>
+      <div class="body">
+        <div class="field">
+          <div class="flabel">気づき</div>
+          <div class="fvalue">識別タグの欠落</div>
+        </div>
+        <div class="field">
+          <div class="flabel">共有行動</div>
+          <div class="fvalue">作業を一旦止める</div>
+        </div>
+        <div class="field">
+          <div class="flabel">判断基準</div>
+          <div class="fvalue">安全</div>
+        </div>
+        <div class="field">
+          <div class="flabel">メモ</div>
+          <div class="fvalue">おわり！</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+</body>
+</html>

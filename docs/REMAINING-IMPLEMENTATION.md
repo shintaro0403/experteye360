@@ -48,7 +48,7 @@
 - シーン・カード編集
 - 回答一覧・詳細
 
-**未完了** — 実在する複数 `client` / 複数 `room` の手動確認、PDF 本レイアウト・目視確認、OJT UI
+**未完了** — 実在する複数 `client` / 複数 `room` の手動確認、PDF 目視確認・ファイル名ルール、OJT UI
 
 ### shared ロジック
 
@@ -67,7 +67,7 @@
 - `pdfExport`（生成 payload と `Uint8Array` の入口）
 - `ojtExport`（確認項目テキスト生成の入口）
 
-**テスト** — `npm test` は 14 files / 83 tests Green
+**テスト** — `npm test` は 14 files / 85 tests Green
 
 ### Playwright
 
@@ -442,12 +442,16 @@
 - 管理者画面の PDF ダウンロード UI（回答詳細から `generateParticipantPdf` を呼ぶ代表導線）
 - 開ける最小 PDF 構造（`xref` / `trailer` / `startxref` / `%%EOF`）
 - 日本語・英語・数字の UTF-16BE text 出力と最低限の装飾（タイトル帯・区切り線）
+- `pdf.html` の主要デザイン要素（ブランド、タイトル、4 分割サマリー、設問カード風レイアウト、濃紺アクセント）の反映
+- 目視フィードバック（副題削除、設問番号の太字相当化、灰色ラベルの濃度・サイズ調整、DOC/DATE/PAGE の分割配置）の反映
+- ヘッダーの `EXPERT EYE 360` / `DOC` / `DATE` / `PAGE` の太字相当化と `DATE` / `PAGE` の重なり防止
+- `DOC EE360-RR-0428` の削除、`DATE` / `PAGE` の同一行整列、件数表示 `全 5 件` の数字太字相当化
+- タイトル上の短いアクセント線の削除
 
 **未実装**
 
 - ファイル名ルール
 - 実 PDF の目視確認
-- PDF に含める項目の最終レイアウト
 
 **実装済み入口** — `shared/src/pdfExport.ts`
 
@@ -463,7 +467,7 @@
 
 **成功条件**
 
-- `pdfExport.test.ts` が jsPDF 実装でも Green。
+- `pdfExport.test.ts` が現行のブラウザ側 PDF 生成実装で Green。
 - `AdminPage` の PDF ダウンロード代表テストが Green。
 - 手動で生成 PDF を開き、必要項目が読める。
 - ファイル名が受講者名・日付・回答 ID などで一意に近い。
@@ -522,6 +526,62 @@
 **どのようにテストするか** — `pdfExport.test.ts` で PDF 本文を Latin-1 文字列として読み、Type0 font / `UniJIS-UTF16-H`、UTF-16BE hex 化された日本語・英語・数字、背景矩形や罫線の描画命令を assert する。
 
 **コード上の期待値** — `generateParticipantPdf()` は Helvetica 前提の ASCII 置換ではなく、CJK Type0 font と UTF-16BE hex string を使って text operator を出力する。本文はタイトル帯、基本情報、設問ごとの区切りを持つ。
+
+**状態** — 完了済み（`pdfExport.test.ts` / `npm test` Green）
+
+#### 次の TDD スライス（HTML デザイン参照）
+
+**目的** — ユーザーが用意した `pdf.html` のデザインを PDF 出力の参照元として扱い、出力 PDF が同じ情報設計と主要な装飾を持つようにする。
+
+**受け入れ条件** — `pdf.html` にあるブランド `EXPERT EYE 360`、タイトル `研修結果レポート`、4 分割サマリー（シーン・名前・所属・確信度）、`設問別 回答`、2 桁の設問番号、濃紺アクセントが PDF に反映される。
+
+**成功条件** — `pdfExport.test.ts` が Green。管理者画面の PDF ダウンロード UI テスト、`npm test`、必要な E2E が Green。
+
+**どのようにテストするか** — `pdfExport.test.ts` で `pdf.html` を読み込み、正本に含まれる主要文言を確認する。その上で `generateParticipantPdf()` の PDF 本文に、同じ主要文言の UTF-16BE hex text、2 桁設問番号、HTML の `--navy: #0F2A47` に対応する描画色が含まれることを assert する。
+
+**コード上の期待値** — `generateParticipantPdf()` は `pdf.html` の情報設計に合わせ、ブランド、タイトル、サマリー、設問カード風の構造を PDF content stream に出力する。PDF は引き続き Type0 / `UniJIS-UTF16-H` と UTF-16BE text を使う。
+
+**状態** — 完了済み（`pdfExport.test.ts` / `npm test` Green）
+
+#### 次の TDD スライス（PDF 目視フィードバック反映）
+
+**目的** — 実 PDF の目視で気になったテキスト量・文字の読みやすさ・ヘッダーのはみ出しを修正し、`pdf.html` に近い見た目へ寄せる。
+
+**受け入れ条件** — タイトル下の `研修結果 / Training Result` は出力しない。設問番号は大きすぎない太字相当のフォントで出す。設問カード内の灰色ラベルはつぶれて見えにくい薄色・小サイズを避ける。上部メタ情報は `DOC` / `DATE` / `PAGE` を長い 1 行にせず、DATE が右端にはみ出しにくい配置にする。
+
+**成功条件** — `pdfExport.test.ts` が Red → Green。`npm test`、lint、差分チェックが Green。
+
+**どのようにテストするか** — `pdfExport.test.ts` で PDF content stream を読み、不要な副題が含まれないこと、設問番号が太字用フォントと小さめサイズで出ること、灰色ラベルが濃い色・8pt で出ること、長い DOC/DATE/PAGE 連結テキストではなく分割された DATE/PAGE テキストが含まれることを assert する。
+
+**コード上の期待値** — `buildMinimalPdf()` は日本語本文用 Type0 フォントに加え、ASCII の設問番号用に Helvetica-Bold を `/F2` として持つ。`questionField()` はラベルを濃いめの色・8pt で描く。ヘッダーのメタ情報は短い複数テキストに分ける。
+
+**状態** — 完了済み（`pdfExport.test.ts` / `npm test` Green）
+
+#### 次の TDD スライス（PDF ヘッダーの太字化・重なり防止）
+
+**目的** — PDF 出力時に上部ヘッダーだけが HTML 見本より細く見えたり、`DATE` と `PAGE` が重なったりする問題を修正する。
+
+**受け入れ条件** — `EXPERT EYE 360`、`DOC EE360-RR-0428`、`DATE 2025.10.28`、`PAGE 1 / 1` は ASCII 用の太字相当フォント `/F2` で出力する。`DATE` と `PAGE` は同じ y 座標でも十分に離れた x 座標に置き、`10.2P8AGE` のように文字が重ならない。
+
+**成功条件** — `pdfExport.test.ts` が Red → Green。`npm test`、lint、差分チェックが Green。
+
+**どのようにテストするか** — `pdfExport.test.ts` で PDF content stream を読み、ヘッダー 4 要素が UTF-16BE text ではなく `/F2` の PDF literal text として出ること、`DATE` と `PAGE` の x 座標が離れていることを assert する。
+
+**コード上の期待値** — `buildContentStream()` は上部ヘッダーの ASCII 文字列に `latinTextAt(..., "F2")` を使い、`DATE` と `PAGE` の x 座標を重ならない値にする。
+
+**状態** — 完了済み（`pdfExport.test.ts` / `npm test` Green）
+
+#### 次の TDD スライス（件数表示とヘッダー整列）
+
+**目的** — PDF 出力時に `全 5 件` の数字が細く見える問題と、上部メタ情報の並びがばらつく問題を修正する。
+
+**受け入れ条件** — `全 5 件` は `全` / `件` の日本語部分と数字 `5` を分け、数字は ASCII 用の太字相当フォント `/F2` で出力する。`DOC EE360-RR-0428` は出力しない。上部メタ情報は `DATE 2025.10.28` と `PAGE 1 / 1` のみを同じ y 座標に揃えて出力する。
+
+**成功条件** — `pdfExport.test.ts` が Red → Green。`npm test`、lint、差分チェックが Green。
+
+**どのようにテストするか** — `pdfExport.test.ts` で PDF content stream を読み、`DOC EE360-RR-0428` が含まれないこと、`DATE` と `PAGE` が同じ y 座標かつ `/F2` で出ること、件数の `5` が `/F2` の literal text で出ることを assert する。
+
+**コード上の期待値** — `buildContentStream()` は `DOC` を描画せず、`DATE` と `PAGE` を同一行に揃える。件数表示は `textAt()` と `latinTextAt(..., "F2")` を組み合わせて描画する。
 
 **状態** — 完了済み（`pdfExport.test.ts` / `npm test` Green）
 
@@ -715,7 +775,7 @@ flowchart TD
 
 ## 5. 次に着手するなら
 
-**最初の作業** — PDF 本レイアウト・実 PDF 目視確認、または実在する複数 `client` / 複数 `room` を用意した手動確認を行う。
+**最初の作業** — PDF の実ファイル目視確認・ファイル名ルール、または実在する複数 `client` / 複数 `room` を用意した手動確認を行う。
 
 **理由** — Sheet API mock と実 GAS / 実シートの代表分離確認は Green。次はユーザー向け出力機能か、実在データを複数用意する運用寄りの確認に進む。
 

@@ -74,7 +74,7 @@ function buildMinimalPdf(payload: ParticipantPdfPayload): string {
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
     "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 7 0 R >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> >> >> /Contents 7 0 R >>",
     "<< /Type /Font /Subtype /Type0 /BaseFont /HeiseiKakuGo-W5 /Encoding /UniJIS-UTF16-H /DescendantFonts [5 0 R] >>",
     "<< /Type /Font /Subtype /CIDFontType0 /BaseFont /HeiseiKakuGo-W5 /CIDSystemInfo << /Registry (Adobe) /Ordering (Japan1) /Supplement 5 >> /FontDescriptor 6 0 R >>",
     "<< /Type /FontDescriptor /FontName /HeiseiKakuGo-W5 /Flags 4 /FontBBox [0 -200 1000 900] /ItalicAngle 0 /Ascent 880 /Descent -120 /CapHeight 700 /StemV 80 >>",
@@ -104,49 +104,134 @@ function buildMinimalPdf(payload: ParticipantPdfPayload): string {
 
 function buildContentStream(payload: ParticipantPdfPayload): string {
   const operations: string[] = [
-    "q",
-    "0.92 0.96 1 rg",
-    "36 758 523 48 re f",
-    "0.2 0.35 0.65 RG",
-    "1.2 w",
-    "36 748 m 559 748 l S",
-    "Q",
-    textAt(50, 785, 18, "研修結果 / Training Result"),
-    textAt(50, 735, 11, `シーン / Scene: ${payload.sceneName}`),
-    textAt(50, 715, 11, `名前 / Name: ${payload.participantName}`),
-    textAt(50, 695, 11, `所属 / Affiliation: ${payload.affiliation || "-"}`),
-    textAt(50, 675, 11, `確信度 / Confidence: ${payload.confidenceLabel}`),
+    filledRect(0, 0, 595, 842, PDF_TEMPLATE_COLORS.page),
+    filledRect(54, 779, 10, 10, PDF_TEMPLATE_COLORS.navy),
+    latinTextAt(72, 782, 8, "EXPERT EYE 360", PDF_TEMPLATE_COLORS.navy, "F2"),
+    latinTextAt(404, 782, 6, "DATE 2025.10.28", PDF_TEMPLATE_COLORS.ink2, "F2"),
+    latinTextAt(500, 782, 6, "PAGE 1 / 1", PDF_TEMPLATE_COLORS.ink2, "F2"),
+    line(54, 768, 541, 768, PDF_TEMPLATE_COLORS.hair, 0.8),
+    textAt(54, 706, 22, "研修結果レポート", PDF_TEMPLATE_COLORS.ink),
+    strokedRect(54, 622, 487, 60, PDF_TEMPLATE_COLORS.hair, 0.8),
+    line(176, 622, 176, 682, PDF_TEMPLATE_COLORS.hair, 0.8),
+    line(298, 622, 298, 682, PDF_TEMPLATE_COLORS.hair, 0.8),
+    line(420, 622, 420, 682, PDF_TEMPLATE_COLORS.hair, 0.8),
+    summaryCell(66, 660, "シーン", payload.sceneName),
+    summaryCell(188, 660, "名前", payload.participantName),
+    summaryCell(310, 660, "所属", payload.affiliation || "-"),
+    summaryCell(432, 660, "確信度", payload.confidenceLabel),
+    line(54, 588, 541, 588, PDF_TEMPLATE_COLORS.navy, 1.4),
+    textAt(54, 598, 11, "設問別 回答", PDF_TEMPLATE_COLORS.ink),
+    textAt(487, 598, 8, "全", PDF_TEMPLATE_COLORS.ink2),
+    latinTextAt(502, 598, 8, String(payload.rounds.length), PDF_TEMPLATE_COLORS.ink2, "F2"),
+    textAt(515, 598, 8, "件", PDF_TEMPLATE_COLORS.ink2),
   ];
 
-  let y = 640;
+  let y = 518;
   payload.rounds.forEach((round) => {
-    operations.push(
-      "q",
-      "0.96 0.96 0.96 rg",
-      `42 ${y - 5} 511 20 re f`,
-      "0.72 0.72 0.72 RG",
-      `42 ${y - 10} m 553 ${y - 10} l S`,
-      "Q",
-      textAt(50, y, 11, `設問 ${round.questionNumber} / Question ${round.questionNumber}`),
-      textAt(62, y - 18, 9, `気づき / Awareness: ${round.awarenessSelection.join(", ") || "-"}`),
-      textAt(62, y - 34, 9, `共有行動 / Action: ${round.actionSelection.join(", ") || "-"}`),
-      textAt(62, y - 50, 9, `判断基準 / Criteria: ${round.criteriaSelection.join(", ") || "-"}`),
-      textAt(62, y - 66, 9, `メモ / Note: ${round.roundNote || "-"}`),
-    );
-    y -= 92;
+    operations.push(questionCard(y, round));
+    y -= 72;
   });
 
   return operations.join("\n");
 }
 
-function textAt(x: number, y: number, size: number, value: string): string {
+const PDF_TEMPLATE_COLORS = {
+  page: "1 1 1",
+  navy: "0.059 0.165 0.278",
+  ink: "0.102 0.122 0.165",
+  ink2: "0.290 0.329 0.384",
+  mute: "0.533 0.573 0.627",
+  hair: "0.890 0.902 0.922",
+  hair2: "0.941 0.949 0.961",
+} as const;
+
+function summaryCell(x: number, y: number, label: string, value: string): string {
   return [
+    textAt(x, y, 8, label, PDF_TEMPLATE_COLORS.ink2),
+    textAt(x, y - 20, 10, value, PDF_TEMPLATE_COLORS.ink),
+  ].join("\n");
+}
+
+function questionCard(y: number, round: ParticipantPdfRoundPayload): string {
+  const number = String(round.questionNumber).padStart(2, "0");
+  return [
+    strokedRect(54, y, 487, 58, PDF_TEMPLATE_COLORS.hair, 0.8),
+    filledRect(54, y, 44, 58, PDF_TEMPLATE_COLORS.navy),
+    latinTextAt(67, y + 23, 14, number, "1 1 1", "F2"),
+    questionField(112, y + 34, "気づき", round.awarenessSelection.join(", ") || "-"),
+    line(214, y, 214, y + 58, PDF_TEMPLATE_COLORS.hair2, 0.6),
+    questionField(226, y + 34, "共有行動", round.actionSelection.join(", ") || "-"),
+    line(334, y, 334, y + 58, PDF_TEMPLATE_COLORS.hair2, 0.6),
+    questionField(346, y + 34, "判断基準", round.criteriaSelection.join(", ") || "-"),
+    line(430, y, 430, y + 58, PDF_TEMPLATE_COLORS.hair2, 0.6),
+    questionField(442, y + 34, "メモ", round.roundNote || "-"),
+  ].join("\n");
+}
+
+function questionField(x: number, y: number, label: string, value: string): string {
+  return [
+    textAt(x, y, 8, label, PDF_TEMPLATE_COLORS.ink2),
+    textAt(x, y - 18, 8, value, PDF_TEMPLATE_COLORS.ink),
+  ].join("\n");
+}
+
+function filledRect(x: number, y: number, width: number, height: number, color: string): string {
+  return [
+    "q",
+    `${color} rg`,
+    `${x} ${y} ${width} ${height} re f`,
+    "Q",
+  ].join("\n");
+}
+
+function strokedRect(x: number, y: number, width: number, height: number, color: string, strokeWidth: number): string {
+  return [
+    "q",
+    `${color} RG`,
+    `${strokeWidth} w`,
+    `${x} ${y} ${width} ${height} re S`,
+    "Q",
+  ].join("\n");
+}
+
+function line(x1: number, y1: number, x2: number, y2: number, color: string, strokeWidth: number): string {
+  return [
+    "q",
+    `${color} RG`,
+    `${strokeWidth} w`,
+    `${x1} ${y1} m ${x2} ${y2} l S`,
+    "Q",
+  ].join("\n");
+}
+
+function textAt(x: number, y: number, size: number, value: string, color = PDF_TEMPLATE_COLORS.ink): string {
+  return [
+    "q",
+    `${color} rg`,
     "BT",
     `/F1 ${size} Tf`,
     `${x} ${y} Td`,
     `<${toUtf16BeHex(value)}> Tj`,
     "ET",
+    "Q",
   ].join("\n");
+}
+
+function latinTextAt(x: number, y: number, size: number, value: string, color: string, font = "F1"): string {
+  return [
+    "q",
+    `${color} rg`,
+    "BT",
+    `/${font} ${size} Tf`,
+    `${x} ${y} Td`,
+    `(${escapePdfLiteral(value)}) Tj`,
+    "ET",
+    "Q",
+  ].join("\n");
+}
+
+function escapePdfLiteral(value: string): string {
+  return value.replace(/([()\\])/g, "\\$1");
 }
 
 function toUtf16BeHex(value: string): string {

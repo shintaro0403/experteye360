@@ -759,7 +759,7 @@ POST ボディは JSON。GAS はマスター `clients` で `spreadsheetId` を�
 
 **PDF / 集計**
 
-- **受講者結果 PDF（F7）**: ブラウザ側 **jsPDF** で生成（1 人 1 ファイル）。シートはデータ源のみ。項目・テストは [TEST-DESIGN.md §1.4](./TEST-DESIGN.md#14-f7-講師管理者ダッシュボードと-pdf-エクスポート)
+- **受講者結果 PDF（F7）**: ブラウザ側 `shared/src/pdfExport.ts` で生成（1 人 1 ファイル）。シートはデータ源のみ。項目・テストは [TEST-DESIGN.md §1.4](./TEST-DESIGN.md#14-f7-講師管理者ダッシュボードと-pdf-エクスポート)
 - シート上の集計・OJT 用エクスポート（F8）は別途
 - アプリからは API 経由で `responses` を参照
 

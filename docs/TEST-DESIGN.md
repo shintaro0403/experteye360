@@ -121,7 +121,7 @@
 - **対象**: `shared/src`（最優先）→ `participant-web` / `admin-web`
 - **関連仕様**: [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md) §3.2.3・§3.2.4（iframe レイアウト）、§4（F3〜F8）、§5（永続化）
 - **永続化仕様**: [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)
-- **現状**: **Vitest 導入済み**（ルート `npm test` は 14 files / 83 tests Green）。Phase 0 / 1 / 2 は Green。Sheet API は GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線、管理画面からの研修コード変更まで最小実装済み。入室 UI（研修コード・管理者コード）は **local / sheet** 対応。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口、PDF ダウンロード UI 代表テスト、開ける最小 PDF 構造、日本語対応・最低限の装飾まで Green（実 PDF 目視・OJT UI は未）
+- **現状**: **Vitest 導入済み**（ルート `npm test` は 14 files / 85 tests Green）。Phase 0 / 1 / 2 は Green。Sheet API は GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線、管理画面からの研修コード変更まで最小実装済み。入室 UI（研修コード・管理者コード）は **local / sheet** 対応。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口、PDF ダウンロード UI 代表テスト、開ける最小 PDF 構造、日本語対応、`pdf.html` の主要デザイン要素反映、目視フィードバック反映まで Green（実 PDF 目視・OJT UI は未）
 
 ### 1.1 改訂履歴
 
@@ -163,7 +163,7 @@
 
 **2.0**（2026-05-25）— Phase 2 の `storage` / `seed` テスト追加と、Phase 2.5 の Sheet API 契約入口・`storage/sheet.ts` 最小実装を反映
 
-**2.1**（2026-05-26）— Sheet API 契約 TC-005〜013、`rooms/access-code`、管理画面の研修コード変更 UI テスト、PDF ダウンロード UI 代表テスト、開ける最小 PDF 構造・日本語対応・装飾テスト、14 files / 83 tests Green を反映
+**2.1**（2026-05-26）— Sheet API 契約 TC-005〜013、`rooms/access-code`、管理画面の研修コード変更 UI テスト、PDF ダウンロード UI 代表テスト、開ける最小 PDF 構造・日本語対応・`pdf.html` デザイン参照テスト・目視フィードバック反映テスト、14 files / 85 tests Green を反映
 
 ### 1.2 テストスコープとマイルストーン
 
@@ -233,7 +233,7 @@
 
 **Phase** — **3**
 **ゴール（1行）** — F7 PDF・UI 配線・OJT
-**含めるもの** — `pdfExport`（入口実装済み。PDF 本レイアウトと目視確認は継続）、`AdminPage` エクスポート UI、薄い `*.test.tsx`、`ojtExport`（F8・入口実装済み）
+**含めるもの** — `pdfExport`（入口実装済み。`pdf.html` の主要デザイン要素と目視フィードバック反映まで Green。実 PDF 目視確認は継続）、`AdminPage` エクスポート UI、薄い `*.test.tsx`、`ojtExport`（F8・入口実装済み）
 **含めないもの** — Playwright 本格（Phase 4）
 **完了条件** — §8「Phase 3」
 
@@ -304,7 +304,7 @@
 
 **README / 機能** — §6 講師・管理者画面（F7）
 **現行実装** — 回答済み一覧・詳細のみ
-**今回マイルストーン** — 一覧は現状、PDF 共有ロジック入口と管理者 UI は Phase 3 で Green。PDF 本レイアウトと目視確認は Phase 3 継続
+**今回マイルストーン** — 一覧は現状、PDF 共有ロジック入口と管理者 UI は Phase 3 で Green。PDF は `pdf.html` の主要デザイン要素と目視フィードバック反映まで Green。実 PDF 目視確認は Phase 3 継続
 **主なテスト** — `sheetApi`, `AdminPage`, `pdfExport`
 **備考** — §1.4。一覧は回答済みのみ・保存順表示
 
@@ -392,7 +392,7 @@
 
 #### Phase 3 — 作業順（F7 PDF・F8 OJT）
 
-1. `shared/src/pdfExport.ts`（入口実装済み。PDF 本レイアウトと目視確認は継続。§1.4）→ `pdfExport.test.ts`（ID: PDF）
+1. `shared/src/pdfExport.ts`（入口実装済み。`pdf.html` の主要デザイン要素と目視フィードバック反映まで Green。実 PDF 目視確認は継続。§1.4）→ `pdfExport.test.ts`（ID: PDF）
 2. `admin-web` 回答済み一覧から **1 件選択 → PDF ダウンロード**（手動 **B**、代表ケース **A**）
 3. `useAppData.test.ts`（両 Web）
 4. `ojtExport.test.ts`（F8・OJT 用。F7 PDF とは別ファイル。入口実装済み）
@@ -428,7 +428,7 @@
 
 #### 生成
 
-**仕様** — ブラウザ側 **`jspdf`**（サーバー／GAS で PDF 生成しない）
+**仕様** — ブラウザ側の `shared/src/pdfExport.ts` で PDF バイナリを生成する（サーバー／GAS で PDF 生成しない）
 
 #### 入力データ
 
@@ -757,7 +757,7 @@
 
 **ID** — D-05
 **論点** — PDF（F7）
-**候補（要約）** — **1 人 1 PDF**、項目 ①〜⑤、**jsPDF**。§1.4 を正
+**候補（要約）** — **1 人 1 PDF**、項目 ①〜⑤。現行は `shared/src/pdfExport.ts` のブラウザ側生成を正とする
 **影響** — F7、`pdfExport`
 **決定** — 2026-05-21
 
@@ -1273,7 +1273,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 #### `pdfExport.test.ts`
 
 **既定** — B
-**備考** — F7・jsPDF。代表 DL は **A**（§1.4）
+**備考** — F7・PDF。代表 DL は **A**（§1.4）
 
 #### `ojtExport.test.ts`
 
@@ -1404,7 +1404,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 #### pdfExport.ts
 
 - **テスト**: `pdfExport.test.ts`
-- **状態**: 入口 Green（生成用 payload、開ける最小 PDF 構造、日本語対応・最低限の装飾を持つ `Uint8Array`。管理者回答詳細からの PDF ダウンロード UI 代表テストも Green。実 PDF 目視は未）
+- **状態**: Green（生成用 payload、開ける最小 PDF 構造、日本語対応、`pdf.html` の主要デザイン要素反映、目視フィードバック反映を持つ `Uint8Array`。管理者回答詳細からの PDF ダウンロード UI 代表テストも Green。実 PDF 目視は未）
 - **重要度**: **B**（代表 DL は **A**・§1.4）
 - **関連機能**: F7
 - **備考**: 依存 `jspdf`。入力は `ParticipantSubmission` + `Scene`
@@ -1754,7 +1754,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 
 **関連仕様**: [§1.4 F7 ダッシュボード・PDF](#14-f7-講師管理者ダッシュボードと-pdf-エクスポート)、F7
 
-**依存**: 最終形は `jspdf`（`participant-web` / `admin-web` のいずれか、または `shared` に追加）。現状は最小実装として **生成関数の戻り値**（`Uint8Array` / ヘッダ `%PDF` 相当）と生成用 payload を assert している。実ファイルの目視は手動 **A**。
+**依存**: 現状は `shared/src/pdfExport.ts` で **生成関数の戻り値**（`Uint8Array` / ヘッダ `%PDF` 相当）、生成用 payload、`pdf.html` の主要デザイン要素反映、目視フィードバック反映を assert している。実ファイルの目視は手動 **A**。
 
 ### TC-001（PDF-01）
 
@@ -2092,8 +2092,12 @@ admin-web/src/
 
 #### Phase 3 — F7 PDF・UI・OJT
 
-- [x] `pdfExport.test.ts` 入口 Green（§4.7 / §1.4。生成用 payload、開ける最小 PDF 構造、日本語対応・最低限の装飾を持つ `Uint8Array`）
-- [ ] **B** — `pdfExport.ts` を `jspdf` 本実装へ置き換え
+- [x] `pdfExport.test.ts` 入口 Green（§4.7 / §1.4。生成用 payload、開ける最小 PDF 構造、日本語対応、`pdf.html` の主要デザイン要素反映、目視フィードバック反映を持つ `Uint8Array`）
+- [x] **B** — `pdf.html` のブランド・タイトル・サマリー・設問カード風レイアウト・濃紺アクセントを PDF に反映
+- [x] **B** — 副題削除、設問番号の太字相当化、灰色ラベルの濃度・サイズ調整、DOC/DATE/PAGE の分割配置を PDF に反映
+- [x] **B** — ヘッダーの `EXPERT EYE 360` / `DOC` / `DATE` / `PAGE` を太字相当にし、DATE/PAGE の重なりを防止
+- [x] **B** — `DOC EE360-RR-0428` を削除し、`DATE` / `PAGE` を同一行に整列、件数表示の数字を太字相当にする
+- [x] **B** — 研修結果レポート上の短いアクセント線を削除
 - [x] **B** — 管理者画面から回答済み 1 件の PDF ダウンロード（代表 UI テスト Green）
 - [ ] **A** — 代表 1 件の PDF を目視し ①〜⑤ が含まれること
 - [ ] `useAppData.test.ts`（両 Web）

@@ -2,7 +2,7 @@
 
 README・各 `docs/*.md`・コードの食い違いをなくすための **参照順** と **現状の一言** をまとめる。更新したら本ファイルの **最終確認日** も直す。
 
-**最終確認日**: 2026-05-26（PDF 日本語対応・装飾テストと 14 files / 83 tests Green を反映）
+**最終確認日**: 2026-05-26（PDF の目視フィードバック反映テストと 14 files / 85 tests Green を反映）
 
 ---
 
@@ -119,7 +119,7 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 
 **F7 PDF**
 
-- **実装** — 共有ロジックの最小実装あり（`shared/src/pdfExport.ts`）。管理者回答詳細からの PDF ダウンロード UI も最小実装あり。PDF は最低限の `xref` / `trailer` / `startxref` / `%%EOF` と Type0 / `UniJIS-UTF16-H` の日本語対応、見出し背景・区切り線を持つ
+- **実装** — 共有ロジックの最小実装あり（`shared/src/pdfExport.ts`）。管理者回答詳細からの PDF ダウンロード UI も最小実装あり。PDF は最低限の `xref` / `trailer` / `startxref` / `%%EOF` と Type0 / `UniJIS-UTF16-H` の日本語対応を持ち、`pdf.html` のブランド・タイトル・サマリー・設問カード風レイアウト・濃紺アクセントを反映する。目視フィードバックとして副題削除、タイトル上アクセント線削除、設問番号の太字相当化、ラベルの濃度・サイズ調整、DOC 削除、DATE/PAGE の同一行整列、件数数字の太字相当化も反映済み
 - **自動テスト** — `pdfExport.test` と `AdminPage.test.tsx` の代表 UI テストあり
 - **備考** — 実 PDF 目視は未
 
@@ -130,7 +130,7 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 - **備考** — UI・ファイル出力は未
 
 ```bash
-npm test          # ルート Vitest（shared + admin-web）。現状 14 files / 83 tests Green
+npm test          # ルート Vitest（shared + admin-web）。現状 14 files / 85 tests Green
 npm run test:watch
 ```
 
@@ -167,7 +167,7 @@ npm run test:watch
 **§6 PDF**
 
 - **誤りやすい** — README が実装済みに見える
-- **正しい現状** — PDF 生成ロジックの入口、開ける最小 PDF 構造、日本語対応・最低限の装飾、`pdfExport.test`、管理者回答詳細からの PDF ダウンロード UI 代表テストは Green。未なのは **実 PDF 目視確認**
+- **正しい現状** — PDF 生成ロジックの入口、開ける最小 PDF 構造、日本語対応、`pdf.html` の主要デザイン要素反映、目視フィードバック反映、`pdfExport.test`、管理者回答詳細からの PDF ダウンロード UI 代表テストは Green。未なのは **実 PDF 目視確認**
 
 **OJT**
 
