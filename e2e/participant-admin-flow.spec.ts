@@ -17,8 +17,10 @@ async function resetSheetMock() {
   expect(response.ok).toBeTruthy();
 }
 
-async function loadMockResponses(roomId: string) {
-  const response = await fetch(`${SHEET_MOCK_ADMIN_URL}/responses?room=${encodeURIComponent(roomId)}`);
+async function loadMockResponses(roomId: string, clientId = "client-demo") {
+  const response = await fetch(
+    `${SHEET_MOCK_ADMIN_URL}/responses?client=${encodeURIComponent(clientId)}&room=${encodeURIComponent(roomId)}`,
+  );
   expect(response.ok).toBeTruthy();
   return (await response.json()) as Array<{ id: string; participantName: string; roomId: string }>;
 }
@@ -93,7 +95,7 @@ test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
     await submitFiveQuestionResponse(page, "Phase4 太郎");
   });
 
-  test("受講者が送信した回答を管理者が回答一覧で確認できる", async ({ browser }) => {
+  test("受講者が送信した回答は同一 client + room だけに表示される", async ({ browser }) => {
     await resetSheetMock();
     const participant = await browser.newPage();
     await submitFiveQuestionResponse(participant, "Phase4 共有確認");
@@ -110,6 +112,9 @@ test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
 
     const otherRoomResponses = await loadMockResponses("room-other");
     expect(otherRoomResponses).toEqual([]);
+
+    const otherClientResponses = await loadMockResponses("room-demo-1", "client-other");
+    expect(otherClientResponses).toEqual([]);
 
     const requests = await loadMockRequests();
     expect(requests).toEqual(

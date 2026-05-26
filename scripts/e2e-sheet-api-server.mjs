@@ -191,8 +191,9 @@ async function handleAdmin(req, res, url) {
     return;
   }
   if (req.method === "GET" && url.pathname === "/__admin/responses") {
+    const client = url.searchParams.get("client") ?? CLIENT_ID;
     const room = url.searchParams.get("room") ?? "room-demo-1";
-    sendJson(res, 200, roomResponses(CLIENT_ID, room));
+    sendJson(res, 200, roomResponses(client, room));
     return;
   }
   if (req.method === "GET" && url.pathname === "/__admin/requests") {

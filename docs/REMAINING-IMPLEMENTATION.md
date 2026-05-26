@@ -326,11 +326,12 @@
 - E2E 用共有ストレージから Sheet API mock への置き換え
 - 受講者 → 管理者確認を Sheet API mock 経路で Green
 - 別 `room` に漏れない代表確認（mock 管理 endpoint）
+- 別 `client` の同一 `room` に漏れない代表確認（mock 管理 endpoint）
 
 **残り**
 
 - dev GAS / 実 GAS 経路での Playwright または手動確認
-- 複数 `client` に漏れない確認
+- 複数 `client` に漏れない実 GAS / 実シート確認
 - 不正研修コード・不正管理者コードの E2E
 
 **目的** — リリース前に、人間の代表操作に近い形で本番の主要リスクを自動確認する。
@@ -346,6 +347,20 @@
 **どのようにテストするか** — Playwright の `webServer` で participant / admin / Sheet API mock を起動する。テスト開始時に mock を reset し、受講者で 5 問送信後、管理者が管理者コードで入室して回答一覧を確認する。さらに mock の管理用 endpoint で別 room の responses が空であることを確認する。
 
 **コード上の期待値** — Vite dev server は `VITE_STORAGE_BACKEND=sheet`、`VITE_SHEET_API_BASE=http://127.0.0.1:5198/exec`、`VITE_CLIENT_ID=client-demo` で起動する。Sheet API mock は `?path=settings|rooms/verify|responses` と `client` / `room` / `token` を本番 GAS と同じ形で受ける。
+
+#### 次の TDD スライス
+
+**目的** — 同じ `roomId` を使っていても、`clientId` が違う組織の回答一覧に受講者回答が漏れないことを固定する。
+
+**受け入れ条件** — `client-demo` の受講者が `room-demo-1` に送信した回答は、`client-demo` + `room-demo-1` では見える。`client-other` + `room-demo-1` では同じ `submission.id` / 受講者名が返らない。
+
+**成功条件** — `npm run test:e2e` が Green になり、失敗時は `client` 分離の破れだと分かるテスト名になっている。
+
+**どのようにテストするか** — Playwright で `client-demo` の受講者送信を実行する。その後 Sheet API mock の管理用 endpoint から `client-demo` と `client-other` の同一 `room` responses を取得し、前者にだけ対象回答が存在することを assert する。
+
+**コード上の期待値** — Sheet API mock は responses を `client` + `room` の複合キーで保持する。管理用確認 endpoint も `client` query を受け取り、指定された client の responses だけを返す。
+
+**状態** — 完了済み（Sheet API mock / `npm run test:e2e` Green）
 
 **受け入れ条件**
 
