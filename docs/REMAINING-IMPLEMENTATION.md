@@ -78,7 +78,7 @@
 - `e2e/embed-layout.spec.ts`
 - `npm run test:e2e`
 
-**状態** — 4 tests Green（Sheet API mock 経由 / `VITE_STORAGE_BACKEND=sheet`）
+**状態** — 5 tests Green（Sheet API mock 経由 / `VITE_STORAGE_BACKEND=sheet`）
 
 **注意** — 受講者 → 管理者共有の本番同等確認は、ライブ GAS の手動疎通と Sheet API mock の Playwright では Green。複数 `client` / 複数 `room` の実環境分離確認はまだ残る。
 
@@ -327,6 +327,7 @@
 - 受講者 → 管理者確認を Sheet API mock 経路で Green
 - 別 `room` に漏れない代表確認（mock 管理 endpoint）
 - 別 `client` の同一 `room` に漏れない代表確認（mock 管理 endpoint）
+- 研修コード変更後の旧コード拒否・新コード入室確認（Sheet API mock）
 
 **残り**
 
@@ -359,6 +360,20 @@
 **どのようにテストするか** — Playwright で `client-demo` の受講者送信を実行する。その後 Sheet API mock の管理用 endpoint から `client-demo` と `client-other` の同一 `room` responses を取得し、前者にだけ対象回答が存在することを assert する。
 
 **コード上の期待値** — Sheet API mock は responses を `client` + `room` の複合キーで保持する。管理用確認 endpoint も `client` query を受け取り、指定された client の responses だけを返す。
+
+**状態** — 完了済み（Sheet API mock / `npm run test:e2e` Green）
+
+#### 次の TDD スライス（研修コード変更）
+
+**目的** — 管理者が Sheet backend 経由で研修コードを変更したあと、旧コードでは受講者入室できず、新コードだけで入室できることを固定する。
+
+**受け入れ条件** — 管理者が `room-demo-1` の研修コードを `NEXT-2026` に保存できる。保存後、受講者画面で旧コード `DEMO-2026` は名前・所属入力へ進まず、新コード `NEXT-2026` は名前・所属入力へ進む。
+
+**成功条件** — `npm run test:e2e` が Green になり、失敗時は研修コード変更後の旧コード拒否 / 新コード入室のどちらが壊れたか分かる。
+
+**どのようにテストするか** — Playwright で管理者コード入室後、研修コード欄を変更して保存する。別ページの受講者画面を開き、旧コードで警告が出ること、新コードで名前入力欄が表示されることを assert する。
+
+**コード上の期待値** — Sheet API mock は `POST rooms/access-code?client=...&token=...` を受け取り、`roomId` と `nextAccessCode` で該当 room の `accessCode` を更新する。`POST rooms/verify` は更新後の room 設定で照合する。
 
 **状態** — 完了済み（Sheet API mock / `npm run test:e2e` Green）
 

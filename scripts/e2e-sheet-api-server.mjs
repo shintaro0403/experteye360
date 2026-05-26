@@ -159,6 +159,23 @@ async function handleSheetApi(req, res, url) {
     return;
   }
 
+  if (req.method === "POST" && path === "rooms/access-code") {
+    if (!isAuthorized(url)) {
+      sendJson(res, 403, { ok: false, error: "invalid_admin_token" });
+      return;
+    }
+    const body = await readJson(req);
+    const room = settings.rooms.find((r) => r.roomId === body.roomId);
+    const nextAccessCode = typeof body.nextAccessCode === "string" ? body.nextAccessCode.trim() : "";
+    if (!room || !nextAccessCode) {
+      sendJson(res, 400, { ok: false, error: "invalid_access_code_change" });
+      return;
+    }
+    room.accessCode = nextAccessCode;
+    sendJson(res, 200, { ok: true });
+    return;
+  }
+
   if (path === "responses") {
     const room = url.searchParams.get("room");
     if (!room) {

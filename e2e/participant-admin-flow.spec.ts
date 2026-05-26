@@ -89,6 +89,18 @@ async function submitFiveQuestionResponse(page: Page, participantName: string) {
   await expect(page.getByRole("heading", { name: "送信完了" })).toBeVisible();
 }
 
+async function verifyTrainingCodeOnParticipant(page: Page, trainingCode: string) {
+  await clearBrowserStorage(page, PARTICIPANT_URL);
+  await page.getByPlaceholder("例：DEMO-2026").fill(trainingCode);
+  await clickNext(page);
+}
+
+async function loginAdmin(page: Page) {
+  await clearBrowserStorage(page, ADMIN_URL);
+  await page.getByPlaceholder("管理者コード").fill("admin-demo");
+  await page.getByRole("button", { name: "入室する" }).click();
+}
+
 test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
   test("受講者が5問回答して送信完了まで進める", async ({ page }) => {
     await resetSheetMock();
@@ -124,5 +136,30 @@ test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
         expect.objectContaining({ method: "GET", path: "responses", client: "client-demo", room: "room-demo-1", hasToken: true }),
       ]),
     );
+  });
+
+  test("管理者が変更した研修コードだけで受講者が入室できる", async ({ browser }) => {
+    await resetSheetMock();
+
+    const admin = await browser.newPage();
+    await loginAdmin(admin);
+    await admin.getByPlaceholder("受講者が入力するコード").fill("NEXT-2026");
+    const saved = admin.waitForEvent("dialog");
+    await admin.getByRole("button", { name: "研修コードを保存" }).click();
+    const savedDialog = await saved;
+    expect(savedDialog.message()).toContain("研修コードを保存しました");
+    await savedDialog.accept();
+    await admin.close();
+
+    const oldCodeParticipant = await browser.newPage();
+    await verifyTrainingCodeOnParticipant(oldCodeParticipant, "DEMO-2026");
+    await expect(oldCodeParticipant.getByRole("alert")).toContainText("正しい研修コードを入力してください");
+    await expect(oldCodeParticipant.getByPlaceholder("例：山田 太郎")).toBeHidden();
+    await oldCodeParticipant.close();
+
+    const newCodeParticipant = await browser.newPage();
+    await verifyTrainingCodeOnParticipant(newCodeParticipant, "NEXT-2026");
+    await expect(newCodeParticipant.getByPlaceholder("例：山田 太郎")).toBeVisible();
+    await newCodeParticipant.close();
   });
 });
