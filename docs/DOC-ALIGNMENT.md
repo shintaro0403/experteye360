@@ -2,7 +2,7 @@
 
 README・各 `docs/*.md`・コードの食い違いをなくすための **参照順** と **現状の一言** をまとめる。更新したら本ファイルの **最終確認日** も直す。
 
-**最終確認日**: 2026-05-25（Phase 2 / 2.5 / Phase 3 入口の実装・テスト状態を反映）
+**最終確認日**: 2026-05-26（Sheet backend 研修コード変更 API/UI と 14 files / 80 tests Green を反映）
 
 ---
 
@@ -98,18 +98,18 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 
 - **実装** — あり（local 平文照合 / Sheet API hash 照合）
 - **自動テスト** — `roomEntry.test` あり
-- **備考** — local と Sheet API の代表疎通は Green。Sheet backend の Playwright は未
+- **備考** — local と Sheet API の代表疎通は Green。Sheet backend の Playwright は mock 経由で Green。実 GAS での複数 `client` / `room` 確認は未
 
 **管理者コード入室**
 
 - **実装** — あり（local / Sheet API token）
-- **自動テスト** — `adminEntry.test` **未**
+- **自動テスト** — `sheetApi.test` で token 契約、`AdminPage.test.tsx` で Sheet backend 管理操作の代表を確認。専用 `adminEntry.test` は未
 
 **本番 Sheet API**
 
 - **実装** — 最小実装あり（GAS、`shared/src/storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線）
-- **自動テスト** — `sheetApi.test` あり。ライブ GAS 手動疎通は `settings`、`rooms/verify`、`responses` 追加・取得まで確認済み
-- **備考** — 管理画面からの研修コード変更、Sheet backend の Playwright、本番運用 hardening は未
+- **自動テスト** — `sheetApi.test` あり（client / room / token / `rooms/verify` / `admin/token` / `rooms/access-code` 契約）。`storage.test` と `AdminPage.test.tsx` で Sheet backend 研修コード変更の UI 配線まで Green。ライブ GAS 手動疎通は `settings`、`rooms/verify`、`responses` 追加・取得まで確認済み
+- **備考** — Sheet API mock 経由の Playwright は Green。複数 `client` / 複数 `room` の実環境分離確認、本番運用 hardening は未
 
 **講師・管理者 一覧・詳細（F7）**
 
@@ -130,7 +130,7 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 - **備考** — UI・ファイル出力は未
 
 ```bash
-npm test          # ルート Vitest（shared）。現状 13 files / 75 tests Green
+npm test          # ルート Vitest（shared + admin-web）。現状 14 files / 80 tests Green
 npm run test:watch
 ```
 
@@ -157,7 +157,7 @@ npm run test:watch
 **入室**
 
 - **誤りやすい** — INVENTORY「§2.1c 未実装」
-- **正しい現状** — **local と Sheet API の最小実装済み**。未なのは **管理画面からの研修コード変更、Sheet backend の Playwright、本番運用 hardening**（Phase 2.5 継続）
+- **正しい現状** — **local と Sheet API の最小実装済み**。管理画面からの研修コード変更も API / GAS / UI 配線は実装・Vitest Green。Sheet API mock 経由の Playwright も Green。未なのは **複数 `client` / 複数 `room` の実環境分離確認、本番運用 hardening**（Phase 2.5 継続）
 
 **Phase 0**
 
@@ -167,7 +167,7 @@ npm run test:watch
 **§6 PDF**
 
 - **誤りやすい** — README が実装済みに見える
-- **正しい現状** — **未実装**。一覧・詳細のみ
+- **正しい現状** — PDF 生成ロジックの入口と `pdfExport.test` は Green。未なのは **jsPDF 本レイアウト、管理者ダウンロード UI、実 PDF 目視確認**
 
 **OJT**
 

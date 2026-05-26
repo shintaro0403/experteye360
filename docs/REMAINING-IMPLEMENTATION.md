@@ -44,10 +44,11 @@
 
 - 管理者コード入室（local）
 - 研修コード設定（local）
+- 研修コード設定（Sheet backend）
 - シーン・カード編集
 - 回答一覧・詳細
 
-**未完了** — Sheet backend の研修コード変更 UI、PDF / OJT UI
+**未完了** — Sheet backend の実環境 E2E / 分離確認、PDF / OJT UI
 
 ### shared ロジック
 
@@ -62,10 +63,11 @@
 - `submission`
 - `storage`（local / sheet 切替）
 - `storage/sheet.ts`（Sheet API）
+- `rooms/access-code`（Sheet backend 研修コード変更）
 - `pdfExport`（生成 payload と `Uint8Array` の入口）
 - `ojtExport`（確認項目テキスト生成の入口）
 
-**テスト** — `npm test` は 13 files / 75 tests Green
+**テスト** — `npm test` は 14 files / 80 tests Green
 
 ### Playwright
 
@@ -76,9 +78,9 @@
 - `e2e/embed-layout.spec.ts`
 - `npm run test:e2e`
 
-**状態** — 4 tests Green（E2E 用共有ストレージ経由）
+**状態** — 4 tests Green（Sheet API mock 経由 / `VITE_STORAGE_BACKEND=sheet`）
 
-**注意** — 受講者 → 管理者共有の本番同等確認は、ライブ GAS の手動疎通では Green。Playwright はまだ E2E 用の暫定共有ストレージで Green にしている。
+**注意** — 受講者 → 管理者共有の本番同等確認は、ライブ GAS の手動疎通と Sheet API mock の Playwright では Green。複数 `client` / 複数 `room` の実環境分離確認はまだ残る。
 
 ---
 
@@ -90,7 +92,7 @@
 
 **目的** — Playwright で `participant-web` と `admin-web` の別ポート間共有を先に検証するための補助。
 
-**扱い** — 本番仕様ではない。Sheet API が本配線されたら、E2E も Sheet API dev / mock 経路へ置き換える。
+**扱い** — 本番仕様ではない。現在の Playwright は Sheet API mock 経路へ移行済み。残す場合も local backend 用の開発補助として扱う。
 
 ### `storage.ts` の E2E 分岐
 
@@ -120,12 +122,13 @@
 - `roomId` による研修回分離
 - 管理者 `token` 照合
 - 研修コードのハッシュ照合
+- 管理画面からの研修コード変更（`rooms.accessCodeHash` 更新）
 
 **残り**
 
-- 管理画面からの研修コード変更（`rooms.accessCodeHash` 更新）
+- 研修コード変更後の旧コード拒否・新コード入室を Sheet backend 実環境で確認
 - 複数 `client` / 複数 `room` の手動分離確認
-- Sheet backend の Playwright 化
+- Sheet backend のライブ GAS / 複数環境確認
 - 本番運用向けの監査・バックアップ・エラー文言整理
 
 **目的** — 受講者・管理者・別端末が同じ研修データを共有し、契約組織と研修回ごとにデータを分離する。
@@ -176,7 +179,7 @@
 
 - 必要なら `storage/local.ts` / `storage/index.ts` へ分割
 - Sheet backend の保存中 UI の細分化
-- E2E 用共有ストレージ分岐の置き換え
+- E2E 用共有ストレージ分岐を local backend 補助として残すか削除するかの整理
 
 **目的** — 画面側が保存先の物理実装を意識せず、開発では local、本番では Sheet API を使えるようにする。
 
@@ -214,16 +217,21 @@
 
 ### C. Sheet API 契約テスト
 
-**未実装**
+**実装済み**
 
 - TC-005: `client` 欠落・不正
 - TC-006: API 500 / ネットワーク失敗
 - TC-007: 全リクエストに `client` が付く
 - TC-008: `room` 別の responses 分離
 - TC-009: 不正 `room` / 未登録コード
-- TC-011: `audit_logs`
+- TC-011: 管理者操作の `token` / 監査ログ対象
 - TC-012: 不正管理者 `token`
 - TC-013: 管理者コード変更 API
+- 追加: `rooms/access-code` による研修コード変更 API
+
+**残り**
+
+- 契約テストで固定した `client` / `room` 分離を、Sheet backend の Playwright または複数端末手動で確認する
 
 **目的** — GAS 実装前に、フロントと API の通信契約を固定する。
 
@@ -237,7 +245,7 @@
 
 **成功条件**
 
-- TC-001〜013 がすべて Green。
+- TC-001〜013 と `rooms/access-code` 契約がすべて Green。
 - テスト名が日本語で、何をしたら何になるか読める。
 - GAS の内部列名や Apps Script の実装詳細に依存しない。
 
@@ -260,15 +268,20 @@
 
 ### D. 画面の Sheet API 配線
 
-**未実装**
+**最小実装済み**
 
 - 受講者の `rooms/verify` を Sheet API へ接続
 - 受講者の `appendResponse` を Sheet API へ接続
 - 管理者の `loadSettings` / `saveSettings` を Sheet API へ接続
 - 管理者の `loadResponses` を Sheet API へ接続
 - 管理者コードの API token 化
-- エラー表示
-- ローディング表示
+- 管理者画面からの研修コード変更
+
+**残り**
+
+- Sheet backend の保存中 UI の細分化
+- API エラー表示の代表 E2E / 手動確認
+- Sheet backend の全回答削除
 
 **目的** — 受講者 UI と管理者 UI を、本番の共有データストアへ接続する。
 
@@ -308,14 +321,31 @@
 
 ### E. Playwright の本番近似化
 
-**未実装**
+**今回最小実装済み**
 
-- E2E 用共有ストレージから Sheet API dev / mock への置き換え
-- 受講者 → 管理者確認を Sheet API 経路で Green
-- 別 `room` に漏れない確認
+- E2E 用共有ストレージから Sheet API mock への置き換え
+- 受講者 → 管理者確認を Sheet API mock 経路で Green
+- 別 `room` に漏れない代表確認（mock 管理 endpoint）
+
+**残り**
+
+- dev GAS / 実 GAS 経路での Playwright または手動確認
+- 複数 `client` に漏れない確認
 - 不正研修コード・不正管理者コードの E2E
 
 **目的** — リリース前に、人間の代表操作に近い形で本番の主要リスクを自動確認する。
+
+#### 今回の TDD スライス
+
+**目的** — 既存の E2E 用共有ストレージではなく、Sheet API と同じ URL / JSON 契約を持つ mock 経由で、受講者送信から管理者確認までの代表経路を固定する。
+
+**受け入れ条件** — `npm run test:e2e` が `VITE_STORAGE_BACKEND=sheet` 相当で起動し、`POST rooms/verify`、`POST responses`、`GET responses` が Sheet API mock に届く。受講者の回答は同一 `client` + `room` の管理者一覧に表示され、別 `room` の一覧には混ざらない。
+
+**成功条件** — E2E 用共有ストレージサーバー（`scripts/e2e-storage-server.mjs` / `127.0.0.1:5199`）なしで Playwright が Green になる。不正 room / token は mock 側でエラーにでき、失敗時はどの API 契約が壊れたか分かる。
+
+**どのようにテストするか** — Playwright の `webServer` で participant / admin / Sheet API mock を起動する。テスト開始時に mock を reset し、受講者で 5 問送信後、管理者が管理者コードで入室して回答一覧を確認する。さらに mock の管理用 endpoint で別 room の responses が空であることを確認する。
+
+**コード上の期待値** — Vite dev server は `VITE_STORAGE_BACKEND=sheet`、`VITE_SHEET_API_BASE=http://127.0.0.1:5198/exec`、`VITE_CLIENT_ID=client-demo` で起動する。Sheet API mock は `?path=settings|rooms/verify|responses` と `client` / `room` / `token` を本番 GAS と同じ形で受ける。
 
 **受け入れ条件**
 
@@ -522,10 +552,10 @@
 flowchart TD
   participantWeb["participant-web"] --> useAppDataP["useAppData"]
   adminWeb["admin-web"] --> useAppDataA["useAppData"]
-  useAppDataP --> storageIndex["storage/index.ts"]
-  useAppDataA --> storageIndex
-  storageIndex --> localStore["storage/local.ts"]
-  storageIndex --> sheetStore["storage/sheet.ts"]
+  useAppDataP --> storagePublic["storage.ts<br/>公開API + backend切替"]
+  useAppDataA --> storagePublic
+  storagePublic --> localStore["localStorage<br/>現状は storage.ts 内"]
+  storagePublic --> sheetStore["storage/sheet.ts"]
   sheetStore --> gasApi["GAS Web App"]
   gasApi --> masterBook["Master clients"]
   gasApi --> clientBook["Client book"]
@@ -537,37 +567,39 @@ flowchart TD
 
 **内容** — `sheetApi.test.ts` の残り契約を追加
 
-**完了条件** — Red になる
+**状態** — 完了済み（TC-005〜013 と `rooms/access-code` まで Green）
 
 #### Step 2
 
 **内容** — `storage/sheet.ts` を契約テストに合わせて拡張
 
-**完了条件** — `sheetApi.test.ts` が Green
+**状態** — 完了済み（`sheetApi.test.ts` が Green）
 
 #### Step 3
 
 **内容** — storage を `local` / `sheet` に分割し、`VITE_STORAGE_BACKEND` で切替
 
-**完了条件** — local Unit が Green、sheet 契約が Green
+**状態** — `VITE_STORAGE_BACKEND` 切替は完了済み。`storage/local.ts` / `storage/index.ts` へのファイル分割は未実施だが必須ではない
 
 #### Step 4
 
 **内容** — `useAppData` を async storage に対応
 
-**完了条件** — 受講者・管理者の基本表示が壊れない
+**状態** — 最小対応済み。専用 `useAppData.test.ts` は未
 
 #### Step 5
 
 **内容** — GAS 最小 API を実装
 
-**完了条件** — dev GAS で settings / responses / rooms verify が動く
+**状態** — 完了済み（settings / responses / rooms verify / admin token / rooms access-code）
 
 #### Step 6
 
 **内容** — Playwright を Sheet API dev / mock に差し替え
 
 **完了条件** — E2E 用共有ストレージなしで `npm run test:e2e` が Green
+
+**状態** — 完了済み（Sheet API mock / `VITE_STORAGE_BACKEND=sheet`）
 
 #### Step 7
 
@@ -579,10 +611,10 @@ flowchart TD
 
 ## 5. 次に着手するなら
 
-**最初の作業** — `sheetApi.test.ts` に TC-005〜009 を追加する。
+**最初の作業** — 複数 `client` / 複数 `room` の実環境分離確認を行う。
 
-**理由** — 本番共有の一番危ない部分は `client` / `room` の漏洩なので、ここを最初に固定する。
+**理由** — Sheet API mock 経由の SH-07 は Green になったため、次は実 GAS / 実シートで `client` / `room` 漏洩がないことを確認する。
 
-**その次** — storage を async 化するかどうかを決める。
+**その次** — 研修コード変更後の旧コード拒否・新コード入室確認を、Sheet backend 実環境で行う。
 
-**推奨** — async 化して本番 API に合わせる。
+**推奨** — PDF / OJT UI は、Sheet backend の本番近似確認後に進める。

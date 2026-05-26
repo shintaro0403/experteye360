@@ -36,12 +36,12 @@
 
 **OJT 整理ロジック** — **最小実装済み**（`shared/src/ojtExport.ts` / `ojtExport.test.ts` は Green。UI・ファイル出力は未）
 
-**本番 Sheet API** — **最小実装済み**（GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、画面配線まで実装。研修コードの管理画面変更、Sheet backend の Playwright は未）
+**本番 Sheet API** — **最小実装済み**（GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、画面配線、管理画面からの研修コード変更、Sheet API mock 経由の Playwright まで実装。複数 `client` / 複数 `room` の実環境分離確認、Sheet backend の全回答削除は未）
 
-**自動テスト** — **Vitest**（`npm test` — 現状 13 files / 75 tests Green）
+**自動テスト** — **Vitest**（`npm test` — 現状 14 files / 80 tests Green）
 
 ```bash
-npm test          # ルート: shared の Unit テスト
+npm test          # ルート: shared と admin-web の Vitest
 npm run test:watch
 ```
 
@@ -479,7 +479,7 @@ ExpertEye360は、360°現場を見た受講者の**判断を記録・可視化*
 詳細は [入室とマルチテナント](#入室とマルチテナント)、[docs/SPREADSHEET-DATA.md §2.3](docs/SPREADSHEET-DATA.md#23-研修回ルームroomid)。
 
 - フロントは静的ホスト（FileZilla 等）可。GAS Web App 想定。
-- ローカルでは上記 API は未接続。入室フローの **UI 確認**と Unit テスト（`npm test`）が主な開発手段（[docs/TEST-DESIGN.md §1.5](docs/TEST-DESIGN.md#15-入室マルチテナント)）。
+- ローカルでも `VITE_STORAGE_BACKEND=sheet` と GAS Web App URL を設定すれば、本番に近い Sheet API 経路で確認できる。`VITE_STORAGE_BACKEND=local` はブラウザ内 `localStorage` の開発用フォールバックであり、受講者・管理者間の共有確認の正にはしない（[docs/TEST-DESIGN.md §1.5](docs/TEST-DESIGN.md#15-入室マルチテナント)）。
 - 将来は API の裏を PostgreSQL 等に差し替え可能（フロントは storage 窓口のみ）。
 
 ---

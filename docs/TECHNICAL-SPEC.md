@@ -677,7 +677,7 @@ README の機能説明（§1 気づき、§2 共有・行動、§3 判断基準�
 
 #### 永続化
 
-**現状** — 本番: スプレッドシート（[SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)）。開発: `localStorage`（`storage.ts`）。5173 / 5174 は API 未接続時のみ非共有
+**現状** — 本番: スプレッドシート（[SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)）。開発: `VITE_STORAGE_BACKEND=local` は `localStorage`（5173 / 5174 は別オリジンで非共有）、`VITE_STORAGE_BACKEND=sheet` は GAS Sheet API 経由で本番近似
 
 #### 4.3.12 送信・完了画面（実装済み）
 
@@ -867,7 +867,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-  subgraph dev["開発（現状・API 未接続時）"]
+  subgraph dev["開発（local backend）"]
     P3["participant-web<br/>:5173"]
     A4["admin-web<br/>:5174"]
     LS1[("localStorage<br/>受講者ブラウザ")]
@@ -886,7 +886,7 @@ flowchart LR
     APIp --> SSp
   end
 
-  dev -.->|"VITE_STORAGE_BACKEND=sheet<br/>+ API 実装後"| prod
+  dev -.->|"VITE_STORAGE_BACKEND=sheet<br/>+ GAS Web App"| prod
 ```
 
 #### 受講者 ↔ 管理者
@@ -901,7 +901,8 @@ flowchart LR
 
 #### 結合確認
 
-**開発（localStorage）** — API 接続後に実施。ローカルも **本番近似**（研修コード・管理者コードを省略しない・§1.5）
+**開発（localStorage）** — 単体・UI 補助用。共有確認の正にはしない
+**開発（Sheet API）** — `VITE_STORAGE_BACKEND=sheet` + dev GAS / 同型 mock で実施。ローカルも **本番近似**（研修コード・管理者コードを省略しない・§1.5）
 **本番（Sheet API）** — 研修運用の前提
 
 #### 5.1.5 API によるクライアント解決（GAS）

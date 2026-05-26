@@ -116,7 +116,7 @@
 
 **成功条件** — 同一 `client` + 同一 `room` の回答だけが見える。不正な `client` / `room` はエラーになり、画面が壊れない
 
-**補足** — Sheet API の GAS・本番切替・画面配線は最小実装済み。本項目は Sheet backend の Playwright または複数端末手動確認で本番同等に確認する
+**補足** — Sheet API の GAS・本番切替・画面配線は最小実装済み。Sheet API mock 経由の Playwright は Green。本項目は複数端末・実 GAS / 実シートで本番同等に確認する
 
 ---
 

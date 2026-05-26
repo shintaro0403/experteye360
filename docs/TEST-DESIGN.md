@@ -45,7 +45,7 @@
   - [4.3 shared/src/seed.ts → seed.test.ts](#43-shared/src/seedts-seedtestts)
   - [4.4 shared/src/types.ts](#44-shared/src/typests)
   - [4.5 shared/src/submission.ts（新規）→ submission.test.ts](#45-shared/src/submissionts-submissiontestts)
-  - [4.6 shared/src/normalizeScene.ts（新規）→ normalizeScene.test.ts](#46-shared/src/normalizeScenets-normalizeScenetestts)
+  - [4.6 shared/src/sceneQuestions.ts の normalizeScene → sceneQuestions.test.ts](#46-sharedsrcscenequestionsts-の-normalizescene--scenequestionstestts)
   - [4.7 shared/src/pdfExport.ts → pdfExport.test.ts](#47-shared/src/pdfExportts-pdfExporttestts)
   - [4.8 shared/src/ojtExport.ts → ojtExport.test.ts](#48-shared/src/ojtExportts-ojtExporttestts)
   - [4.9 shared/src/test/fixtures.ts（補助）](#49-shared/src/test/fixturests)
@@ -121,7 +121,7 @@
 - **対象**: `shared/src`（最優先）→ `participant-web` / `admin-web`
 - **関連仕様**: [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md) §3.2.3・§3.2.4（iframe レイアウト）、§4（F3〜F8）、§5（永続化）
 - **永続化仕様**: [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)
-- **現状**: **Vitest 導入済み**（ルート `npm test`）。Phase 0 / 1 / 2 は Green。Sheet API は GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線まで最小実装済み。入室 UI（研修コード・管理者コード）は **local / sheet** 対応。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口まで Green（jsPDF 本実装・UI 配線・ファイル出力は未）
+- **現状**: **Vitest 導入済み**（ルート `npm test` は 14 files / 80 tests Green）。Phase 0 / 1 / 2 は Green。Sheet API は GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線、管理画面からの研修コード変更まで最小実装済み。入室 UI（研修コード・管理者コード）は **local / sheet** 対応。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口まで Green（jsPDF 本実装・UI 配線・ファイル出力は未）
 
 ### 1.1 改訂履歴
 
@@ -163,6 +163,8 @@
 
 **2.0**（2026-05-25）— Phase 2 の `storage` / `seed` テスト追加と、Phase 2.5 の Sheet API 契約入口・`storage/sheet.ts` 最小実装を反映
 
+**2.1**（2026-05-26）— Sheet API 契約 TC-005〜013、`rooms/access-code`、管理画面の研修コード変更 UI テスト、14 files / 80 tests Green を反映
+
 ### 1.2 テストスコープとマイルストーン
 
 **本節がテスト計画の正本**である。Phase の意味・含める／含めない範囲・作業順はここを優先する。
@@ -179,7 +181,7 @@
 
 **役割** — 振る舞い ID（C-01、V-04 等）とファイル対応の辞書。**Phase は書かない**
 
-**現在のマイルストーン**: **Phase 2.5 継続 + Phase 3 入口 Green**（本番永続化は Sheet API 契約入口まで Green、統合は継続。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口まで Green）
+**現在のマイルストーン**: **Phase 2.5 継続 + Phase 3 入口 Green**（本番永続化は Sheet API 契約・GAS・画面配線・研修コード変更 UI・Sheet API mock Playwright まで Green。実環境分離確認は継続。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口まで Green）
 
 **2 つの優先軸**（混同しない）
 
@@ -223,7 +225,7 @@
 
 **Phase** — **2.5**
 **ゴール（1行）** — 本番永続化（スプレッドシート）
-**含めるもの** — `storage/sheet.ts`、`sheetApi.test.ts`（`fetch` mock）、`VITE_STORAGE_BACKEND`、研修コード検証 API（仕様確定後）
+**含めるもの** — `storage/sheet.ts`、`sheetApi.test.ts`（`fetch` mock）、`VITE_STORAGE_BACKEND`、研修コード検証 API、管理者 token 変更、研修コード変更 API
 **含めないもの** — GAS の実装詳細を Unit に載せない（契約のみ）
 **完了条件** — §8「Phase 2.5」のチェックリストがすべて [x]
 
@@ -309,15 +311,15 @@
 #### §7 OJT 整理
 
 **README / 機能** — §7 OJT 整理
-**現行実装** — **なし**
-**今回マイルストーン** — Phase 3（F8）。共有ロジック入口は Green、UI / ファイル出力は継続
+**現行実装** — 共有ロジック入口あり（`ojtExport.ts` / `ojtExport.test.ts` は Green）
+**今回マイルストーン** — Phase 3（F8）。UI / ファイル出力は継続
 **主なテスト** — `ojtExport`
 **備考** — PDF（F7）とは別機能
 
 #### 研修コード入室（受講者）
 
 **README / 機能** — 研修コード入室（受講者）
-**現行実装** — **あり**（UI + `roomEntry`・local 平文照合）
+**現行実装** — **あり**（UI + `roomEntry`・local 平文照合 / Sheet API `rooms/verify`）
 **今回マイルストーン** — Phase 0（`roomEntry.test`）〜2.5（API）
 **主なテスト** — `roomEntry`, `sheetApi` TC-010, `ParticipantPage` ENTRY
 **備考** — §1.5
@@ -325,7 +327,7 @@
 #### 管理者コード入室
 
 **README / 機能** — 管理者コード入室
-**現行実装** — **あり**（UI + `adminEntry`・local）
+**現行実装** — **あり**（UI + `adminEntry`・local / Sheet API token）
 **今回マイルストーン** — 同上
 **主なテスト** — `adminEntry`, `sheetApi` TC-012〜013, `AdminPage` ADM-ENTRY
 **備考** — §1.5
@@ -333,7 +335,7 @@
 #### clientId / room 分離
 
 **README / 機能** — `clientId` / `room` 分離
-**現行実装** — `sheetApi.test.ts` と `storage/sheet.ts` で、`?client=`、`room`、`token`、`rooms/verify` の契約を固定済み。GAS と `VITE_STORAGE_BACKEND=sheet` の画面配線も最小実装済み。Sheet backend の Playwright は未
+**現行実装** — `sheetApi.test.ts` と `storage/sheet.ts` で、`?client=`、`room`、`token`、`rooms/verify`、`admin/token`、`rooms/access-code` の契約を固定済み。GAS と `VITE_STORAGE_BACKEND=sheet` の画面配線も最小実装済み。Sheet API mock 経由の Playwright は Green
 **今回マイルストーン** — Phase 2.5
 **主なテスト** — `sheetApi` TC-005〜009
 **備考** — §1.5・**D-07** 本番近似・**D-09**
@@ -382,7 +384,7 @@
 
 #### Phase 2.5 — 作業順（概要）
 
-1. `sheetApi.test.ts` を **先に** Red → Green（§4.2b TC-001〜011。TC-008〜009 は **A**）
+1. `sheetApi.test.ts` を **先に** Red → Green（§4.2b TC-001〜013 と `rooms/access-code`。TC-008〜009 は **A**）
 2. `storage/sheet.ts` + `storage/index.ts` + `VITE_STORAGE_BACKEND`
 3. 受講者: 研修コード UI → `rooms/verify`（§1.5）。管理者: 管理者コードゲート（§1.5）
 4. ローカル結合は **本番近似**（§1.5・D-07）：`sheet` mock または dev GAS。入室スキップしない
@@ -1066,7 +1068,7 @@
 
 **本番** — `storage` の裏は Sheet API → スプレッドシート（[SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)）
 
-**開発・Unit** — `storage/local.ts`（`localStorage`）。既存 `storage.test.ts` はこの層を happy-dom で検証
+**開発・Unit** — `storage.ts` 内の localStorage 実装。既存 `storage.test.ts` はこの層を happy-dom で検証（将来 `storage/local.ts` に分割しても同型）
 
 **Sheet API 層** — `storage/sheet.ts` + `sheetApi.test.ts`（`fetch` を mock）。GAS 実装とは契約テスト（リクエスト URL・body・レスポンス JSON）
 
@@ -1345,7 +1347,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 #### storage/sheet.ts（新規）
 
 - **テスト**: `sheetApi.test.ts`
-- **状態**: 契約 Green（TC-001〜004、TC-010 相当）。GAS、`storage.ts` async 統合、`VITE_STORAGE_BACKEND=sheet` は最小実装済み。残り TC と Sheet backend Playwright は未
+- **状態**: 契約 Green（TC-001〜013 と `rooms/access-code`）。GAS、`storage.ts` async 統合、`VITE_STORAGE_BACKEND=sheet`、管理画面からの研修コード変更は最小実装済み。Sheet API mock 経由の Playwright は Green。実環境分離確認は未
 - **重要度**: **B**（TC-008〜009 は **A**）
 - **関連機能**: F7（本番永続化）
 - **備考**: `fetch` で GAS Web App。`clientId` は URL クエリから
@@ -1378,24 +1380,24 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 - **重要度**: **B**（TC-002 は **A**）
 - **関連機能**: F3〜F6, FLOW
 
-#### normalizeScene.ts（新規）
+#### `sceneQuestions.ts` 内の `normalizeScene`
 
-- **テスト**: `normalizeScene.test.ts`
-- **状態**: 未
+- **テスト**: [sceneQuestions.test.ts](../shared/src/sceneQuestions.test.ts)
+- **状態**: Green
 - **重要度**: **C**
 - **関連機能**: F3（シーン・設問カード正規化）
 
-#### roomEntry.ts（新規）
+#### [roomEntry.ts](../shared/src/roomEntry.ts)
 
 - **テスト**: `roomEntry.test.ts`
-- **状態**: 未
+- **状態**: Green
 - **重要度**: **B**（手動 ENTRY-M は **A**）
 - **関連機能**: マルチテナント・受講者入室（§1.5）
 
-#### adminEntry.ts（新規）
+#### [adminEntry.ts](../shared/src/adminEntry.ts)
 
 - **テスト**: `adminEntry.test.ts`
-- **状態**: 未
+- **状態**: 実装あり。専用 `adminEntry.test.ts` は未（Sheet token 契約は `sheetApi.test.ts`、管理画面代表操作は `AdminPage.test.tsx`）
 - **重要度**: **B**（手動 ADM-M は **A**）
 - **関連機能**: マルチテナント・管理者入室（§1.5）
 
@@ -1417,7 +1419,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 #### test/fixtures.ts（新規・補助）
 
 - **テスト**: なし（各 `*.test.ts` から import）
-- **状態**: 未
+- **状態**: あり
 - **用途**: 全 test で利用
 
 ### 3.2 `participant-web/src`
@@ -1453,9 +1455,9 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 #### [pages/AdminPage.tsx](../admin-web/src/pages/AdminPage.tsx)
 
 - **テスト**: `pages/AdminPage.test.tsx`
-- **状態**: 未
+- **状態**: Green（Sheet backend の研修コード変更 UI）。回答一覧・PDF/OJT UI のスモークは未
 - **重要度**: **B**
-- **備考**: 回答済み一覧・PDF エクスポート（`pdfExport` 呼び出し）。保存正規化は `sceneQuestions.test.ts`
+- **備考**: 保存正規化は `sceneQuestions.test.ts`
 
 #### main.tsx / App.tsx
 
@@ -1730,11 +1732,11 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 
 ---
 
-### 4.6 `shared/src/normalizeScene.ts`（新規）→ `normalizeScene.test.ts`
+### 4.6 `shared/src/sceneQuestions.ts` の `normalizeScene` → `sceneQuestions.test.ts`
 
 **重要度**: **C**（§2.4）
 
-**抽出元**: `admin-web` のテキストエリア保存
+**現状**: `normalizeScene` / `normalizeSettings` は `sceneQuestions.ts` に実装済み。テストは `sceneQuestions.test.ts` で Green。
 
 #### TC-001
 
@@ -2076,15 +2078,15 @@ admin-web/src/
 
 #### Phase 2.5 — スプレッドシート永続化（本番）
 
-- [ ] **B** — GAS（または API）を [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md) §0〜4 に沿って用意
-- [x] **B** — `sheetApi.test.ts` の入口を **先に** Red → Green（TC-001〜004、TC-010 相当）
+- [x] **B** — GAS（または API）を [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md) §0〜4 に沿って用意（最小 API）
+- [x] **B** — `sheetApi.test.ts` を **先に** Red → Green（TC-001〜013 と `rooms/access-code` 契約）
 - [x] **B** — `storage/sheet.ts` の最小 fetch 実装
-- [ ] **B** — `sheetApi.test.ts` の残り TC-005〜009、TC-011〜013 を追加
-- [ ] **B** — `adminEntry.test.ts` Green。`roomEntry.test.ts` は local Green、API 契約は `sheetApi.test.ts` 入口 Green（§1.5）
-- [ ] **B** — 受講者: 研修コード → 名前所属。管理者: **管理者コードのみ**（§1.5）
+- [x] **B** — `sheetApi.test.ts` の TC-005〜009、TC-011〜013 を追加
+- [ ] **B** — 専用 `adminEntry.test.ts` Green。`roomEntry.test.ts` は local Green、Sheet token 契約は `sheetApi.test.ts` Green（§1.5）
+- [x] **B** — 受講者: 研修コード → 名前所属。管理者: **管理者コードのみ**（§1.5）の実装と代表契約
 - [ ] **A** — `sheetApi` TC-008〜009 Green 後、人間が room 漏洩の代表操作を確認
 - [ ] **A** — ENTRY-M / ADM-M（§1.5 手動）
-- [x] **B** — `storage/sheet.ts` + `VITE_STORAGE_BACKEND` で本番切替（最小実装済み。Sheet backend Playwright は継続）
+- [x] **B** — `storage/sheet.ts` + `VITE_STORAGE_BACKEND` で本番切替（最小実装済み。Sheet API mock Playwright は Green）
 - [ ] **A** — 受講者送信 → 管理者（管理者コード）で同一 `client` の回答が見える（手動・SH-07）
 - [ ] **A** — 別 `client` / 別 `room` に漏れない（TC-005 の手動確認 + TC-008〜009）
 
@@ -2095,7 +2097,7 @@ admin-web/src/
 - [ ] **B** — 管理者画面から回答済み 1 件の PDF ダウンロード
 - [ ] **A** — 代表 1 件の PDF を目視し ①〜⑤ が含まれること
 - [ ] `useAppData.test.ts`（両 Web）
-- [ ] `ParticipantPage.test.tsx` / `AdminPage.test.tsx` スモーク（F7 TC-003 含む）
+- [ ] `ParticipantPage.test.tsx` スモーク、`AdminPage.test.tsx` の回答一覧・PDF/OJT スモーク（研修コード変更 UI の `AdminPage.test.tsx` は Green）
 - [x] `ojtExport.test.ts`（F8・共有ロジック入口）
 
 ---

@@ -1,7 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const PARTICIPANT_URL = "http://127.0.0.1:5173/participant/";
-const ADMIN_URL = "http://127.0.0.1:5174/admin/";
+const PARTICIPANT_URL = "http://127.0.0.1:5175/participant/";
+const ADMIN_URL = "http://127.0.0.1:5176/admin/";
+const SHEET_MOCK_ADMIN_URL = "http://127.0.0.1:5198/__admin";
 
 const awarenessByRound = [
   "ラベル・表示の違和感",
@@ -11,15 +12,34 @@ const awarenessByRound = [
   "引き渡し状態の違い",
 ] as const;
 
-async function clearBrowserStorage(page: Page, url: string, options: { clearSharedResponses?: boolean } = {}) {
+async function resetSheetMock() {
+  const response = await fetch(`${SHEET_MOCK_ADMIN_URL}/reset`, { method: "POST" });
+  expect(response.ok).toBeTruthy();
+}
+
+async function loadMockResponses(roomId: string) {
+  const response = await fetch(`${SHEET_MOCK_ADMIN_URL}/responses?room=${encodeURIComponent(roomId)}`);
+  expect(response.ok).toBeTruthy();
+  return (await response.json()) as Array<{ id: string; participantName: string; roomId: string }>;
+}
+
+async function loadMockRequests() {
+  const response = await fetch(`${SHEET_MOCK_ADMIN_URL}/requests`);
+  expect(response.ok).toBeTruthy();
+  return (await response.json()) as Array<{
+    method: string;
+    path: string;
+    client: string;
+    room: string | null;
+    hasToken: boolean;
+  }>;
+}
+
+async function clearBrowserStorage(page: Page, url: string) {
   await page.goto(url);
-  await page.evaluate((clearSharedResponses) => {
+  await page.evaluate(() => {
     localStorage.clear();
     sessionStorage.clear();
-    if (!clearSharedResponses) return;
-    const xhr = new XMLHttpRequest();
-    xhr.open("DELETE", "http://127.0.0.1:5199/responses", false);
-    xhr.send();
     document.cookie
       .split(";")
       .map((part) => part.split("=")[0]?.trim())
@@ -27,7 +47,7 @@ async function clearBrowserStorage(page: Page, url: string, options: { clearShar
       .forEach((name) => {
         document.cookie = `${name}=; path=/; max-age=0`;
       });
-  }, options.clearSharedResponses === true);
+  });
   await page.reload();
 }
 
@@ -36,7 +56,7 @@ async function clickNext(page: Page) {
 }
 
 async function submitFiveQuestionResponse(page: Page, participantName: string) {
-  await clearBrowserStorage(page, PARTICIPANT_URL, { clearSharedResponses: true });
+  await clearBrowserStorage(page, PARTICIPANT_URL);
 
   await page.getByPlaceholder("例：DEMO-2026").fill("DEMO-2026");
   await clickNext(page);
@@ -69,10 +89,12 @@ async function submitFiveQuestionResponse(page: Page, participantName: string) {
 
 test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
   test("受講者が5問回答して送信完了まで進める", async ({ page }) => {
+    await resetSheetMock();
     await submitFiveQuestionResponse(page, "Phase4 太郎");
   });
 
   test("受講者が送信した回答を管理者が回答一覧で確認できる", async ({ browser }) => {
+    await resetSheetMock();
     const participant = await browser.newPage();
     await submitFiveQuestionResponse(participant, "Phase4 共有確認");
     await participant.close();
@@ -85,5 +107,17 @@ test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
 
     await expect(admin.getByRole("heading", { name: "回答一覧（1）" })).toBeVisible();
     await expect(admin.getByText("Phase4 共有確認")).toBeVisible();
+
+    const otherRoomResponses = await loadMockResponses("room-other");
+    expect(otherRoomResponses).toEqual([]);
+
+    const requests = await loadMockRequests();
+    expect(requests).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ method: "POST", path: "rooms/verify", client: "client-demo" }),
+        expect.objectContaining({ method: "POST", path: "responses", client: "client-demo", room: "room-demo-1" }),
+        expect.objectContaining({ method: "GET", path: "responses", client: "client-demo", room: "room-demo-1", hasToken: true }),
+      ]),
+    );
   });
 });

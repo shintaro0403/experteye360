@@ -693,19 +693,20 @@ POST ボディは JSON。GAS はマスター `clients` で `spreadsheetId` を�
 
 - **役割**: 公開 API 窓口（現状の関数名を維持）
 
-#### `shared/src/storage/local.ts`
+#### `shared/src/storage/local.ts`（将来分割案）
 
 - **役割**: 現行 `localStorage` 実装を移動
+- **現状**: 専用ファイルとしては未分割。現在は `shared/src/storage.ts` 内の local 実装を `storage.test.ts` で検証する
 
 #### `shared/src/storage/sheet.ts`
 
 - **役割**: `fetch` で GAS API を呼ぶ実装
-- **現状**: `loadSheetSettings` / `saveSheetSettings` / `loadSheetResponses` / `appendSheetResponse` / `verifyTrainingCodeViaApi` の最小実装あり
+- **現状**: `loadSheetSettings` / `saveSheetSettings` / `loadSheetResponses` / `appendSheetResponse` / `verifyTrainingCodeViaApi` / `changeAdminTokenViaApi` / `changeTrainingCodeViaApi` の最小実装あり
 
-#### `shared/src/storage/index.ts`
+#### `shared/src/storage/index.ts`（将来分割案）
 
 - **役割**: `VITE_STORAGE_BACKEND` で切替
-- **現状**: 未実装
+- **現状**: 専用ファイルとしては未分割。現在は `shared/src/storage.ts` が公開 API と `VITE_STORAGE_BACKEND=local|sheet` の切替を担う
 
 `useAppData` は **storage の公開 API のみ** 参照（変更不要を目標）。
 

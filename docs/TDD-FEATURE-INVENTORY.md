@@ -13,7 +13,7 @@
 
 **関連**: [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md)、[SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)、[README.md](../README.md)
 
-**現状**: **Vitest 導入済み**（ルート `npm test`）。Phase 0 / 1 / 2 は Green。Phase 2.5 は Sheet API 契約、GAS、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線まで最小実装済み（Sheet backend Playwright は継続）。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口まで Green（UI・jsPDF 本実装・ファイル出力は未）
+**現状**: **Vitest 導入済み**（ルート `npm test` は 14 files / 80 tests Green）。Phase 0 / 1 / 2 は Green。Phase 2.5 は Sheet API 契約、GAS、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線、管理画面からの研修コード変更、Sheet API mock 経由の Playwright まで最小実装済み。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口まで Green（UI・jsPDF 本実装・ファイル出力は未）
 
 ## 目次
 
@@ -395,7 +395,7 @@
 
 ### 2.2 Sheet API → スプレッドシート 【実装済み・入口】
 
-**現状** — `sheetApi.test.ts` と `storage/sheet.ts` で TC-001〜004、TC-010 相当は Green。GAS、`VITE_STORAGE_BACKEND=sheet`、`storage.ts` async 統合、画面配線は最小実装済み。残り TC と Sheet backend Playwright は未実装。
+**現状** — `sheetApi.test.ts` と `storage/sheet.ts` で TC-001〜013、`rooms/access-code` 契約、client / room / token / `rooms/verify` / `admin/token` は Green。GAS、`VITE_STORAGE_BACKEND=sheet`、`storage.ts` async 統合、画面配線、管理画面からの研修コード変更、Sheet API mock 経由の Playwright は最小実装済み。実環境分離確認は未実施。
 
 **SH-01** — `?client={clientId}` を全 API に付与（入口 Green）
 
@@ -425,7 +425,7 @@
 
 **SH-14** — 管理者コード変更は現行コード必須（`sheetApi` TC-013）
 
-#### 2.1c 入室ゲート（shared + UI）【実装済み（local）・API は未実装】
+#### 2.1c 入室ゲート（shared + UI）【実装済み（local / Sheet API）】
 
 **ENTRY-01** — 研修コード検証前は名前・所属欄を出さない
 
@@ -703,7 +703,7 @@
 
 **Phase 2** — localStorage 永続化・管理者正規化（完了）
 
-**Phase 2.5** — Sheet API 契約 + 本番切替（最小実装済み、Sheet backend Playwright は継続）
+**Phase 2.5** — Sheet API 契約 + 本番切替（最小実装済み、Sheet API mock Playwright は Green。実環境分離確認は継続）
 
 **Phase 3** — F7 PDF（jsPDF）・UI 配線・OJT（F8）。共有ロジック入口は Green、UI・ファイル出力は継続
 
