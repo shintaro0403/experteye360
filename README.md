@@ -16,6 +16,7 @@
 - [入室とマルチテナント](#入室とマルチテナント)
 - [データの保存](#データの保存)
 - [開発上の前提](#開発上の前提)
+- [自動テストと CI](#自動テストと-ci)
 
 ---
 
@@ -36,14 +37,9 @@
 
 **OJT 整理ロジック** — **最小実装済み**（`shared/src/ojtExport.ts` / `ojtExport.test.ts` は Green。UI・ファイル出力は未）
 
-**本番 Sheet API** — **最小実装済み**（GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、画面配線、管理画面からの研修コード変更、Sheet API mock 経由の Playwright まで実装。複数 `client` / 複数 `room` の実環境分離確認、Sheet backend の全回答削除は未）
+**本番 Sheet API** — **最小実装済み**（GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、画面配線、管理画面からの研修コード変更、回答取得時の `roomId` は Sheet 上の研修回を使用（local の seed と混同しない）、UI 応答性（初回のみブロッキング loader・再読込はスピナー）。Sheet API mock 経由の Playwright まで実装。複数 `client` / 複数 `room` の実環境分離確認、Sheet backend の全回答削除は未）
 
-**自動テスト** — **Vitest**（`npm test` — 現状 14 files / 89 tests Green）
-
-```bash
-npm test          # ルート: shared と admin-web の Vitest
-npm run test:watch
-```
+**自動テスト** — 詳細は [自動テストと CI](#自動テストと-ci)。Vitest **18 files / 108 tests** Green。
 
 #### 受講者回答フロー（5問）
 
@@ -99,6 +95,60 @@ http://localhost:5174/admin/embed-preview.html
 **ローカルでも本番に近い形**で動かす（研修コード・管理者コードの入室フローを省略しない。`localStorage` だけで room 検証を飛ばす運用は結合確認の正にしない）。詳細は [入室とマルチテナント](#入室とマルチテナント) および [docs/TEST-DESIGN.md §1.5](docs/TEST-DESIGN.md#15-入室マルチテナント)。
 
 一体化していた旧 `frontend/` は廃止しました。手元のクローンにフォルダが残り、削除できない場合は、エディタでそのフォルダを開いているプロセスを閉じてから削除してください。
+
+---
+
+## 自動テストと CI
+
+**正本（件数・ファイル一覧）**: [docs/DOC-ALIGNMENT.md §2](docs/DOC-ALIGNMENT.md#2-現状サマリー実装--テスト)。計画・Phase は [docs/TEST-DESIGN.md §1.2](docs/TEST-DESIGN.md#12-テストスコープとマイルストーン)。
+
+#### Vitest（ローカル・CI 共通）
+
+ルートで `npm test` を実行する。対象は次のとおり。
+
+- **`shared/src`** — ドメイン・ストレージ・PDF・入室検証（`adminEntry` / `roomEntry` / `appDataLoad` など）
+- **`admin-web`** — `AdminPage` の代表 UI、`useAppData` の結合
+- **`participant-web`** — `ParticipantPage` の研修コードと名前欄
+
+現状 **18 files / 108 tests** Green。
+
+```bash
+npm run install:all   # 初回・CI と同様（ルート + 両 Web）
+npm test              # Vitest 一括
+npm run test:watch    # 開発中の監視
+npm run build:all     # 両 Web の production build（型・bundling 確認）
+```
+
+各 Web の型だけ見る場合: `npm run typecheck --prefix participant-web` / `admin-web`。
+
+#### GitHub Actions（最小 CI）
+
+ワークフロー: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+
+**いつ動くか** — `main` への push と、`main` 向け pull request。
+
+**何をするか**（秘密情報不要）
+
+1. `npm run install:all` — ルートだけ `npm install` では足りない（後述）
+2. `npm test`
+3. 両アプリの `typecheck`
+4. `npm run build:all`
+
+**結果の見方** — GitHub リポジトリの **Actions** タブ。緑ならマージしてよい状態（Vitest + 型 + ビルド）。
+
+**おすすめの次の一手（リポジトリ設定）** — Settings → Branches → `main` にブランチ保護を付け、「Required status checks」で上記 CI ワークフローを必須にする。PR が赤のままマージされるのを防げる。
+
+**まだ CI に入れていないもの**
+
+- `npm run test:e2e` — Playwright + Sheet API モック（数分かかる。第 2 段階で別ワークフロー化を想定）
+- `npm run test:e2e:real-sheet` — 実 GAS / 実シート（`.env` や GitHub Secrets が必要。PR 毎は非推奨）
+- 手動のみの確認 — 実 PDF 目視、本番 iframe、複数 client/room の実環境確認
+
+#### CI で失敗しやすいポイント（短く）
+
+**依存関係は 3 か所** — ルート（Vitest）・`participant-web`・`admin-web`。ルートだけ入れるとビルドや型チェックが「モジュールがない」で落ちる。ローカルも CI も `install:all` を使う。
+
+**`.env.development` は Git に無い** — API URL や client ID は各開発者の手元ファイル。最小 CI は Vitest とビルドだけなので不要。本番 URL をビルドに埋め込む運用を始めたら、CI 用に Variables / Secrets で渡す設計が必要になる。
 
 ---
 
@@ -461,7 +511,7 @@ ExpertEye360は、360°現場を見た受講者の**判断を記録・可視化*
 
 **5173 / 5174** — **別オリジン**のため、受講者の送信と管理者の一覧は **自動では共有されない**
 
-**テスト** — ルートで `npm test`（Vitest・`shared` の Unit）
+**テスト** — ルートで `npm test`（Vitest: `shared` + 両 Web の代表テスト。件数は [自動テストと CI](#自動テストと-ci)）
 
 入室 UI の流れは本番と同型だが、**永続化とハッシュ照合は本番と別**。[実装状況（一覧）](#実装状況一覧) を参照。
 

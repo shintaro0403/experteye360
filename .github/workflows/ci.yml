@@ -1,0 +1,46 @@
+# 最小 CI: テスト・型チェック・ビルド（秘密情報不要）
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            participant-web/package-lock.json
+            admin-web/package-lock.json
+
+      - name: Install dependencies (root + both web apps)
+        run: npm run install:all
+
+      - name: Vitest (shared + admin-web + participant-web)
+        run: npm test
+
+      - name: Typecheck participant-web
+        run: npm run typecheck --prefix participant-web
+
+      - name: Typecheck admin-web
+        run: npm run typecheck --prefix admin-web
+
+      - name: Build participant-web and admin-web
+        run: npm run build:all
