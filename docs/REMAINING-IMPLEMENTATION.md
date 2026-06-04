@@ -2,7 +2,7 @@
 
 **目的**: ここまでの実装済み範囲と未実装範囲を分け、次の設計をやり直すための作業メモとしてまとめる。
 
-**位置づけ**: 本書は再設計の入口。既存の正本は引き続き [README.md](../README.md)、[TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md)、[SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)、[TEST-DESIGN.md](./TEST-DESIGN.md)。
+**位置づけ**: 本書は再設計の入口。既存の正本は引き続き [README.md](../README.md)、[TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md)、[SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)、[TEST-DESIGN.md](./TEST-DESIGN.md)。mock から実 GAS への移行手順は [MOCK-TO-PRODUCTION.md](./MOCK-TO-PRODUCTION.md)。
 
 ---
 

@@ -195,6 +195,8 @@ VITE_STORAGE_BACKEND=sheet
 
 `VITE_STORAGE_BACKEND=sheet` にすると、受講者・管理者画面は GAS Sheet API を使います。管理者コードは Sheet API の `token` として扱われ、研修コードは `rooms/verify` で hash 照合します。
 
+mock（Playwright 用 5198）から実 GAS へ寄せる手順: [docs/MOCK-TO-PRODUCTION.md](../docs/MOCK-TO-PRODUCTION.md)
+
 ## 手動疎通確認
 
 Web App URL を取得したら、まずブラウザまたは DevTools で以下を確認します。

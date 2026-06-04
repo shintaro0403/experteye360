@@ -4,7 +4,7 @@
 
 > 360°工場研修で現場を見ながら、受講者が気づき・判断・共有の選択を記録し、講師が回答結果を確認・可視化するパッケージ。
 
-技術仕様の整理は [docs/TECHNICAL-SPEC.md](docs/TECHNICAL-SPEC.md) を参照。本番データの保存先は [docs/SPREADSHEET-DATA.md](docs/SPREADSHEET-DATA.md)（Google スプレッドシート）。**いま何が動いているか**は [実装状況（一覧）](#実装状況一覧) および [docs/DOC-ALIGNMENT.md](docs/DOC-ALIGNMENT.md) §2。機能の TDD 用洗い出しは [docs/TDD-FEATURE-INVENTORY.md](docs/TDD-FEATURE-INVENTORY.md)、テストのスコープ・Phase は [docs/TEST-DESIGN.md](docs/TEST-DESIGN.md)（**§1.2** が計画の正本）、テストの進め方は [6 ステップ](docs/TEST-DESIGN.md#204-機能ごとの実装フロー6-ステップ)、テストの書き方は [docs/TEST-TEMPLATES.md](docs/TEST-TEMPLATES.md) を参照。
+技術仕様の整理は [docs/TECHNICAL-SPEC.md](docs/TECHNICAL-SPEC.md) を参照。本番データの保存先は [docs/SPREADSHEET-DATA.md](docs/SPREADSHEET-DATA.md)（Google スプレッドシート）。**いま何が動いているか**は [実装状況（一覧）](#実装状況一覧) および [docs/DOC-ALIGNMENT.md](docs/DOC-ALIGNMENT.md) §2。mock から実 GAS への移行手順は [docs/MOCK-TO-PRODUCTION.md](docs/MOCK-TO-PRODUCTION.md)。機能の TDD 用洗い出しは [docs/TDD-FEATURE-INVENTORY.md](docs/TDD-FEATURE-INVENTORY.md)、テストのスコープ・Phase は [docs/TEST-DESIGN.md](docs/TEST-DESIGN.md)（**§1.2** が計画の正本）、テストの進め方は [6 ステップ](docs/TEST-DESIGN.md#204-機能ごとの実装フロー6-ステップ)、テストの書き方は [docs/TEST-TEMPLATES.md](docs/TEST-TEMPLATES.md) を参照。
 
 ## 目次
 
@@ -532,6 +532,7 @@ ExpertEye360は、360°現場を見た受講者の**判断を記録・可視化*
 
 - フロントは静的ホスト（FileZilla 等）可。GAS Web App 想定。
 - ローカルでも `VITE_STORAGE_BACKEND=sheet` と GAS Web App URL を設定すれば、本番に近い Sheet API 経路で確認できる。`VITE_STORAGE_BACKEND=local` はブラウザ内 `localStorage` の開発用フォールバックであり、受講者・管理者間の共有確認の正にはしない（[docs/TEST-DESIGN.md §1.5](docs/TEST-DESIGN.md#15-入室マルチテナント)）。
+- mock から実 GAS へ寄せる手順（TDD ハイブリッド・フェーズ順）: [docs/MOCK-TO-PRODUCTION.md](docs/MOCK-TO-PRODUCTION.md)。フェーズ 1 スモーク: `npm run smoke:phase1-sheet`
 - 将来は API の裏を PostgreSQL 等に差し替え可能（フロントは storage 窓口のみ）。
 
 ---
