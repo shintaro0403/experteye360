@@ -48,7 +48,9 @@
 - シーン・カード編集
 - 回答一覧・詳細
 
-**未完了** — 実在する複数 `client` / 複数 `room` の手動確認、PDF 目視確認・ファイル名ルール、OJT UI
+**未完了** — 実在する複数 `client` / 複数 `room` の手動確認、PDF 目視確認、OJT UI
+
+**UI 応答性（2 秒以内）** — `appDataLoad.ts` / `useAppData.ts` で初回以外は非ブロッキング再読込、並列 fetch、保存後の楽観反映、storage debounce を実装済み（`appDataLoad.test.ts` Green）
 
 ### shared ロジック
 
@@ -279,7 +281,7 @@
 
 **残り**
 
-- Sheet backend の保存中 UI の細分化
+- Sheet backend の保存中 UI の細分化（送信中・保存中ラベル。初回以外の全画面ブロッキングは解消済み）
 - API エラー表示の代表 E2E / 手動確認
 - Sheet backend の全回答削除
 
@@ -453,7 +455,6 @@
 
 **未実装**
 
-- ファイル名ルール
 - 実 PDF の目視確認
 
 **実装済み入口** — `shared/src/pdfExport.ts`
@@ -473,7 +474,6 @@
 - `pdfExport.test.ts` が現行のブラウザ側 PDF 生成実装で Green。
 - `AdminPage` の PDF ダウンロード代表テストが Green。
 - 手動で生成 PDF を開き、必要項目が読める。
-- ファイル名が受講者名・日付・回答 ID などで一意に近い。
 
 **どのようにテストするか**
 
@@ -820,7 +820,7 @@ flowchart TD
 
 ## 5. 次に着手するなら
 
-**最初の作業** — PDF の実ファイル目視確認・ファイル名ルール、または実在する複数 `client` / 複数 `room` を用意した手動確認を行う。
+**最初の作業** — PDF の実ファイル目視確認、または実在する複数 `client` / 複数 `room` を用意した手動確認を行う。
 
 **理由** — Sheet API mock と実 GAS / 実シートの代表分離確認は Green。次はユーザー向け出力機能か、実在データを複数用意する運用寄りの確認に進む。
 

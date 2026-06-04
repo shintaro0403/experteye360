@@ -2,7 +2,7 @@
 
 README・各 `docs/*.md`・コードの食い違いをなくすための **参照順** と **現状の一言** をまとめる。更新したら本ファイルの **最終確認日** も直す。
 
-**最終確認日**: 2026-05-26（PDF のコンテンツ量に応じた複数ページ化と 14 files / 89 tests Green を反映）
+**最終確認日**: 2026-06-04（回帰テスト追加: adminEntry / useAppData / ParticipantPage / AdminPage。18 files / 108 tests Green）
 
 ---
 
@@ -103,7 +103,7 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 **管理者コード入室**
 
 - **実装** — あり（local / Sheet API token）
-- **自動テスト** — `sheetApi.test` で token 契約、`AdminPage.test.tsx` で Sheet backend 管理操作の代表を確認。専用 `adminEntry.test` は未
+- **自動テスト** — `sheetApi.test` で token 契約、`adminEntry.test` で管理者コード照合・変更、`AdminPage.test.tsx` で Sheet backend 管理操作・再読込 UI を確認
 
 **本番 Sheet API**
 
@@ -130,7 +130,7 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 - **備考** — UI・ファイル出力は未
 
 ```bash
-npm test          # ルート Vitest（shared + admin-web）。現状 14 files / 89 tests Green
+npm test          # ルート Vitest（shared + admin-web + participant-web）。現状 18 files / 108 tests Green
 npm run test:watch
 ```
 

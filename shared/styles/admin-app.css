@@ -710,3 +710,52 @@ a { color: var(--navy-mid); }
   border: none;
   border-top: 1px solid var(--gray-200);
 }
+
+/* === Loading spinner（再読込・回答一覧） === */
+.a-spinner {
+  display: inline-block;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 2px solid var(--gray-300);
+  border-top-color: var(--navy-mid);
+  border-radius: 50%;
+  animation: a-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.a-spinner--on-dark {
+  border-color: rgba(255, 255, 255, 0.35);
+  border-top-color: var(--white);
+}
+
+.a-topbar__reload {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.a-responses-panel {
+  position: relative;
+  min-height: 8rem;
+}
+
+.a-responses-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 1.25rem 0.75rem;
+  color: var(--text-muted);
+  font-size: var(--a-font-sm);
+}
+
+.a-responses-loading .a-spinner {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+@keyframes a-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

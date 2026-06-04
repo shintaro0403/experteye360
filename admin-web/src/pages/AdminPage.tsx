@@ -175,10 +175,12 @@ export function AdminPage() {
   const {
     settings,
     setSettings,
+    applySettings,
     responses,
     replaceResponses,
     refresh,
     loading,
+    refreshing,
     error,
   } = useAppData({ adminToken: adminAuthed ? adminToken : null });
   const [adminCodeInput, setAdminCodeInput] = useState("");
@@ -255,7 +257,13 @@ export function AdminPage() {
           roomId: room.roomId,
           nextAccessCode: code,
         });
-        await refresh();
+        const nextRooms =
+          settings.rooms.length > 0
+            ? settings.rooms.map((r) =>
+                r.roomId === room.roomId ? { ...r, accessCode: code } : r,
+              )
+            : [{ ...room, accessCode: code }];
+        applySettings({ ...settings, rooms: nextRooms });
         alert("研修コードを保存しました。受講者に新しいコードを案内してください。");
       } catch {
         alert("研修コードの保存に失敗しました。管理者コードを確認して再度お試しください。");
@@ -269,7 +277,6 @@ export function AdminPage() {
           )
         : [{ ...room, accessCode: code }];
     await setSettings({ ...settings, rooms: nextRooms });
-    await refresh();
     alert("研修コードを保存しました。受講者に新しいコードを案内してください。");
   };
 
@@ -312,16 +319,6 @@ export function AdminPage() {
     setAdminCurrentForChange("");
     setAdminNewCode("");
     setAdminChangeMsg("管理者コードを変更しました。次回から新しいコードで入室してください。");
-    await refresh();
-  };
-
-  const logoutAdmin = () => {
-    setAdminSessionActive(false);
-    setAdminSessionToken(null);
-    setAdminTokenState("");
-    setAdminAuthed(false);
-    setAdminCodeInput("");
-    setAdminLoginError(null);
   };
 
   useEffect(() => {
@@ -354,7 +351,6 @@ export function AdminPage() {
     const merged = editorDraftToScene(activeScene, draft);
     const nextScenes = settings.scenes.map((s) => (s.id === merged.id ? merged : s));
     await setSettings({ ...settings, scenes: nextScenes });
-    await refresh();
   };
 
   const addScene = async () => {
@@ -398,7 +394,6 @@ export function AdminPage() {
     next.unshift(scene);
     await setSettings({ ...settings, scenes: next });
     setActiveSceneId(id);
-    await refresh();
   };
 
   const [selectedResponseId, setSelectedResponseId] = useState<string | null>(null);
@@ -470,18 +465,24 @@ export function AdminPage() {
           <span className="a-topbar__brand">ExpertEye360</span>
           <span className="a-topbar__role">管理者</span>
           <div className="a-topbar__actions">
-            <button type="button" className="a-btn a-btn--secondary" onClick={() => void refresh()}>
-              再読込
-            </button>
-            <button type="button" className="a-btn a-btn--secondary" onClick={logoutAdmin}>
-              ロック
-            </button>
+            <div className="a-topbar__reload">
+              <button
+                type="button"
+                className="a-btn a-btn--secondary"
+                onClick={() => void refresh()}
+                disabled={refreshing}
+              >
+                再読込
+              </button>
+              {refreshing && (
+                <span className="a-spinner a-spinner--on-dark" role="status" aria-label="読み込み中" />
+              )}
+            </div>
           </div>
         </div>
       </header>
 
       <main className="a-main">
-        {loading && <p className="a-hint">データを読み込んでいます。</p>}
         {error && <p className="a-entry-error" role="alert">{error}</p>}
 
         <nav className="a-tabs">
@@ -736,7 +737,7 @@ export function AdminPage() {
         )}
 
         {tab === "responses" && (
-          <section className="a-panel a-grid-2">
+          <section className="a-panel a-grid-2 a-responses-panel">
             <div>
               <h2>回答一覧（{responses.length}）</h2>
               <p className="a-hint">
@@ -744,6 +745,12 @@ export function AdminPage() {
                   ? "Sheet API に保存された受講者回答です。"
                   : "localStorage に保存された受講者回答です。"}
               </p>
+              {(loading || refreshing) && (
+                <div className="a-responses-loading" role="status" aria-live="polite">
+                  <span className="a-spinner" aria-hidden="true" />
+                  <span>回答を読み込んでいます…</span>
+                </div>
+              )}
               <ul className="a-resp-list">
                 {responses.map((r) => {
                   const sceneName =
