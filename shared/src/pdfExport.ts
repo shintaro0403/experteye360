@@ -304,13 +304,13 @@ function line(x1: number, y1: number, x2: number, y2: number, color: string, str
   ].join("\n");
 }
 
-function textLinesAt(x: number, y: number, size: number, lines: string[], color = PDF_TEMPLATE_COLORS.ink): string {
+function textLinesAt(x: number, y: number, size: number, lines: string[], color: string = PDF_TEMPLATE_COLORS.ink): string {
   return lines
     .map((lineText, index) => textAt(x, y - index * TEXT_LINE_HEIGHT, size, lineText, color))
     .join("\n");
 }
 
-function textAt(x: number, y: number, size: number, value: string, color = PDF_TEMPLATE_COLORS.ink): string {
+function textAt(x: number, y: number, size: number, value: string, color: string = PDF_TEMPLATE_COLORS.ink): string {
   return [
     "q",
     `${color} rg`,
