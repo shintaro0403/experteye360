@@ -2,7 +2,7 @@
 
 README・各 `docs/*.md`・コードの食い違いをなくすための **参照順** と **現状の一言** をまとめる。更新したら本ファイルの **最終確認日** も直す。
 
-**最終確認日**: 2026-05-26（PDF の目視フィードバック反映テストと 14 files / 85 tests Green を反映）
+**最終確認日**: 2026-05-26（PDF のコンテンツ量に応じた複数ページ化と 14 files / 89 tests Green を反映）
 
 ---
 
@@ -86,7 +86,7 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 
 **5 問フロー・カード**
 
-- **実装** — あり
+- **実装** — あり（名前・所属は各 10 文字以内、一言メモは 30 文字以内）
 - **自動テスト** — `choices.test` / `judgmentFlow.test` / `sceneQuestions.test` / `cardSlots.test` / `selection.test` / `validateStep.test` / `submission.test`
 - **備考** — Phase 0 の中核、Phase 1 の shared 抽出、Phase 2 の local 永続化・seed は Green
 
@@ -119,7 +119,7 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 
 **F7 PDF**
 
-- **実装** — 共有ロジックの最小実装あり（`shared/src/pdfExport.ts`）。管理者回答詳細からの PDF ダウンロード UI も最小実装あり。PDF は最低限の `xref` / `trailer` / `startxref` / `%%EOF` と Type0 / `UniJIS-UTF16-H` の日本語対応を持ち、`pdf.html` のブランド・タイトル・サマリー・設問カード風レイアウト・濃紺アクセントを反映する。目視フィードバックとして副題削除、タイトル上アクセント線削除、設問番号の太字相当化、ラベルの濃度・サイズ調整、DOC 削除、DATE/PAGE の同一行整列、件数数字の太字相当化も反映済み
+- **実装** — 共有ロジックの最小実装あり（`shared/src/pdfExport.ts`）。管理者回答詳細からの PDF ダウンロード UI も最小実装あり。PDF は最低限の `xref` / `trailer` / `startxref` / `%%EOF` と Type0 / `UniJIS-UTF16-H` の日本語対応を持ち、`pdf.html` のブランド・タイトル・サマリー・設問カード風レイアウト・濃紺アクセントを反映する。目視フィードバックとして副題削除、タイトル上アクセント線削除、設問番号の太字相当化、ラベルの濃度・サイズ調整、DOC 削除、DATE/PAGE の同一行整列、件数数字の太字相当化も反映済み。名前・所属・一言メモの長文折り返しと可変高さ、コンテンツ量に応じた複数ページ化も対応済み
 - **自動テスト** — `pdfExport.test` と `AdminPage.test.tsx` の代表 UI テストあり
 - **備考** — 実 PDF 目視は未
 
@@ -130,7 +130,7 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 - **備考** — UI・ファイル出力は未
 
 ```bash
-npm test          # ルート Vitest（shared + admin-web）。現状 14 files / 85 tests Green
+npm test          # ルート Vitest（shared + admin-web）。現状 14 files / 89 tests Green
 npm run test:watch
 ```
 
@@ -167,7 +167,7 @@ npm run test:watch
 **§6 PDF**
 
 - **誤りやすい** — README が実装済みに見える
-- **正しい現状** — PDF 生成ロジックの入口、開ける最小 PDF 構造、日本語対応、`pdf.html` の主要デザイン要素反映、目視フィードバック反映、`pdfExport.test`、管理者回答詳細からの PDF ダウンロード UI 代表テストは Green。未なのは **実 PDF 目視確認**
+- **正しい現状** — PDF 生成ロジックの入口、開ける最小 PDF 構造、日本語対応、`pdf.html` の主要デザイン要素反映、目視フィードバック反映、長文折り返し・可変高さ、コンテンツ量に応じた複数ページ化、`pdfExport.test`、管理者回答詳細からの PDF ダウンロード UI 代表テストは Green。未なのは **実 PDF 目視確認**
 
 **OJT**
 

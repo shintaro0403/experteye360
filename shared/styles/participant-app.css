@@ -947,7 +947,8 @@ body {
 }
 
 .p-field__label-required,
-.p-field__label-optional {
+.p-field__label-optional,
+.p-field__label-limit {
   font-size: 0.82em;
   font-weight: 600;
   margin-left: 0.2em;
@@ -957,7 +958,8 @@ body {
   color: #b42318;
 }
 
-.p-field__label-optional {
+.p-field__label-optional,
+.p-field__label-limit {
   color: var(--text-muted);
 }
 

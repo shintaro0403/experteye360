@@ -145,6 +145,63 @@ describe("pdfExport", () => {
     );
   });
 
+  it("名前・所属・一言メモの長文を折り返し、欄の高さに合わせて次の設問を下げる", () => {
+    const longName = "山田太郎山田太郎山田太郎";
+    const longAffiliation = "品質保証部品質保証部品質保証部";
+    const longNote = "一言メモがとても長くなって次の行まで続く内容です";
+    const scene = makeScene();
+    const submission = makeSubmission({
+      participantName: longName,
+      affiliation: longAffiliation,
+      rounds: [
+        {
+          awarenessSelection: ["置き場の違い"],
+          actionSelection: ["後工程担当へ共有する"],
+          criteriaOrdered: ["後工程影響"],
+          roundNote: longNote,
+        },
+      ],
+    });
+
+    const pdf = generateParticipantPdf({ submission, scene });
+    const text = new TextDecoder("latin1").decode(pdf);
+
+    expect(text).not.toContain(`<${utf16BeHex(longName)}>`);
+    expect(text).not.toContain(`<${utf16BeHex(longAffiliation)}>`);
+    expect(text).not.toContain(`<${utf16BeHex(longNote)}>`);
+    expect(text).toContain(["BT", "/F1 10 Tf", "188 640 Td", `<${utf16BeHex("山田太郎山田太郎")}> Tj`, "ET"].join("\n"));
+    expect(text).toContain(["BT", "/F1 10 Tf", "188 628 Td", `<${utf16BeHex("山田太郎")}> Tj`, "ET"].join("\n"));
+    expect(text).toContain(["BT", "/F1 10 Tf", "310 640 Td", `<${utf16BeHex("品質保証部品質保")}> Tj`, "ET"].join("\n"));
+    expect(text).toContain(["BT", "/F1 10 Tf", "310 628 Td", `<${utf16BeHex("証部品質保証部")}> Tj`, "ET"].join("\n"));
+    expect(text).toContain("54 498 487 78 re S");
+    expect(text).toContain(["BT", "/F1 8 Tf", "442 534 Td", `<${utf16BeHex("一言メモがとても")}> Tj`, "ET"].join("\n"));
+    expect(text).toContain(["BT", "/F1 8 Tf", "442 522 Td", `<${utf16BeHex("長くなって次の行")}> Tj`, "ET"].join("\n"));
+    expect(text).toContain(["BT", "/F1 8 Tf", "442 510 Td", `<${utf16BeHex("まで続く内容です")}> Tj`, "ET"].join("\n"));
+    expect(text).toContain("54 426 487 58 re S");
+    expect(text).toContain(["BT", "/F2 14 Tf", "67 449 Td", "(02) Tj", "ET"].join("\n"));
+  });
+
+  it("設問カードが1ページに収まらない場合は次ページへ送り、ページ番号を実ページ数に合わせる", () => {
+    const scene = makeScene();
+    const tallRounds = Array.from({ length: JUDGMENT_ROUND_COUNT }, () => ({
+      awarenessSelection: ["気づきが長く続く確認ポイント"],
+      actionSelection: ["共有行動が長く続く確認ポイント"],
+      criteriaOrdered: ["判断基準が長く続く確認ポイント"],
+      roundNote: "一言メモ".repeat(10),
+    }));
+    const submission = makeSubmission({ rounds: tallRounds });
+
+    const pdf = generateParticipantPdf({ submission, scene });
+    const text = new TextDecoder("latin1").decode(pdf);
+
+    expect(text).toContain("<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>");
+    expect(text).toContain("(PAGE 1 / 2) Tj");
+    expect(text).toContain("(PAGE 2 / 2) Tj");
+    expect(text).not.toContain("54 10 487 102 re S");
+    expect(text).toContain("54 602 487 102 re S");
+    expect(text).toContain(["BT", "/F2 14 Tf", "67 647 Td", "(05) Tj", "ET"].join("\n"));
+  });
+
   it("生成用ペイロードにシーン表示名・名前・所属・確信度ラベルを含める", () => {
     const scene = makeScene({ displayName: "出荷前検査エリア" });
     const submission = makeSubmission({

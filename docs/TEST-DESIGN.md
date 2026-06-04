@@ -121,7 +121,7 @@
 - **対象**: `shared/src`（最優先）→ `participant-web` / `admin-web`
 - **関連仕様**: [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md) §3.2.3・§3.2.4（iframe レイアウト）、§4（F3〜F8）、§5（永続化）
 - **永続化仕様**: [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)
-- **現状**: **Vitest 導入済み**（ルート `npm test` は 14 files / 85 tests Green）。Phase 0 / 1 / 2 は Green。Sheet API は GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線、管理画面からの研修コード変更まで最小実装済み。入室 UI（研修コード・管理者コード）は **local / sheet** 対応。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口、PDF ダウンロード UI 代表テスト、開ける最小 PDF 構造、日本語対応、`pdf.html` の主要デザイン要素反映、目視フィードバック反映まで Green（実 PDF 目視・OJT UI は未）
+- **現状**: **Vitest 導入済み**（ルート `npm test` は 14 files / 89 tests Green）。Phase 0 / 1 / 2 は Green。Sheet API は GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線、管理画面からの研修コード変更まで最小実装済み。入室 UI（研修コード・管理者コード）は **local / sheet** 対応。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口、PDF ダウンロード UI 代表テスト、開ける最小 PDF 構造、日本語対応、`pdf.html` の主要デザイン要素反映、目視フィードバック反映、長文折り返し・可変高さ、コンテンツ量に応じた複数ページ化まで Green（実 PDF 目視・OJT UI は未）。名前・所属・一言メモの文字数上限も Green
 
 ### 1.1 改訂履歴
 
@@ -163,7 +163,11 @@
 
 **2.0**（2026-05-25）— Phase 2 の `storage` / `seed` テスト追加と、Phase 2.5 の Sheet API 契約入口・`storage/sheet.ts` 最小実装を反映
 
-**2.1**（2026-05-26）— Sheet API 契約 TC-005〜013、`rooms/access-code`、管理画面の研修コード変更 UI テスト、PDF ダウンロード UI 代表テスト、開ける最小 PDF 構造・日本語対応・`pdf.html` デザイン参照テスト・目視フィードバック反映テスト、14 files / 85 tests Green を反映
+**2.1**（2026-05-26）— Sheet API 契約 TC-005〜013、`rooms/access-code`、管理画面の研修コード変更 UI テスト、PDF ダウンロード UI 代表テスト、開ける最小 PDF 構造・日本語対応・`pdf.html` デザイン参照テスト・目視フィードバック反映テスト・長文折り返しテスト、14 files / 86 tests Green を反映
+
+**2.2**（2026-05-26）— 名前・所属 10 文字、一言メモ 30 文字の上限制御と `validateStep.test.ts` 境界値テスト、14 files / 88 tests Green を反映
+
+**2.3**（2026-05-26）— PDF のコンテンツ量に応じた複数ページ化と `pdfExport.test.ts` のページ数・ページ番号テスト、14 files / 89 tests Green を反映
 
 ### 1.2 テストスコープとマイルストーン
 
@@ -233,7 +237,7 @@
 
 **Phase** — **3**
 **ゴール（1行）** — F7 PDF・UI 配線・OJT
-**含めるもの** — `pdfExport`（入口実装済み。`pdf.html` の主要デザイン要素と目視フィードバック反映まで Green。実 PDF 目視確認は継続）、`AdminPage` エクスポート UI、薄い `*.test.tsx`、`ojtExport`（F8・入口実装済み）
+**含めるもの** — `pdfExport`（入口実装済み。`pdf.html` の主要デザイン要素、目視フィードバック、長文折り返し・可変高さ、コンテンツ量に応じた複数ページ化まで Green。実 PDF 目視確認は継続）、`AdminPage` エクスポート UI、薄い `*.test.tsx`、`ojtExport`（F8・入口実装済み）
 **含めないもの** — Playwright 本格（Phase 4）
 **完了条件** — §8「Phase 3」
 
@@ -304,7 +308,7 @@
 
 **README / 機能** — §6 講師・管理者画面（F7）
 **現行実装** — 回答済み一覧・詳細のみ
-**今回マイルストーン** — 一覧は現状、PDF 共有ロジック入口と管理者 UI は Phase 3 で Green。PDF は `pdf.html` の主要デザイン要素と目視フィードバック反映まで Green。実 PDF 目視確認は Phase 3 継続
+**今回マイルストーン** — 一覧は現状、PDF 共有ロジック入口と管理者 UI は Phase 3 で Green。PDF は `pdf.html` の主要デザイン要素、目視フィードバック、長文折り返し・可変高さ、コンテンツ量に応じた複数ページ化まで Green。実 PDF 目視確認は Phase 3 継続
 **主なテスト** — `sheetApi`, `AdminPage`, `pdfExport`
 **備考** — §1.4。一覧は回答済みのみ・保存順表示
 
@@ -392,7 +396,7 @@
 
 #### Phase 3 — 作業順（F7 PDF・F8 OJT）
 
-1. `shared/src/pdfExport.ts`（入口実装済み。`pdf.html` の主要デザイン要素と目視フィードバック反映まで Green。実 PDF 目視確認は継続。§1.4）→ `pdfExport.test.ts`（ID: PDF）
+1. `shared/src/pdfExport.ts`（入口実装済み。`pdf.html` の主要デザイン要素、目視フィードバック、長文折り返し・可変高さ、コンテンツ量に応じた複数ページ化まで Green。実 PDF 目視確認は継続。§1.4）→ `pdfExport.test.ts`（ID: PDF）
 2. `admin-web` 回答済み一覧から **1 件選択 → PDF ダウンロード**（手動 **B**、代表ケース **A**）
 3. `useAppData.test.ts`（両 Web）
 4. `ojtExport.test.ts`（F8・OJT 用。F7 PDF とは別ファイル。入口実装済み）
@@ -429,6 +433,10 @@
 #### 生成
 
 **仕様** — ブラウザ側の `shared/src/pdfExport.ts` で PDF バイナリを生成する（サーバー／GAS で PDF 生成しない）
+
+#### ページ分割
+
+**仕様** — 設問カードの高さが残り領域を超える場合は次ページへ送る。各ページの `PAGE n / total` と PDF の `/Pages /Count` は実ページ数に合わせる。
 
 #### 入力データ
 
@@ -582,7 +590,7 @@
 #### 3
 
 **画面** — 名前・所属 → 5 問フロー
-**仕様** — §4.12。送信時は `client` + `room`（検証済み `roomId`）必須
+**仕様** — 名前・所属は各 10 文字以内。§4.12。送信時は `client` + `room`（検証済み `roomId`）必須
 
 **照合の意味** — 入力した研修コードは、管理者が当該 `client` の `rooms` シート（または管理者 UI）で設定した **研修コード（入室コード）** と一致すること。管理者画面に表示する「研修回」識別子（`roomId` / 表示名）と、受講者が知る **平文の研修コード** は別表現だが、検証 API で 1:1 に結びつく。
 
@@ -1033,7 +1041,7 @@
 
 - `choices.test.ts`（C-01〜C-04）
 - `judgmentFlow` の JF-01〜JF-11 を **1 ID 1 `it`** に分割したもの
-- `validateStep` の V-01〜V-09 各 step
+- `validateStep` の V-01〜V-11 各 step
 - `selection` の SS-01〜SS-03
 
 **テンプレ**: **T1**（純関数 Unit）  
@@ -1404,7 +1412,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 #### pdfExport.ts
 
 - **テスト**: `pdfExport.test.ts`
-- **状態**: Green（生成用 payload、開ける最小 PDF 構造、日本語対応、`pdf.html` の主要デザイン要素反映、目視フィードバック反映を持つ `Uint8Array`。管理者回答詳細からの PDF ダウンロード UI 代表テストも Green。実 PDF 目視は未）
+- **状態**: Green（生成用 payload、開ける最小 PDF 構造、日本語対応、`pdf.html` の主要デザイン要素反映、目視フィードバック反映、長文折り返し・可変高さ、コンテンツ量に応じた複数ページ化を持つ `Uint8Array`。管理者回答詳細からの PDF ダウンロード UI 代表テストも Green。実 PDF 目視は未）
 - **重要度**: **B**（代表 DL は **A**・§1.4）
 - **関連機能**: F7
 - **備考**: 依存 `jspdf`。入力は `ParticipantSubmission` + `Scene`
@@ -1720,6 +1728,11 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 - **内容**: 名前・所属が trim 後空ならバリデーションエラー（無記名フォールバックなし）
 - **関連**: FLOW
 
+#### TC-003b
+
+- **内容**: 名前・所属が 10 文字を超えるとバリデーションエラー
+- **関連**: FLOW
+
 #### TC-004
 
 - **内容**: `confidenceLevel` 範囲外を拒否/補正
@@ -1754,7 +1767,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 
 **関連仕様**: [§1.4 F7 ダッシュボード・PDF](#14-f7-講師管理者ダッシュボードと-pdf-エクスポート)、F7
 
-**依存**: 現状は `shared/src/pdfExport.ts` で **生成関数の戻り値**（`Uint8Array` / ヘッダ `%PDF` 相当）、生成用 payload、`pdf.html` の主要デザイン要素反映、目視フィードバック反映を assert している。実ファイルの目視は手動 **A**。
+**依存**: 現状は `shared/src/pdfExport.ts` で **生成関数の戻り値**（`Uint8Array` / ヘッダ `%PDF` 相当）、生成用 payload、`pdf.html` の主要デザイン要素反映、目視フィードバック反映、長文折り返し・可変高さ、コンテンツ量に応じた複数ページ化を assert している。実ファイルの目視は手動 **A**。
 
 ### TC-001（PDF-01）
 
@@ -1796,6 +1809,12 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 
 - **重要度**: C
 - **内容**: `rounds` 欠損・長さ不足でもクラッシュしない
+
+### TC-009（PDF 複数ページ）
+
+- **重要度**: B
+- **内容**: 設問カードが 1 ページに収まらない場合は次ページへ送る
+- **期待**: `/Pages /Count` と `PAGE n / total` が実ページ数に一致し、次ページの設問カードがページ下端ではなく上部に描画される
 
 ---
 
@@ -1896,7 +1915,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 #### 事前（名前・所属）
 
 **step（§4.3.5）** — 0
-**画面順** — 名前 → 所属
+**画面順** — 名前 → 所属（各 10 文字以内）
 
 #### 設問 1
 
@@ -2092,12 +2111,14 @@ admin-web/src/
 
 #### Phase 3 — F7 PDF・UI・OJT
 
-- [x] `pdfExport.test.ts` 入口 Green（§4.7 / §1.4。生成用 payload、開ける最小 PDF 構造、日本語対応、`pdf.html` の主要デザイン要素反映、目視フィードバック反映を持つ `Uint8Array`）
+- [x] `pdfExport.test.ts` 入口 Green（§4.7 / §1.4。生成用 payload、開ける最小 PDF 構造、日本語対応、`pdf.html` の主要デザイン要素反映、目視フィードバック反映、長文折り返し・可変高さ、コンテンツ量に応じた複数ページ化を持つ `Uint8Array`）
 - [x] **B** — `pdf.html` のブランド・タイトル・サマリー・設問カード風レイアウト・濃紺アクセントを PDF に反映
 - [x] **B** — 副題削除、設問番号の太字相当化、灰色ラベルの濃度・サイズ調整、DOC/DATE/PAGE の分割配置を PDF に反映
 - [x] **B** — ヘッダーの `EXPERT EYE 360` / `DOC` / `DATE` / `PAGE` を太字相当にし、DATE/PAGE の重なりを防止
 - [x] **B** — `DOC EE360-RR-0428` を削除し、`DATE` / `PAGE` を同一行に整列、件数表示の数字を太字相当にする
 - [x] **B** — 研修結果レポート上の短いアクセント線を削除
+- [x] **B** — 名前・所属・一言メモの長文を折り返し、設問カード高さを行数に合わせて増やす
+- [x] **B** — コンテンツ量に応じて PDF を複数ページ化し、ページ番号を実ページ数に合わせる
 - [x] **B** — 管理者画面から回答済み 1 件の PDF ダウンロード（代表 UI テスト Green）
 - [ ] **A** — 代表 1 件の PDF を目視し ①〜⑤ が含まれること
 - [ ] `useAppData.test.ts`（両 Web）

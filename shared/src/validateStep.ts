@@ -5,6 +5,13 @@ import {
 } from "./judgmentFlow";
 import type { JudgmentRound } from "./types";
 
+export const PARTICIPANT_NAME_MAX_LENGTH = 10;
+export const AFFILIATION_MAX_LENGTH = 10;
+export const ROUND_NOTE_MAX_LENGTH = 30;
+
+export const TEXT_LIMIT_ERROR_10 = "10文字以内で入力してください";
+export const TEXT_LIMIT_ERROR_30 = "30文字以内で入力してください";
+
 export type ValidateParticipantStepInput = {
   step: number;
   participantName: string;
@@ -17,6 +24,12 @@ export function validateParticipantStep(input: ValidateParticipantStepInput): st
   if (input.step === STEP_INTRO) {
     if (!input.participantName.trim()) return "名前を入力してください";
     if (!input.affiliation.trim()) return "所属を入力してください";
+    if (countChars(input.participantName.trim()) > PARTICIPANT_NAME_MAX_LENGTH) {
+      return TEXT_LIMIT_ERROR_10;
+    }
+    if (countChars(input.affiliation.trim()) > AFFILIATION_MAX_LENGTH) {
+      return TEXT_LIMIT_ERROR_10;
+    }
     return null;
   }
 
@@ -40,5 +53,12 @@ export function validateParticipantStep(input: ValidateParticipantStepInput): st
   if (phase.phase === "criteria" && roundData.criteriaOrdered.length === 0) {
     return "判断基準カードを1つ選んでください";
   }
+  if (phase.phase === "note" && countChars(roundData.roundNote.trim()) > ROUND_NOTE_MAX_LENGTH) {
+    return TEXT_LIMIT_ERROR_30;
+  }
   return null;
+}
+
+function countChars(value: string): number {
+  return Array.from(value).length;
 }

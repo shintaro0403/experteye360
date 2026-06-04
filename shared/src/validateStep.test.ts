@@ -17,6 +17,17 @@ describe("validateParticipantStep", () => {
     expect(validateParticipantStep(baseInput({ affiliation: "  " }))).toBe("所属を入力してください");
   });
 
+  it("名前と所属は10文字以内だけ通過できる", () => {
+    expect(validateParticipantStep(baseInput({ participantName: "１２３４５６７８９０" }))).toBeNull();
+    expect(validateParticipantStep(baseInput({ participantName: "１２３４５６７８９０１" }))).toBe(
+      "10文字以内で入力してください",
+    );
+    expect(validateParticipantStep(baseInput({ affiliation: "１２３４５６７８９０" }))).toBeNull();
+    expect(validateParticipantStep(baseInput({ affiliation: "１２３４５６７８９０１" }))).toBe(
+      "10文字以内で入力してください",
+    );
+  });
+
   it("気づきカードが未選択のとき、選択を求める", () => {
     expect(validateParticipantStep(baseInput({ step: 1 }))).toBe("気づきカードを1つ選んでください");
   });
@@ -40,6 +51,16 @@ describe("validateParticipantStep", () => {
 
   it("一言メモは未入力でも通過できる", () => {
     expect(validateParticipantStep(baseInput({ step: 4 }))).toBeNull();
+  });
+
+  it("一言メモは30文字以内だけ通過できる", () => {
+    const validNote = "あ".repeat(30);
+    const tooLongNote = "あ".repeat(31);
+
+    expect(validateParticipantStep(baseInput({ step: 4, rounds: roundsWith(0, { roundNote: validNote }) }))).toBeNull();
+    expect(validateParticipantStep(baseInput({ step: 4, rounds: roundsWith(0, { roundNote: tooLongNote }) }))).toBe(
+      "30文字以内で入力してください",
+    );
   });
 
   it("確信度が未選択のとき、選択を求める", () => {

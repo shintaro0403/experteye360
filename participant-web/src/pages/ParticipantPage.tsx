@@ -275,6 +275,7 @@ function NoteStep({
   placeholder,
   onBack,
   onNext,
+  warn,
 }: {
   round: number;
   value: string;
@@ -282,6 +283,7 @@ function NoteStep({
   placeholder: string;
   onBack: () => void;
   onNext: () => void;
+  warn?: string | null;
 }) {
   return (
     <div className="p-form p-form--note">
@@ -289,6 +291,7 @@ function NoteStep({
         <span className="p-field__label">
           一言メモ
           <span className="p-field__label-optional">（任意）</span>
+          <span className="p-field__label-limit">（30文字以内）</span>
         </span>
         <textarea
           className="p-field__input"
@@ -305,6 +308,7 @@ function NoteStep({
         titleOptional
         onBack={onBack}
         onNext={onNext}
+        warn={warn}
       />
     </div>
   );
@@ -466,6 +470,7 @@ export function ParticipantPage() {
                     <span className="p-field__label">
                       名前
                       <span className="p-field__label-required">（必須）</span>
+                      <span className="p-field__label-limit">（10文字以内）</span>
                     </span>
                   </span>
                   <input
@@ -487,6 +492,7 @@ export function ParticipantPage() {
                     <span className="p-field__label">
                       所属
                       <span className="p-field__label-required">（必須）</span>
+                      <span className="p-field__label-limit">（10文字以内）</span>
                     </span>
                   </span>
                   <input
@@ -563,10 +569,14 @@ export function ParticipantPage() {
             <NoteStep
               round={rp.round}
               value={rounds[rp.round].roundNote}
-              onChange={(v) => updateRound(rp.round, { roundNote: v })}
+              onChange={(v) => {
+                updateRound(rp.round, { roundNote: v });
+                if (fieldWarn) setFieldWarn(null);
+              }}
               placeholder={NOTE_PLACEHOLDERS[rp.round] ?? NOTE_PLACEHOLDERS[0]}
               onBack={goBack}
               onNext={tryNext}
+              warn={fieldWarn}
             />
           )}
 

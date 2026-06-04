@@ -67,7 +67,7 @@
 - `pdfExport`（生成 payload と `Uint8Array` の入口）
 - `ojtExport`（確認項目テキスト生成の入口）
 
-**テスト** — `npm test` は 14 files / 85 tests Green
+**テスト** — `npm test` は 14 files / 89 tests Green
 
 ### Playwright
 
@@ -447,6 +447,9 @@
 - ヘッダーの `EXPERT EYE 360` / `DOC` / `DATE` / `PAGE` の太字相当化と `DATE` / `PAGE` の重なり防止
 - `DOC EE360-RR-0428` の削除、`DATE` / `PAGE` の同一行整列、件数表示 `全 5 件` の数字太字相当化
 - タイトル上の短いアクセント線の削除
+- 名前・所属・一言メモの長文折り返しと、行数に応じた設問カードの可変高さ
+- 名前・所属は 10 文字以内、一言メモは 30 文字以内の入力上限とバリデーション
+- コンテンツ量に応じた PDF の複数ページ化と実ページ数に合わせた `PAGE n / total` 表示
 
 **未実装**
 
@@ -582,6 +585,48 @@
 **どのようにテストするか** — `pdfExport.test.ts` で PDF content stream を読み、`DOC EE360-RR-0428` が含まれないこと、`DATE` と `PAGE` が同じ y 座標かつ `/F2` で出ること、件数の `5` が `/F2` の literal text で出ることを assert する。
 
 **コード上の期待値** — `buildContentStream()` は `DOC` を描画せず、`DATE` と `PAGE` を同一行に揃える。件数表示は `textAt()` と `latinTextAt(..., "F2")` を組み合わせて描画する。
+
+**状態** — 完了済み（`pdfExport.test.ts` / `npm test` Green）
+
+#### 次の TDD スライス（長文の折り返し・可変高さ）
+
+**目的** — 名前・所属・一言メモなどの記載欄に長文が入っても、PDF 上で文字が重なったり欄外にはみ出したりせず読める状態にする。
+
+**受け入れ条件** — `participantName`、`affiliation`、各設問の `roundNote` は欄幅に応じて複数行に折り返される。長文を 1 つの text operator で横に流し込まない。複数行になった欄は行数に応じてセルまたは設問カードの高さが増える。長文カードの次の設問カードは増えた高さ分だけ下に配置され、前のメモ文字と重ならない。
+
+**成功条件** — `pdfExport.test.ts` が Red → Green。`npm test`、lint、差分チェックが Green。
+
+**どのようにテストするか** — `pdfExport.test.ts` で長い名前・所属・一言メモを持つ回答を生成し、PDF content stream を検査する。長文全体が 1 つの `<...> Tj` に含まれないこと、分割された文字列が複数の `Tj` と異なる y 座標で出ること、長文を含む設問カードの矩形高さが増えること、次設問のカード y 座標が通常間隔より大きく下がることを assert する。
+
+**コード上の期待値** — PDF 生成は文字列を固定文字数で折り返す `wrapText()` と複数行描画用の helper を持つ。`summaryCell()` と `questionField()` は折り返し行を描画し、`questionCard()` は各欄の最大行数からカード高さを計算して返す。`buildContentStream()` は前カードの高さに応じて次カードの y 座標を更新する。
+
+**状態** — 完了済み（`pdfExport.test.ts` / `npm test` Green）
+
+#### 次の TDD スライス（記載欄の文字数制限）
+
+**目的** — 名前・所属・一言メモに長すぎる文字列が入らないようにし、PDF 出力前の入力段階でレイアウト崩れの原因を抑える。
+
+**受け入れ条件** — 名前は 10 文字以内、所属は 10 文字以内、一言メモは各設問 30 文字以内。ラベルに `（10文字以内）` / `（30文字以内）` を表示する。11 文字以上・31 文字以上のときは `next` で進めず、`10文字以内で入力してください` / `30文字以内で入力してください` を表示する。
+
+**成功条件** — `validateStep.test.ts` が Red → Green。`npm test`、lint、差分チェックが Green。
+
+**どのようにテストするか** — `validateStep.test.ts` で名前・所属の 10 / 11 文字境界と、一言メモの 30 / 31 文字境界を assert する。10 / 30 文字は通過し、11 / 31 文字はそれぞれのエラーメッセージを返す。
+
+**コード上の期待値** — 上限値とエラーメッセージは `shared/src/validateStep.ts` の定数として定義し、`validateParticipantStep()` が trim 後の文字数で判定する。`ParticipantPage` はラベルに文字数上限を表示し、超過時はナビの警告欄に共通メッセージを出す。
+
+**状態** — 完了済み（`validateStep.test.ts` / `npm test` Green）
+
+#### 次の TDD スライス（PDF 複数ページ化）
+
+**目的** — 設問カードの内容量が増えても、PDF 上でカードや文字がページ下端に重なったり欄外にはみ出したりしないようにする。
+
+**受け入れ条件** — 設問カードの高さと残り領域を計算し、下余白を割るカードは次ページへ送る。PDF の `/Pages /Count` は実ページ数と一致する。上部ヘッダーの `PAGE n / total` は各ページの実番号に合わせる。次ページに送られた設問カードはページ上部の設問一覧領域から描画される。
+
+**成功条件** — `pdfExport.test.ts` が Red → Green。`npm test`、lint、差分チェックが Green。
+
+**どのようにテストするか** — `pdfExport.test.ts` で高さが大きい設問カードを 5 件持つ回答を生成する。PDF 本文に `/Count 2`、`PAGE 1 / 2`、`PAGE 2 / 2` が含まれること、5 問目が 1 ページ目の下端ではなく 2 ページ目上部の座標に描画されることを assert する。
+
+**コード上の期待値** — PDF 生成は設問カードごとの高さを測り、ページごとの content stream を生成する。`buildMinimalPdf()` はページ数に応じて Page object と Contents object を動的に作る。
 
 **状態** — 完了済み（`pdfExport.test.ts` / `npm test` Green）
 
