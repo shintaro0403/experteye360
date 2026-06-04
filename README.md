@@ -1,5 +1,7 @@
 # ExpertEye360 — 現場探索型 判断トレーニング
 
+![CI](https://github.com/shintaro0403/experteye360/actions/workflows/ci.yml/badge.svg)
+
 > 360°工場研修で現場を見ながら、受講者が気づき・判断・共有の選択を記録し、講師が回答結果を確認・可視化するパッケージ。
 
 技術仕様の整理は [docs/TECHNICAL-SPEC.md](docs/TECHNICAL-SPEC.md) を参照。本番データの保存先は [docs/SPREADSHEET-DATA.md](docs/SPREADSHEET-DATA.md)（Google スプレッドシート）。**いま何が動いているか**は [実装状況（一覧）](#実装状況一覧) および [docs/DOC-ALIGNMENT.md](docs/DOC-ALIGNMENT.md) §2。機能の TDD 用洗い出しは [docs/TDD-FEATURE-INVENTORY.md](docs/TDD-FEATURE-INVENTORY.md)、テストのスコープ・Phase は [docs/TEST-DESIGN.md](docs/TEST-DESIGN.md)（**§1.2** が計画の正本）、テストの進め方は [6 ステップ](docs/TEST-DESIGN.md#204-機能ごとの実装フロー6-ステップ)、テストの書き方は [docs/TEST-TEMPLATES.md](docs/TEST-TEMPLATES.md) を参照。
@@ -121,9 +123,9 @@ npm run build:all     # 両 Web の production build（型・bundling 確認）
 
 各 Web の型だけ見る場合: `npm run typecheck --prefix participant-web` / `admin-web`。
 
-#### GitHub Actions（最小 CI）
+#### GitHub Actions（最小 CI・実装済み）
 
-ワークフロー: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+ワークフロー: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)（`main` で Vitest・型チェック・ビルドまで Green 確認済み）
 
 **いつ動くか** — `main` への push と、`main` 向け pull request。
 
