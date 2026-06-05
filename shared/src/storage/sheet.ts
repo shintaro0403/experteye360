@@ -25,6 +25,10 @@ export type LoadSheetResponsesInput = AdminSheetApiBase & {
   roomId: string;
 };
 
+export type ClearSheetResponsesInput = AdminSheetApiBase & {
+  roomId: string;
+};
+
 export type AppendSheetResponseInput = SheetApiBase & {
   roomId: string;
   submission: ParticipantSubmission;
@@ -72,6 +76,17 @@ export async function loadSheetResponses(
       room: input.roomId,
       token: input.adminToken,
     }),
+  );
+}
+
+export async function clearSheetResponses(input: ClearSheetResponsesInput): Promise<void> {
+  await requestJson<unknown>(
+    buildUrl(input.apiBaseUrl, "responses/clear", {
+      client: input.clientId,
+      room: input.roomId,
+      token: input.adminToken,
+    }),
+    { method: "POST" },
   );
 }
 

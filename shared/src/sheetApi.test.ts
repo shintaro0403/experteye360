@@ -3,6 +3,7 @@ import {
   appendSheetResponse,
   changeAdminTokenViaApi,
   changeTrainingCodeViaApi,
+  clearSheetResponses,
   loadSheetResponses,
   loadSheetSettings,
   saveSheetSettings,
@@ -85,6 +86,27 @@ describe("sheetApi 契約", () => {
       token: TEST_ADMIN_TOKEN,
     });
     expect(init?.method ?? "GET").toBe("GET");
+  });
+
+  it("POST responses/clear は client・room・token クエリで当該 room の回答を全削除する", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ ok: true }));
+
+    await clearSheetResponses({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      roomId: TEST_ROOM,
+      adminToken: TEST_ADMIN_TOKEN,
+    });
+
+    const [url, init] = lastFetchCall();
+    expectUrlHasParams(String(url), {
+      path: "responses/clear",
+      client: TEST_CLIENT,
+      room: TEST_ROOM,
+      token: TEST_ADMIN_TOKEN,
+    });
+    expect(init?.method).toBe("POST");
+    expect(init?.body).toBeUndefined();
   });
 
   it("POST responses は client・room クエリと ParticipantSubmission ボディを送る", async () => {

@@ -194,6 +194,23 @@ async function handleSheetApi(req, res, url) {
     return;
   }
 
+  if (path === "responses/clear") {
+    const room = url.searchParams.get("room");
+    if (!room) {
+      sendJson(res, 400, { ok: false, error: "room_required" });
+      return;
+    }
+    if (req.method === "POST") {
+      if (!isAuthorized(url)) {
+        sendJson(res, 403, { ok: false, error: "invalid_admin_token" });
+        return;
+      }
+      roomResponses(client, room).length = 0;
+      sendJson(res, 200, { ok: true });
+      return;
+    }
+  }
+
   if (path === "responses") {
     const room = url.searchParams.get("room");
     if (!room) {

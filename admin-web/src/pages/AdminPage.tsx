@@ -20,9 +20,25 @@ import {
   verifyAdminTokenAsync,
 } from "@shared/storage";
 import type { ParticipantSubmission, Scene } from "@shared/types";
+import { ActionButton } from "../components/ActionButton";
 import { CardSlotsField, cardsToSlots, slotsToCards } from "../components/CardSlotsField";
 import { ImeInput } from "../components/ImeField";
 import { useAppData } from "../hooks/useAppData";
+import { usePendingAction } from "../hooks/usePendingAction";
+
+const ADMIN_ACTION = {
+  login: "login",
+  reload: "reload",
+  saveTrainingCode: "saveTrainingCode",
+  saveAdminCode: "saveAdminCode",
+  saveTourUrl: "saveTourUrl",
+  addScene: "addScene",
+  promoteScene: "promoteScene",
+  removeScene: "removeScene",
+  saveScene: "saveScene",
+  clearResponses: "clearResponses",
+  downloadPdf: "downloadPdf",
+} as const;
 
 type QuestionEditorDraft = {
   awarenessCardSlots: string[];
@@ -191,6 +207,28 @@ function formatTrainingCodeSaveError(err: unknown): string {
   return "研修コードの保存に失敗しました。管理者コードを確認して再度お試しください。";
 }
 
+function formatClearResponsesError(err: unknown): string {
+  const detail = sheetApiErrorDetail(err);
+  if (detail.includes("Unknown route") && detail.includes("responses/clear")) {
+    return [
+      "全回答の削除に失敗しました。",
+      "",
+      "実 GAS に全回答削除 API（responses/clear）がありません。",
+      "gas/Code.gs を Apps Script に反映し、「新しいデプロイ」したあと .env の VITE_SHEET_API_BASE を新しい URL に更新してください。",
+    ].join("\n");
+  }
+  if (detail.includes("Invalid admin token")) {
+    return "全回答の削除に失敗しました。管理者コードが無効です。一度ログアウトして、正しい管理者コードで再入室してください。";
+  }
+  if (detail.includes("Invalid room")) {
+    return "全回答の削除に失敗しました。研修回 ID がシートと一致しません（例: demo-room-001）。設定の再読込後にもう一度お試しください。";
+  }
+  if (detail) {
+    return `全回答の削除に失敗しました。\n\n（${detail}）`;
+  }
+  return "全回答の削除に失敗しました。管理者コードを確認して再度お試しください。";
+}
+
 export function AdminPage() {
   const [adminToken, setAdminTokenState] = useState(() => getAdminSessionToken() ?? "");
   const [adminAuthed, setAdminAuthed] = useState(
@@ -218,6 +256,7 @@ export function AdminPage() {
   const [activeSceneId, setActiveSceneId] = useState(settings.scenes[0]?.id ?? "");
   const [draft, setDraft] = useState<SceneEditorDraft | null>(null);
   const [expandedQuestion, setExpandedQuestion] = useState(0);
+  const { runPending, isPending } = usePendingAction();
 
   const activeScene = useMemo(
     () => settings.scenes.find((s) => s.id === activeSceneId),
@@ -243,114 +282,117 @@ export function AdminPage() {
     setAdminLoginError(null);
   };
 
-  const tryAdminLogin = async () => {
-    if (isSheetStorageBackend()) {
-      const token = adminCodeInput.trim();
-      if (!token) {
-        setAdminLoginError("管理者コードが正しくありません");
+  const tryAdminLogin = () =>
+    void runPending(ADMIN_ACTION.login, async () => {
+      if (isSheetStorageBackend()) {
+        const token = adminCodeInput.trim();
+        if (!token) {
+          setAdminLoginError("管理者コードが正しくありません");
+          return;
+        }
+        try {
+          await verifyAdminTokenAsync(token, primaryTrainingRoom(settings).roomId);
+          setAdminSessionActive(true);
+          setAdminSessionToken(token);
+          setAdminTokenState(token);
+          setAdminAuthed(true);
+          setAdminLoginError(null);
+          setAdminCodeInput("");
+        } catch {
+          setAdminLoginError("管理者コードが正しくありません");
+        }
         return;
       }
-      try {
-        await verifyAdminTokenAsync(token, primaryTrainingRoom(settings).roomId);
+
+      if (verifyAdminCode(adminCodeInput, settings.adminAccessCode)) {
         setAdminSessionActive(true);
-        setAdminSessionToken(token);
-        setAdminTokenState(token);
         setAdminAuthed(true);
         setAdminLoginError(null);
         setAdminCodeInput("");
-      } catch {
-        setAdminLoginError("管理者コードが正しくありません");
+        return;
       }
-      return;
-    }
+      setAdminLoginError("管理者コードが正しくありません");
+    });
 
-    if (verifyAdminCode(adminCodeInput, settings.adminAccessCode)) {
-      setAdminSessionActive(true);
-      setAdminAuthed(true);
-      setAdminLoginError(null);
-      setAdminCodeInput("");
-      return;
-    }
-    setAdminLoginError("管理者コードが正しくありません");
-  };
+  const saveTrainingCode = () =>
+    void runPending(ADMIN_ACTION.saveTrainingCode, async () => {
+      const code = trainingCodeDraft.trim();
+      if (!code) {
+        alert("研修コードを入力してください");
+        return;
+      }
+      const room = primaryTrainingRoom(settings);
+      if (isSheetStorageBackend()) {
+        try {
+          await changeTrainingCodeAsync({
+            adminToken,
+            roomId: room.roomId,
+            nextAccessCode: code,
+          });
+          const nextRooms =
+            settings.rooms.length > 0
+              ? settings.rooms.map((r) =>
+                  r.roomId === room.roomId ? { ...r, accessCode: code } : r,
+                )
+              : [{ ...room, accessCode: code }];
+          applySettings({ ...settings, rooms: nextRooms });
+          alert("研修コードを保存しました。受講者に新しいコードを案内してください。");
+        } catch (err) {
+          alert(formatTrainingCodeSaveError(err));
+        }
+        return;
+      }
+      const nextRooms =
+        settings.rooms.length > 0
+          ? settings.rooms.map((r) =>
+              r.roomId === room.roomId ? { ...r, accessCode: code } : r,
+            )
+          : [{ ...room, accessCode: code }];
+      await setSettings({ ...settings, rooms: nextRooms });
+      alert("研修コードを保存しました。受講者に新しいコードを案内してください。");
+    });
 
-  const saveTrainingCode = async () => {
-    const code = trainingCodeDraft.trim();
-    if (!code) {
-      alert("研修コードを入力してください");
-      return;
-    }
-    const room = primaryTrainingRoom(settings);
-    if (isSheetStorageBackend()) {
-      try {
-        await changeTrainingCodeAsync({
+  const saveAdminCodeChange = () =>
+    void runPending(ADMIN_ACTION.saveAdminCode, async () => {
+      if (isSheetStorageBackend()) {
+        const result = validateSheetAdminCodeChange(
+          adminCurrentForChange,
+          adminNewCode,
           adminToken,
-          roomId: room.roomId,
-          nextAccessCode: code,
-        });
-        const nextRooms =
-          settings.rooms.length > 0
-            ? settings.rooms.map((r) =>
-                r.roomId === room.roomId ? { ...r, accessCode: code } : r,
-              )
-            : [{ ...room, accessCode: code }];
-        applySettings({ ...settings, rooms: nextRooms });
-        alert("研修コードを保存しました。受講者に新しいコードを案内してください。");
-      } catch (err) {
-        alert(formatTrainingCodeSaveError(err));
+        );
+        if (!result.ok) {
+          setAdminChangeMsg(result.error);
+          return;
+        }
+        const next = adminNewCode.trim();
+        try {
+          await changeAdminTokenAsync({ adminToken, nextAdminToken: next });
+          setAdminSessionToken(next);
+          setAdminTokenState(next);
+          setAdminCurrentForChange("");
+          setAdminNewCode("");
+          setAdminChangeMsg("管理者コードを変更しました。次回から新しいコードで入室してください。");
+        } catch {
+          setAdminChangeMsg("現在の管理者コードが正しくありません");
+        }
+        return;
       }
-      return;
-    }
-    const nextRooms =
-      settings.rooms.length > 0
-        ? settings.rooms.map((r) =>
-            r.roomId === room.roomId ? { ...r, accessCode: code } : r,
-          )
-        : [{ ...room, accessCode: code }];
-    await setSettings({ ...settings, rooms: nextRooms });
-    alert("研修コードを保存しました。受講者に新しいコードを案内してください。");
-  };
 
-  const saveAdminCodeChange = async () => {
-    if (isSheetStorageBackend()) {
-      const result = validateSheetAdminCodeChange(
+      const result = changeAdminAccessCode(
         adminCurrentForChange,
         adminNewCode,
-        adminToken,
+        settings.adminAccessCode,
       );
       if (!result.ok) {
         setAdminChangeMsg(result.error);
         return;
       }
       const next = adminNewCode.trim();
-      try {
-        await changeAdminTokenAsync({ adminToken, nextAdminToken: next });
-        setAdminSessionToken(next);
-        setAdminTokenState(next);
-        setAdminCurrentForChange("");
-        setAdminNewCode("");
-        setAdminChangeMsg("管理者コードを変更しました。次回から新しいコードで入室してください。");
-      } catch {
-        setAdminChangeMsg("現在の管理者コードが正しくありません");
-      }
-      return;
-    }
-
-    const result = changeAdminAccessCode(
-      adminCurrentForChange,
-      adminNewCode,
-      settings.adminAccessCode,
-    );
-    if (!result.ok) {
-      setAdminChangeMsg(result.error);
-      return;
-    }
-    const next = adminNewCode.trim();
-    await setSettings({ ...settings, adminAccessCode: next });
-    setAdminCurrentForChange("");
-    setAdminNewCode("");
-    setAdminChangeMsg("管理者コードを変更しました。次回から新しいコードで入室してください。");
-  };
+      await setSettings({ ...settings, adminAccessCode: next });
+      setAdminCurrentForChange("");
+      setAdminNewCode("");
+      setAdminChangeMsg("管理者コードを変更しました。次回から新しいコードで入室してください。");
+    });
 
   useEffect(() => {
     if (!activeScene) {
@@ -373,58 +415,76 @@ export function AdminPage() {
     });
   };
 
-  const saveTourUrl = async () => {
-    await setSettings({ ...settings, tourUrl: tourUrl.trim() });
-  };
-
-  const saveSceneDraft = async () => {
-    if (!activeScene || !draft) return;
-    const merged = editorDraftToScene(activeScene, draft);
-    const nextScenes = settings.scenes.map((s) => (s.id === merged.id ? merged : s));
-    await setSettings({ ...settings, scenes: nextScenes });
-  };
-
-  const addScene = async () => {
-    const questionCards = Array.from({ length: JUDGMENT_ROUND_COUNT }, (_, i) => {
-      const q = defaultQuestionDraft(i + 1);
-      return {
-        awarenessCards: slotsToCards(q.awarenessCardSlots),
-        criteriaCards: slotsToCards(q.criteriaCardSlots),
-        actionCards: slotsToCards(q.actionCardSlots),
-      };
+  const saveTourUrl = () =>
+    void runPending(ADMIN_ACTION.saveTourUrl, async () => {
+      await setSettings({ ...settings, tourUrl: tourUrl.trim() });
     });
-    const s: Scene = {
-      id: uid(),
-      vistaSceneName: "新規シーン（3DVista名を入力）",
-      displayName: "新規シーン",
-      processArea: "",
-      trainingTheme: "",
-      attentionLabels: [],
-      questionCards,
-      awarenessCards: questionCards[0].awarenessCards,
-      criteriaCards: questionCards[0].criteriaCards,
-      actionCards: questionCards[0].actionCards,
-      veteranTemplate: { ...EMPTY_VETERAN_TEMPLATE },
-    };
-    await setSettings({ ...settings, scenes: [...settings.scenes, s] });
-    setActiveSceneId(s.id);
-  };
 
-  const removeScene = async (id: string) => {
+  const saveSceneDraft = () =>
+    void runPending(ADMIN_ACTION.saveScene, async () => {
+      if (!activeScene || !draft) return;
+      const merged = editorDraftToScene(activeScene, draft);
+      const nextScenes = settings.scenes.map((s) => (s.id === merged.id ? merged : s));
+      await setSettings({ ...settings, scenes: nextScenes });
+    });
+
+  const addScene = () =>
+    void runPending(ADMIN_ACTION.addScene, async () => {
+      const questionCards = Array.from({ length: JUDGMENT_ROUND_COUNT }, (_, i) => {
+        const q = defaultQuestionDraft(i + 1);
+        return {
+          awarenessCards: slotsToCards(q.awarenessCardSlots),
+          criteriaCards: slotsToCards(q.criteriaCardSlots),
+          actionCards: slotsToCards(q.actionCardSlots),
+        };
+      });
+      const s: Scene = {
+        id: uid(),
+        vistaSceneName: "新規シーン（3DVista名を入力）",
+        displayName: "新規シーン",
+        processArea: "",
+        trainingTheme: "",
+        attentionLabels: [],
+        questionCards,
+        awarenessCards: questionCards[0].awarenessCards,
+        criteriaCards: questionCards[0].criteriaCards,
+        actionCards: questionCards[0].actionCards,
+        veteranTemplate: { ...EMPTY_VETERAN_TEMPLATE },
+      };
+      await setSettings({ ...settings, scenes: [...settings.scenes, s] });
+      setActiveSceneId(s.id);
+    });
+
+  const removeScene = (id: string) => {
     if (!confirm("このシーンを削除しますか？")) return;
-    const next = settings.scenes.filter((s) => s.id !== id);
-    await setSettings({ ...settings, scenes: next });
-    setActiveSceneId(next[0]?.id ?? "");
+    void runPending(ADMIN_ACTION.removeScene, async () => {
+      const next = settings.scenes.filter((s) => s.id !== id);
+      await setSettings({ ...settings, scenes: next });
+      setActiveSceneId(next[0]?.id ?? "");
+    });
   };
 
-  const promoteSceneToParticipant = async (id: string) => {
-    const idx = settings.scenes.findIndex((s) => s.id === id);
-    if (idx <= PARTICIPANT_SCENE_INDEX) return;
-    const next = [...settings.scenes];
-    const [scene] = next.splice(idx, 1);
-    next.unshift(scene);
-    await setSettings({ ...settings, scenes: next });
-    setActiveSceneId(id);
+  const promoteSceneToParticipant = (id: string) =>
+    void runPending(ADMIN_ACTION.promoteScene, async () => {
+      const idx = settings.scenes.findIndex((s) => s.id === id);
+      if (idx <= PARTICIPANT_SCENE_INDEX) return;
+      const next = [...settings.scenes];
+      const [scene] = next.splice(idx, 1);
+      next.unshift(scene);
+      await setSettings({ ...settings, scenes: next });
+      setActiveSceneId(id);
+    });
+
+  const clearAllResponses = () => {
+    if (!confirm("全回答を削除しますか？")) return;
+    void runPending(ADMIN_ACTION.clearResponses, async () => {
+      try {
+        await replaceResponses([]);
+        setSelectedResponseId(null);
+      } catch (err) {
+        alert(formatClearResponsesError(err));
+      }
+    });
   };
 
   const [selectedResponseId, setSelectedResponseId] = useState<string | null>(null);
@@ -432,20 +492,24 @@ export function AdminPage() {
   const selectedResponseScene =
     selectedResponse && settings.scenes.find((s) => s.id === selectedResponse.sceneId);
 
-  const downloadSelectedResponsePdf = () => {
-    if (!selectedResponse || !selectedResponseScene) return;
-    const pdf = generateParticipantPdf({
-      submission: selectedResponse,
-      scene: selectedResponseScene,
+  const downloadSelectedResponsePdf = () =>
+    void runPending(ADMIN_ACTION.downloadPdf, async () => {
+      if (!selectedResponse || !selectedResponseScene) return;
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => resolve());
+      });
+      const pdf = generateParticipantPdf({
+        submission: selectedResponse,
+        scene: selectedResponseScene,
+      });
+      const blob = new Blob([pdf], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `experteye360-${safeFilePart(selectedResponse.participantName)}-${safeFilePart(selectedResponse.id)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
     });
-    const blob = new Blob([pdf], { type: "application/pdf" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `experteye360-${safeFilePart(selectedResponse.participantName)}-${safeFilePart(selectedResponse.id)}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   if (!adminAuthed) {
     return (
@@ -468,14 +532,18 @@ export function AdminPage() {
                 onChange={setAdminCodeInput}
                 placeholder="管理者コード"
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") void tryAdminLogin();
+                  if (e.key === "Enter") tryAdminLogin();
                 }}
               />
             </AdminLabel>
             <div className="a-actions">
-              <button type="button" className="a-btn a-btn--primary" onClick={() => void tryAdminLogin()}>
+              <ActionButton
+                className="a-btn a-btn--primary"
+                busy={isPending(ADMIN_ACTION.login)}
+                onClick={tryAdminLogin}
+              >
                 入室する
-              </button>
+              </ActionButton>
             </div>
             <p className="a-hint" style={{ marginTop: "1rem" }}>
               初回デモ: 管理者コード <code>{isSheetStorageBackend() ? "admin-demo-2026" : "admin-demo"}</code> /
@@ -504,17 +572,14 @@ export function AdminPage() {
               管理者コード入力に戻る
             </button>
             <div className="a-topbar__reload">
-              <button
-                type="button"
+              <ActionButton
                 className="a-btn a-btn--secondary"
-                onClick={() => void refresh()}
-                disabled={refreshing}
+                busy={refreshing || isPending(ADMIN_ACTION.reload)}
+                spinnerOnDark
+                onClick={() => void runPending(ADMIN_ACTION.reload, async () => { await refresh(); })}
               >
                 再読込
-              </button>
-              {refreshing && (
-                <span className="a-spinner a-spinner--on-dark" role="status" aria-label="読み込み中" />
-              )}
+              </ActionButton>
             </div>
           </div>
         </div>
@@ -551,9 +616,13 @@ export function AdminPage() {
               />
             </AdminLabel>
             <div className="a-actions">
-              <button type="button" className="a-btn a-btn--primary" onClick={() => void saveTrainingCode()}>
+              <ActionButton
+                className="a-btn a-btn--primary"
+                busy={isPending(ADMIN_ACTION.saveTrainingCode)}
+                onClick={saveTrainingCode}
+              >
                 研修コードを保存
-              </button>
+              </ActionButton>
             </div>
 
             <hr className="a-entry-divider" />
@@ -587,9 +656,13 @@ export function AdminPage() {
               />
             </AdminLabel>
             <div className="a-actions">
-              <button type="button" className="a-btn a-btn--primary" onClick={() => void saveAdminCodeChange()}>
+              <ActionButton
+                className="a-btn a-btn--primary"
+                busy={isPending(ADMIN_ACTION.saveAdminCode)}
+                onClick={saveAdminCodeChange}
+              >
                 管理者コードを変更
-              </button>
+              </ActionButton>
             </div>
 
             <hr className="a-entry-divider" />
@@ -603,9 +676,13 @@ export function AdminPage() {
                 onChange={setTourUrl}
                 placeholder="https://..."
               />
-              <button type="button" className="a-btn a-btn--primary" onClick={() => void saveTourUrl()}>
+              <ActionButton
+                className="a-btn a-btn--primary"
+                busy={isPending(ADMIN_ACTION.saveTourUrl)}
+                onClick={saveTourUrl}
+              >
                 保存
-              </button>
+              </ActionButton>
             </div>
           </section>
         )}
@@ -615,9 +692,13 @@ export function AdminPage() {
             <div>
               <div className="a-row a-row--spread">
                 <h2 style={{ margin: 0 }}>シーン一覧</h2>
-                <button type="button" className="a-btn a-btn--primary" onClick={() => void addScene()}>
+                <ActionButton
+                  className="a-btn a-btn--primary"
+                  busy={isPending(ADMIN_ACTION.addScene)}
+                  onClick={addScene}
+                >
                   ＋ 追加
-                </button>
+                </ActionButton>
               </div>
               <p className="a-hint">
                 受講者画面に反映されるのは<strong>一覧の先頭 1 件</strong>のみです。
@@ -647,13 +728,13 @@ export function AdminPage() {
                       <span className="a-scene-pill__meta">{s.vistaSceneName}</span>
                     </button>
                     {index > PARTICIPANT_SCENE_INDEX && (
-                      <button
-                        type="button"
+                      <ActionButton
                         className="a-btn a-btn--secondary a-btn--compact"
-                        onClick={() => void promoteSceneToParticipant(s.id)}
+                        busy={isPending(ADMIN_ACTION.promoteScene)}
+                        onClick={() => promoteSceneToParticipant(s.id)}
                       >
                         受講者に使う
-                      </button>
+                      </ActionButton>
                     )}
                   </li>
                 ))}
@@ -667,27 +748,27 @@ export function AdminPage() {
                 <>
                   <div className="a-scene-editor__head a-row a-row--spread">
                     <h2 style={{ margin: 0 }}>編集: {draft.displayName}</h2>
-                    <button
-                      type="button"
+                    <ActionButton
                       className="a-btn a-btn--danger"
-                      onClick={() => void removeScene(activeScene.id)}
+                      busy={isPending(ADMIN_ACTION.removeScene)}
+                      onClick={() => removeScene(activeScene.id)}
                     >
                       削除
-                    </button>
+                    </ActionButton>
                   </div>
 
                   <div className="a-scene-editor__scroll">
                     {activeSceneIndex > PARTICIPANT_SCENE_INDEX && (
                       <p className="a-callout a-callout--warn">
                         このシーンは一覧の先頭ではありません。受講者画面には反映されません。
-                        <button
-                          type="button"
+                        <ActionButton
                           className="a-btn a-btn--secondary a-btn--compact"
                           style={{ marginLeft: "0.5rem" }}
-                          onClick={() => void promoteSceneToParticipant(activeScene.id)}
+                          busy={isPending(ADMIN_ACTION.promoteScene)}
+                          onClick={() => promoteSceneToParticipant(activeScene.id)}
                         >
                           受講者に使う
-                        </button>
+                        </ActionButton>
                       </p>
                     )}
 
@@ -763,9 +844,13 @@ export function AdminPage() {
                     )}
 
                     <div className="a-actions">
-                      <button type="button" className="a-btn a-btn--primary" onClick={() => void saveSceneDraft()}>
+                      <ActionButton
+                        className="a-btn a-btn--primary"
+                        busy={isPending(ADMIN_ACTION.saveScene)}
+                        onClick={saveSceneDraft}
+                      >
                         このシーンを保存
-                      </button>
+                      </ActionButton>
                     </div>
                   </div>
                 </>
@@ -811,22 +896,13 @@ export function AdminPage() {
               </ul>
               {responses.length > 0 && (
                 <div style={{ marginTop: "0.65rem" }}>
-                  <button
-                    type="button"
+                  <ActionButton
                     className="a-btn a-btn--danger"
-                    onClick={() => {
-                      if (isSheetStorageBackend()) {
-                        alert("Sheet API 利用時の全回答削除は未実装です。");
-                        return;
-                      }
-                      if (confirm("全回答を削除しますか？")) {
-                        void replaceResponses([]);
-                        setSelectedResponseId(null);
-                      }
-                    }}
+                    busy={isPending(ADMIN_ACTION.clearResponses)}
+                    onClick={clearAllResponses}
                   >
                     全回答を削除
-                  </button>
+                  </ActionButton>
                 </div>
               )}
             </div>
@@ -839,9 +915,13 @@ export function AdminPage() {
               {selectedResponse && selectedResponseScene && (
                 <>
                   <div className="a-actions" style={{ marginBottom: "0.75rem" }}>
-                    <button type="button" className="a-btn a-btn--primary" onClick={downloadSelectedResponsePdf}>
+                    <ActionButton
+                      className="a-btn a-btn--primary"
+                      busy={isPending(ADMIN_ACTION.downloadPdf)}
+                      onClick={downloadSelectedResponsePdf}
+                    >
                       PDFをダウンロード
-                    </button>
+                    </ActionButton>
                   </div>
                   <ResponseDetail response={selectedResponse} sceneLabel={selectedResponseScene.displayName} />
                 </>

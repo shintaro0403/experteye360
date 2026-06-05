@@ -6,6 +6,7 @@ import {
   loadSettings,
   resetDemoData,
   saveResponses,
+  saveResponsesAsync,
   saveSettings,
 } from "./storage";
 import { DEFAULT_SETTINGS } from "./seed";
@@ -125,6 +126,43 @@ describe("storage（local）", () => {
 
     expect(loadSettings().tourUrl).toBe(DEFAULT_SETTINGS.tourUrl);
     expect(loadResponses()).toEqual([]);
+  });
+
+  it("Sheet backend で saveResponsesAsync([]) は responses/clear を呼び、他 room は触らない", async () => {
+    vi.stubEnv("VITE_STORAGE_BACKEND", "sheet");
+    vi.stubEnv("VITE_SHEET_API_BASE", "https://script.google.com/macros/s/dev/exec");
+    vi.stubEnv("VITE_CLIENT_ID", "client-a");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse({ ok: true })));
+    const listener = vi.fn();
+    window.addEventListener("expertEye360-storage", listener);
+
+    await saveResponsesAsync([], {
+      adminToken: " admin-token ",
+      roomId: " room-a ",
+    });
+
+    window.removeEventListener("expertEye360-storage", listener);
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    const parsed = new URL(String(url));
+    expect(parsed.searchParams.get("path")).toBe("responses/clear");
+    expect(parsed.searchParams.get("client")).toBe("client-a");
+    expect(parsed.searchParams.get("room")).toBe("room-a");
+    expect(parsed.searchParams.get("token")).toBe("admin-token");
+    expect(init?.method).toBe("POST");
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("Sheet backend で saveResponsesAsync は空配列以外を拒否する", async () => {
+    vi.stubEnv("VITE_STORAGE_BACKEND", "sheet");
+    vi.stubEnv("VITE_SHEET_API_BASE", "https://script.google.com/macros/s/dev/exec");
+    vi.stubEnv("VITE_CLIENT_ID", "client-a");
+
+    await expect(
+      saveResponsesAsync([makeSubmission()], {
+        adminToken: "admin-token",
+        roomId: "room-a",
+      }),
+    ).rejects.toThrow("Replacing all responses is not supported for sheet backend");
   });
 
   it("Sheet backend の研修コード変更は API に委譲し、保存イベントを発火する", async () => {

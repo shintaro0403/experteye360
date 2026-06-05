@@ -99,10 +99,17 @@ export function useAppData(options: UseAppDataOptions = {}) {
     setResponsesState((prev) => prependResponse(prev, r));
   }, []);
 
-  const replaceResponses = useCallback(async (list: ParticipantSubmission[]) => {
-    await saveResponsesAsync(list);
-    setResponsesState(list);
-  }, []);
+  const replaceResponses = useCallback(
+    async (list: ParticipantSubmission[]) => {
+      const { adminToken } = optionsRef.current;
+      await saveResponsesAsync(list, {
+        adminToken,
+        roomId: resolveResponsesRoomId(settings),
+      });
+      setResponsesState(list);
+    },
+    [settings],
+  );
 
   return {
     settings,

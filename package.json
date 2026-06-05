@@ -8,6 +8,7 @@
     "dev:participant": "npm run dev --prefix participant-web",
     "dev:admin": "npm run dev --prefix admin-web",
     "build:all": "npm run build --prefix participant-web && npm run build --prefix admin-web",
+    "build:pages": "node scripts/build-github-pages.mjs",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:real-sheet": "node scripts/run-real-sheet-e2e.mjs",

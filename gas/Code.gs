@@ -102,6 +102,7 @@ function handleRequest_(e, method) {
     if (method === "POST" && route === "settings") return json_(handlePostSettings_(e));
     if (method === "GET" && route === "responses") return json_(handleGetResponses_(e));
     if (method === "POST" && route === "responses") return json_(handlePostResponses_(e));
+    if (method === "POST" && route === "responses/clear") return json_(handleClearResponses_(e));
     if (method === "POST" && route === "rooms/verify") return json_(handleVerifyRoom_(e));
     if (method === "POST" && route === "rooms/access-code") return json_(handleChangeRoomAccessCode_(e));
     if (method === "POST" && route === "admin/token") return json_(handleChangeAdminToken_(e));
@@ -151,6 +152,22 @@ function handleGetResponses_(e) {
     .map((row) => JSON.parse(row.submission_json));
 
   return responses;
+}
+
+function handleClearResponses_(e) {
+  const context = resolveClient_(requiredParam_(e, "client"));
+  verifyAdminToken_(context.clientRecord, requiredParam_(e, "token"));
+  const roomId = requiredParam_(e, "room");
+  verifyRoomId_(context.clientBook, roomId);
+
+  const responsesSheet = getSheet_(context.clientBook, "responses");
+  const deletedCount = deleteRowsWhere_(responsesSheet, "room_id", roomId);
+  appendAuditLog_(context.clientBook, "admin", "responses.clear", "responses", {
+    roomId: roomId,
+    deletedCount: deletedCount,
+  });
+
+  return { ok: true, deletedCount: deletedCount };
 }
 
 function handlePostResponses_(e) {
@@ -459,6 +476,22 @@ function updateRow_(sheet, rowNumber, patch) {
     if (Object.prototype.hasOwnProperty.call(patch, header)) row[index] = patch[header];
   });
   sheet.getRange(rowNumber, 1, 1, headers.length).setValues([row]);
+}
+
+function deleteRowsWhere_(sheet, columnName, columnValue) {
+  const values = sheet.getDataRange().getValues();
+  if (values.length <= 1) return 0;
+  const headers = values[0].map(String);
+  const columnIndex = headers.indexOf(columnName);
+  if (columnIndex < 0) throw apiError_(500, `${columnName} header is missing`);
+  let deletedCount = 0;
+  for (let index = values.length - 1; index >= 1; index -= 1) {
+    if (String(values[index][columnIndex]) === String(columnValue)) {
+      sheet.deleteRow(index + 1);
+      deletedCount += 1;
+    }
+  }
+  return deletedCount;
 }
 
 function findRowNumber_(sheet, keyHeader, keyValue) {

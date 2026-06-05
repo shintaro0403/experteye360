@@ -5,7 +5,7 @@ import { SESSION_ADMIN_AUTH_KEY, SESSION_ADMIN_TOKEN_KEY } from "@shared/adminEn
 import { primaryTrainingRoom } from "@shared/appSettings";
 import { DEFAULT_SETTINGS } from "@shared/seed";
 import { generateParticipantPdf } from "@shared/pdfExport";
-import { changeAdminTokenAsync, changeTrainingCodeAsync } from "@shared/storage";
+import { changeAdminTokenAsync, changeTrainingCodeAsync, verifyAdminTokenAsync } from "@shared/storage";
 import { makeScene, makeSettings, makeSubmission } from "@shared/test/fixtures";
 import { useAppData } from "../hooks/useAppData";
 import { AdminPage } from "./AdminPage";
@@ -15,7 +15,7 @@ vi.mock("@shared/storage", async (importOriginal) => {
   return {
     ...actual,
     isSheetStorageBackend: vi.fn(() => true),
-    verifyAdminTokenAsync: vi.fn(),
+    verifyAdminTokenAsync: vi.fn().mockResolvedValue(undefined),
     changeAdminTokenAsync: vi.fn().mockResolvedValue(undefined),
     changeTrainingCodeAsync: vi.fn().mockResolvedValue(undefined),
   };
@@ -233,6 +233,35 @@ describe("AdminPage", () => {
     expect(sessionStorage.getItem(SESSION_ADMIN_TOKEN_KEY)).toBeNull();
   });
 
+  it("入室 API 待ち中は入室ボタンにスピナーを表示する", async () => {
+    sessionStorage.clear();
+    let finishLogin: (() => void) | undefined;
+    vi.mocked(verifyAdminTokenAsync).mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finishLogin = resolve;
+        }),
+    );
+    await render();
+    const loginInput = container.querySelector<HTMLInputElement>('input[placeholder="管理者コード"]');
+    if (!loginInput) throw new Error("admin login input not found");
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+      setter?.call(loginInput, "admin-demo-2026");
+      loginInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      getButton("入室する").click();
+    });
+    const loginButton = getButton("入室する");
+    expect(loginButton.disabled).toBe(true);
+    expect(loginButton.querySelector(".a-spinner")).not.toBeNull();
+    await act(async () => {
+      finishLogin?.();
+      await Promise.resolve();
+    });
+  });
+
   it("再読込中はボタンを無効化しスピナーを表示する", async () => {
     mockUseAppData({ refreshing: true });
     await render();
@@ -254,6 +283,71 @@ describe("AdminPage", () => {
     });
     expect(container.textContent).toContain("一覧 太郎");
     expect(container.textContent).toContain("一覧から回答を選択してください");
+  });
+
+  it("Sheet backend: 確認後に全回答削除で replaceResponses([]) を呼び未実装アラートは出さない", async () => {
+    const replaceResponses = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    mockUseAppData({
+      responses: [makeSubmission({ id: "del-1", participantName: "削除対象" })],
+      replaceResponses,
+    });
+
+    await render();
+    await act(async () => {
+      getButton("回答").click();
+    });
+    await act(async () => {
+      getButton("全回答を削除").click();
+    });
+
+    expect(window.confirm).toHaveBeenCalledWith("全回答を削除しますか？");
+    expect(replaceResponses).toHaveBeenCalledWith([]);
+    expect(window.alert).not.toHaveBeenCalledWith("Sheet API 利用時の全回答削除は未実装です。");
+  });
+
+  it("Sheet backend: 全回答削除 API 未デプロイ時は再デプロイを案内する", async () => {
+    const replaceResponses = vi.fn().mockRejectedValue(
+      new Error("Sheet API request failed: Unknown route: POST responses/clear"),
+    );
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    mockUseAppData({
+      responses: [makeSubmission({ id: "del-fail" })],
+      replaceResponses,
+    });
+
+    await render();
+    await act(async () => {
+      getButton("回答").click();
+    });
+    await act(async () => {
+      getButton("全回答を削除").click();
+      await Promise.resolve();
+    });
+
+    expect(replaceResponses).toHaveBeenCalledWith([]);
+    expect(window.alert).toHaveBeenCalledWith(
+      expect.stringContaining("responses/clear"),
+    );
+  });
+
+  it("Sheet backend: 全回答削除をキャンセルしたときは replaceResponses を呼ばない", async () => {
+    const replaceResponses = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    mockUseAppData({
+      responses: [makeSubmission({ id: "del-2" })],
+      replaceResponses,
+    });
+
+    await render();
+    await act(async () => {
+      getButton("回答").click();
+    });
+    await act(async () => {
+      getButton("全回答を削除").click();
+    });
+
+    expect(replaceResponses).not.toHaveBeenCalled();
   });
 
   it("回答詳細から選択中回答の PDF を生成できる", async () => {

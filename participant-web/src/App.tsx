@@ -12,7 +12,7 @@ function useLegacyPreviewRedirect(): boolean {
     const params = new URLSearchParams(window.location.search);
     params.delete("preview");
     const qs = params.toString();
-    window.location.replace(`/participant/embed-preview.html${qs ? `?${qs}` : ""}`);
+    window.location.replace(`${import.meta.env.BASE_URL}embed-preview.html${qs ? `?${qs}` : ""}`);
   }, [redirecting]);
 
   return redirecting;

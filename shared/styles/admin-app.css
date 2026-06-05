@@ -723,9 +723,20 @@ a { color: var(--navy-mid); }
   flex-shrink: 0;
 }
 
-.a-spinner--on-dark {
+.a-spinner--on-dark,
+.a-spinner--on-primary {
   border-color: rgba(255, 255, 255, 0.35);
   border-top-color: var(--white);
+}
+
+.a-spinner--in-btn {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.a-btn:disabled {
+  opacity: 0.72;
+  cursor: wait;
 }
 
 .a-topbar__reload {

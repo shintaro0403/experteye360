@@ -5,6 +5,7 @@ import {
   appendSheetResponse,
   changeAdminTokenViaApi,
   changeTrainingCodeViaApi,
+  clearSheetResponses,
   loadSheetResponses,
   loadSheetSettings,
   saveSheetSettings,
@@ -50,6 +51,11 @@ type ChangeTrainingCodeAsyncInput = {
   adminToken: string;
   roomId: string;
   nextAccessCode: string;
+};
+
+type SaveResponsesAsyncInput = {
+  adminToken?: string | null;
+  roomId?: string | null;
 };
 
 function getStorageEnv(): StorageEnv {
@@ -258,11 +264,28 @@ export async function appendResponseAsync(response: ParticipantSubmission): Prom
   window.dispatchEvent(new Event("expertEye360-storage"));
 }
 
-export async function saveResponsesAsync(list: ParticipantSubmission[]): Promise<void> {
-  if (isSheetStorageBackend()) {
+export async function saveResponsesAsync(
+  list: ParticipantSubmission[],
+  input: SaveResponsesAsyncInput = {},
+): Promise<void> {
+  if (!isSheetStorageBackend()) {
+    saveResponses(list);
+    return;
+  }
+  if (list.length > 0) {
     throw new Error("Replacing all responses is not supported for sheet backend");
   }
-  saveResponses(list);
+  const roomId = input.roomId?.trim();
+  const adminToken = input.adminToken?.trim();
+  if (!roomId || !adminToken) {
+    throw new Error("Admin token and roomId are required to clear sheet responses");
+  }
+  await clearSheetResponses({
+    ...sheetApiConfig(),
+    roomId,
+    adminToken,
+  });
+  window.dispatchEvent(new Event("expertEye360-storage"));
 }
 
 export async function verifyTrainingCodeAsync(

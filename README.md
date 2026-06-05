@@ -39,9 +39,13 @@
 
 **OJT 整理ロジック** — **最小実装済み**（`shared/src/ojtExport.ts` / `ojtExport.test.ts` は Green。UI・ファイル出力は未）
 
-**本番 Sheet API** — **最小実装済み**（GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、画面配線、管理画面からの研修コード変更、回答取得時の `roomId` は Sheet 上の研修回を使用（local の seed と混同しない）、UI 応答性（初回のみブロッキング loader・再読込はスピナー）。Sheet API mock 経由の Playwright まで実装。複数 `client` / 複数 `room` の実環境分離確認、Sheet backend の全回答削除は未）
+**本番 Sheet API** — **最小実装済み**（GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、画面配線、管理画面からの研修コード変更・管理者コード変更・**全回答削除**（`POST responses/clear`）、回答取得時の `roomId` は Sheet 上の研修回を使用（local の seed と混同しない）。GAS 更新時は [gas/APPSCRIPT-COPY.md](gas/APPSCRIPT-COPY.md) の手順で **新しいデプロイ** が必要（エディタ実行だけでは URL の API は変わらない）
 
-**自動テスト** — 詳細は [自動テストと CI](#自動テストと-ci)。Vitest **18 files / 108 tests** Green。
+**管理者画面 UI** — 初回読込のみブロッキング loader、再読込・回答一覧はスピナー。入室・保存・削除など **主要ボタンは押下後にボタン内スピナー**（`ActionButton`）。入室後は「管理者コード入力に戻る」でログアウト可能
+
+**自動テスト** — 詳細は [自動テストと CI](#自動テストと-ci)。Vitest **18 files / 127 tests** Green。実 GAS 到達性は `npm run smoke:phase1-sheet`（`settings` / `responses/clear` / `rooms/access-code` 等）
+
+**未完了（本番寄せ）** — 複数 `client` / 複数 `room` の実環境分離確認（手動 A）、OJT 管理者 UI、実 PDF 目視
 
 #### 受講者回答フロー（5問）
 
@@ -112,13 +116,16 @@ http://localhost:5174/admin/embed-preview.html
 - **`admin-web`** — `AdminPage` の代表 UI、`useAppData` の結合
 - **`participant-web`** — `ParticipantPage` の研修コードと名前欄
 
-現状 **18 files / 108 tests** Green。
+現状 **18 files / 127 tests** Green。
 
 ```bash
 npm run install:all   # 初回・CI と同様（ルート + 両 Web）
 npm test              # Vitest 一括
 npm run test:watch    # 開発中の監視
 npm run build:all     # 両 Web の production build（型・bundling 確認）
+npm run smoke:phase1-sheet   # 手元 .env の実 GAS 到達性（sheet backend 時）
+npm run test:e2e           # Playwright + Sheet API mock
+npm run test:e2e:real-sheet  # 実 GAS（opt-in・.env 要）
 ```
 
 各 Web の型だけ見る場合: `npm run typecheck --prefix participant-web` / `admin-web`。
@@ -145,6 +152,36 @@ npm run build:all     # 両 Web の production build（型・bundling 確認）
 - `npm run test:e2e` — Playwright + Sheet API モック（数分かかる。第 2 段階で別ワークフロー化を想定）
 - `npm run test:e2e:real-sheet` — 実 GAS / 実シート（`.env` や GitHub Secrets が必要。PR 毎は非推奨）
 - 手動のみの確認 — 実 PDF 目視、本番 iframe、複数 client/room の実環境確認
+
+#### GitHub Pages（別端末・フェーズ 2 用）
+
+ワークフロー: [`.github/workflows/pages.yml`](.github/workflows/pages.yml)。`main` への push（または手動実行）で受講者・管理者を 1 サイトに公開する。
+
+**初回設定（リポジトリ管理者）**
+
+1. GitHub → **Settings** → **Pages** → **Build and deployment** を **GitHub Actions** にする
+2. **Settings** → **Secrets and variables** → **Actions** → **Variables** に次を登録:
+   - `VITE_SHEET_API_BASE` — 実 GAS Web App URL（[gas/APPSCRIPT-COPY.md](gas/APPSCRIPT-COPY.md)）
+   - `VITE_CLIENT_ID` — 省略可（未設定時は `lipronext-demo`）
+
+**公開 URL（リポジトリ名 `experteye360` の場合）**
+
+- トップ: `https://shintaro0403.github.io/experteye360/`
+- 受講者: `https://shintaro0403.github.io/experteye360/participant/`
+- 管理者: `https://shintaro0403.github.io/experteye360/admin/`
+- 埋め込み確認: `…/participant/embed-preview.html` / `…/admin/embed-preview.html`
+
+**手元で Pages ビルドを試す**
+
+```bash
+# PowerShell 例（URL は手元の GAS に合わせる）
+$env:VITE_SHEET_API_BASE="https://script.google.com/macros/s/.../exec"
+$env:VITE_CLIENT_ID="lipronext-demo"
+npm run build:pages
+# 成果物: dist-pages/（npx serve dist-pages 等で確認）
+```
+
+`participant-web/.env.production.example` / `admin-web/.env.production.example` を参照。GAS 側は Pages オリジン（`https://shintaro0403.github.io`）からの CORS を許可する必要がある（`doGet` / `doPost` の `Access-Control-Allow-Origin`）。
 
 #### CI で失敗しやすいポイント（短く）
 
@@ -534,7 +571,7 @@ ExpertEye360は、360°現場を見た受講者の**判断を記録・可視化*
 
 - フロントは静的ホスト（FileZilla 等）可。GAS Web App 想定。
 - ローカルでも `VITE_STORAGE_BACKEND=sheet` と GAS Web App URL を設定すれば、本番に近い Sheet API 経路で確認できる。`VITE_STORAGE_BACKEND=local` はブラウザ内 `localStorage` の開発用フォールバックであり、受講者・管理者間の共有確認の正にはしない（[docs/TEST-DESIGN.md §1.5](docs/TEST-DESIGN.md#15-入室マルチテナント)）。
-- mock から実 GAS へ寄せる手順（TDD ハイブリッド・フェーズ順）: [docs/MOCK-TO-PRODUCTION.md](docs/MOCK-TO-PRODUCTION.md)。フェーズ 1 スモーク: `npm run smoke:phase1-sheet`
+- mock から実 GAS へ寄せる手順（TDD ハイブリッド・フェーズ順）: [docs/MOCK-TO-PRODUCTION.md](docs/MOCK-TO-PRODUCTION.md)。フェーズ 1 スモーク: `npm run smoke:phase1-sheet`（`GET settings`・`POST responses/clear` ルート到達・`rooms/verify` 等。GAS デプロイ手順は [gas/README.md](gas/README.md)）
 - 将来は API の裏を PostgreSQL 等に差し替え可能（フロントは storage 窓口のみ）。
 
 ---

@@ -26,7 +26,7 @@ Apps Script → **デプロイ** → **新しいデプロイ** → 歯車 → **
 ## いま貼る用（研修コード保存・管理者コード変更 API 込み）
 
 ```text
-ExpertEye360 Web API（lipronext-demo）。settings/responses/rooms/verify/rooms/access-code/admin/token。フロント VITE_SHEET_API_BASE はこのデプロイ URL に更新。2026-06-04 再デプロイ。
+ExpertEye360 Web API（lipronext-demo）。settings/responses/responses/clear/rooms/verify/rooms/access-code/admin/token。フロント VITE_SHEET_API_BASE はこのデプロイ URL に更新。2026-06-05 再デプロイ。
 ```
 
 ---
@@ -48,5 +48,5 @@ ExpertEye360 Web API。変更内容: （ここに1行）。VITE_SHEET_API_BASE �
 **記入例**
 
 ```text
-ExpertEye360 Web API。変更内容: rooms/access-code 追加。VITE_SHEET_API_BASE をこの URL に更新。2026-06-05。
+ExpertEye360 Web API。変更内容: responses/clear 追加。VITE_SHEET_API_BASE をこの URL に更新。2026-06-05。
 ```

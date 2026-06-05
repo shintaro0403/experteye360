@@ -65,6 +65,34 @@ if (!settings || typeof settings !== "object" || !Array.isArray(settings.scenes)
 }
 ok(`GET settings（scenes=${settings.scenes.length}）`);
 
+const roomIdForClear = settings.rooms?.[0]?.roomId || "demo-room-001";
+const adminToken = process.env.PHASE1_ADMIN_TOKEN?.trim() || "admin-demo-2026";
+const clearProbeUrl = buildUrl(apiBase, "responses/clear", {
+  client: clientId,
+  room: roomIdForClear,
+  token: adminToken,
+});
+const clearProbe = await requestJson(
+  clearProbeUrl,
+  {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+  },
+  { allowApiError: true },
+);
+if (clearProbe?.error?.includes("Unknown route")) {
+  fail(
+    "POST responses/clear が未デプロイです。gas/Code.gs を反映し Apps Script で「新しいデプロイ」してから VITE_SHEET_API_BASE を更新してください。",
+  );
+}
+if (clearProbe?.ok === false && clearProbe.status === 401) {
+  ok("POST responses/clear ルートあり（token 照合まで到達）");
+} else if (clearProbe?.ok === true) {
+  ok("POST responses/clear ルートあり");
+} else {
+  ok(`POST responses/clear ルートあり（応答: ${clearProbe?.error || "ok"})`);
+}
+
 const verifyUrl = buildUrl(apiBase, "rooms/verify", { client: clientId });
 const verified = await requestJson(verifyUrl, {
   method: "POST",
@@ -76,7 +104,6 @@ if (!verified?.roomId) {
 }
 ok(`POST rooms/verify → roomId=${verified.roomId}`);
 
-const adminToken = process.env.PHASE1_ADMIN_TOKEN?.trim() || "admin-demo-2026";
 const accessCodeProbeUrl = buildUrl(apiBase, "rooms/access-code", {
   client: clientId,
   token: adminToken,
