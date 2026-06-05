@@ -2,7 +2,7 @@
 
 README・各 `docs/*.md`・コードの食い違いをなくすための **参照順** と **現状の一言** をまとめる。更新したら本ファイルの **最終確認日** も直す。
 
-**最終確認日**: 2026-06-04（回帰テスト追加: adminEntry / useAppData / ParticipantPage / AdminPage。18 files / 108 tests Green）
+**最終確認日**: 2026-06-05（フェーズ 3 real-sheet E2E 5 本。18 files / 127 tests Green）
 
 ---
 
@@ -134,7 +134,7 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 - **備考** — UI・ファイル出力は未
 
 ```bash
-npm test          # ルート Vitest（shared + admin-web + participant-web）。現状 18 files / 108 tests Green
+npm test          # ルート Vitest（shared + admin-web + participant-web）。現状 18 files / 127 tests Green
 npm run test:watch
 ```
 
@@ -161,7 +161,7 @@ npm run test:watch
 **入室**
 
 - **誤りやすい** — INVENTORY「§2.1c 未実装」
-- **正しい現状** — **local と Sheet API の最小実装済み**。管理画面からの研修コード変更も API / GAS / UI 配線は実装・Vitest Green。Sheet API mock 経由の Playwright も Green。未なのは **複数 `client` / 複数 `room` の実環境分離確認、本番運用 hardening**（Phase 2.5 継続）
+- **正しい現状** — **local と Sheet API の最小実装済み**。管理画面からの研修コード変更も API / GAS / UI 配線は実装・Vitest Green。Sheet API mock 経由の Playwright も Green。**別端末（GitHub Pages）での受講者→管理者疎通は 2026-06-05 確認済み**（[MOCK-TO-PRODUCTION.md §6.1](./MOCK-TO-PRODUCTION.md#61-フェーズ-2-実施記録2026-06-05)）。未なのは **複数 `client` / 複数 `room` の実環境分離（デモのためステイ）、本番運用 hardening**（Phase 2.5 継続）
 
 **Phase 0**
 
@@ -207,3 +207,5 @@ npm run test:watch
 **0.2**（2026-05-21）— §2 拡充（PDF・local/本番）。README 実装状況へのリンク
 
 **0.3**（2026-05-21）— 横並び表を廃止し縦ブロックに統一。§0 記載ルールを追加
+
+**0.4**（2026-06-05）— フェーズ 2 別端末疎通記録。テスト件数 127 に更新

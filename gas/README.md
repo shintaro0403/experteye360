@@ -23,6 +23,10 @@ room表示名: デモ研修 001
 
 パスワードは、このリポジトリ・GAS・スプレッドシートには保存しません。Google へのログインはブラウザで行います。
 
+研修コードの平文は **`rooms` シートに保存しない**（`accessCodeHash` のみ）。`settings` JSON の `rooms[].accessCode` も空のまま（本番仕様）。管理者 UI では変更時のみ新コードを入力する。
+
+デモ運用でコードを変えたあとは、Apps Script で `resetDemoTrainingCode()` / `resetDemoAdminToken()`、または `resetDemoCredentials()` を実行して初期値に戻せる（[APPSCRIPT-COPY.md](./APPSCRIPT-COPY.md) §C）。
+
 ## 作成されるスプレッドシート
 
 `setupDemo()` を実行すると、新規に次の 2 冊を作成します。

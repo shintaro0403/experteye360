@@ -104,12 +104,12 @@ if (!verified?.roomId) {
 }
 ok(`POST rooms/verify → roomId=${verified.roomId}`);
 
-const accessCodeProbeUrl = buildUrl(apiBase, "rooms/access-code", {
-  client: clientId,
-  token: adminToken,
-});
+// 非破壊プローブ: 不正 token でルート存在のみ確認する（実際の研修コードは書き換えない）
 const accessCodeProbe = await requestJson(
-  accessCodeProbeUrl,
+  buildUrl(apiBase, "rooms/access-code", {
+    client: clientId,
+    token: "__smoke-invalid-token__",
+  }),
   {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -126,9 +126,11 @@ if (accessCodeProbe?.error?.includes("Unknown route")) {
   );
 }
 if (accessCodeProbe?.ok === false && accessCodeProbe.status === 401) {
-  ok("POST rooms/access-code ルートあり（token 照合まで到達）");
+  ok("POST rooms/access-code ルートあり（token 照合まで到達・研修コードは未変更）");
 } else if (accessCodeProbe?.ok === true) {
-  ok("POST rooms/access-code（疎通 OK。プローブ用コードが書き換わった場合は demo-2026 に戻してください）");
+  fail(
+    "POST rooms/access-code が不正 token を受理しました。GAS の verifyAdminToken_ を確認してください。",
+  );
 } else {
   ok(`POST rooms/access-code ルートあり（応答: ${accessCodeProbe?.error || "ok"})`);
 }

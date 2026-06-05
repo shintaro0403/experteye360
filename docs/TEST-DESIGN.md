@@ -2106,8 +2106,8 @@ admin-web/src/
 - [ ] **A** — `sheetApi` TC-008〜009 Green 後、人間が room 漏洩の代表操作を確認
 - [ ] **A** — ENTRY-M / ADM-M（§1.5 手動）
 - [x] **B** — `storage/sheet.ts` + `VITE_STORAGE_BACKEND` で本番切替（最小実装済み。Sheet API mock Playwright は Green）
-- [ ] **A** — 受講者送信 → 管理者（管理者コード）で同一 `client` の回答が見える（手動・SH-07）
-- [ ] **A** — 別 `client` / 別 `room` に漏れない（TC-005 の手動確認 + TC-008〜009）
+- [x] **A** — 受講者送信 → 管理者（管理者コード）で同一 `client` の回答が見える（手動・SH-07）。**2026-06-05 別端末・GitHub Pages・実 GAS で確認**（[MOCK-TO-PRODUCTION.md §6.1](./MOCK-TO-PRODUCTION.md#61-フェーズ-2-実施記録2026-06-05)）
+- [ ] **A** — 別 `client` / 別 `room` に漏れない（TC-005 の手動確認 + TC-008〜009）。**デモのため 2026-06-05 ステイ**
 
 #### Phase 3 — F7 PDF・UI・OJT
 

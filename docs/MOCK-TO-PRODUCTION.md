@@ -4,7 +4,7 @@
 
 **位置づけ**: 手順書（作業メモ）。API 契約の正本は [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)、GAS セットアップは [gas/README.md](../gas/README.md)、手動受け入れは [HUMAN-TEST-SPEC.md](./HUMAN-TEST-SPEC.md)、残タスクの受け入れ条件は [REMAINING-IMPLEMENTATION.md](./REMAINING-IMPLEMENTATION.md) §A。
 
-**最終確認日**: 2026-06-04（TDD ハイブリッド方針・フェーズ 1 スモーク追加）
+**最終確認日**: 2026-06-05（フェーズ 2 記録・フェーズ 3 テスト 5 本拡張）
 
 **テストの進め方（正本リンク）**: [TEST-DESIGN.md §2.0.4](./TEST-DESIGN.md#204-機能ごとの実装フロー6-ステップ)
 
@@ -20,6 +20,7 @@
 - [4. 移行フェーズ（推奨順）](#4-移行フェーズ推奨順)
 - [5. フェーズ 1 — 手元開発を実 GAS にする](#5-フェーズ-1--手元開発を実-gas-にする)
 - [6. フェーズ 2 — 手動受け入れ（A ランク）](#6-フェーズ-2--手動受け入れa-ランク)
+- [6.1 フェーズ 2 実施記録（2026-06-05）](#61-フェーズ-2-実施記録2026-06-05)
 - [7. フェーズ 3 — 実 GAS の自動テスト（opt-in）](#7-フェーズ-3--実-gas-の自動テストopt-in)
 - [8. フェーズ 4 以降 — CI・本番ホスト（任意）](#8-フェーズ-4-以降--cici本番ホスト任意)
 - [9. 移行完了の判断基準](#9-移行完了の判断基準)
@@ -37,9 +38,11 @@
 2. **Playwright + Sheet API mock（5198）** — 代表 UI フローの回帰（**デフォルトは mock のまま**）
 3. **実 GAS + Google スプレッドシート** — 手元開発の正・リリース前の穴埋め（**今から寄せる対象**）
 
-**今すぐ進めてよいこと** — フェーズ 1（`.env.development` で `sheet` + 実 Web App URL）とフェーズ 2（手動 A チェック）。
+**フェーズ 1** — 完了扱い（手元 dev → 実 GAS、smoke、Vitest / mock E2E Green）。
 
-**まだ待つこと** — `npm run test:e2e` のデフォルトを実シートに差し替える、mock サーバー削除、PR 毎の実 GAS CI。
+**フェーズ 2（デモ）** — **チェック 1（別端末疎通）は完了**（2026-06-05・GitHub Pages）。チェック 2〜3（別 room / 別 client）は **デモのためステイ**。チェック 4〜6 は未記録。
+
+**まだ待つこと** — `npm run test:e2e` のデフォルトを実シートに差し替える、mock サーバー削除、PR 毎の実 GAS CI、本番前の room/client 分離確認。
 
 **テスト方針** — 全面 TDD（既存機能も先に Red）ではなく、**契約は Vitest mock で固定し、実 GAS で未証明のギャップだけ Red → Green**（[§0.5](#05-テストの進め方tdd-ハイブリッド)）。
 
@@ -354,6 +357,63 @@ npm run dev:admin            # 5174
 
 上記 1〜6 を記録（日付・担当・使用 URL・client / room）し、Phase 2.5 の **A** 項目を [TEST-DESIGN.md §8](./TEST-DESIGN.md#8-phase-完了チェックリスト) で [x] にできる状態。
 
+**デモ運用の判断（2026-06-05）** — チェック 1 が Green なら、デモとしてのフェーズ 2 は **実質完了** とみなしてよい。チェック 2〜3 は本番寄せ・複数ツアー運用まで **ステイ**。
+
+---
+
+### 6.1 フェーズ 2 実施記録（2026-06-05）
+
+**目的** — デモ研修で別端末から受講者送信 → 管理者確認が実 GAS / 実シートでつながること。
+
+**環境**
+
+- **日付** — 2026-06-05
+- **バックエンド** — 実 GAS Web App + Google スプレッドシート（`VITE_STORAGE_BACKEND=sheet`）
+- **`client`** — `lipronext-demo`
+- **受講者 URL** — `https://shintaro0403.github.io/experteye360/participant/`（GitHub Pages）
+- **管理者 URL** — `https://shintaro0403.github.io/experteye360/admin/`（GitHub Pages）
+- **端末** — 端末 A（受講者送信）・端末 B（管理者一覧・詳細）
+
+#### チェック 1 — 別端末で回答が管理者に届く
+
+**結果** — **完了（OK）**
+
+**所見** — 別端末間で受講者 → 管理者のやり取りは問題なく動作。送信内容・一覧・詳細の整合は取れていた（担当者報告: 完璧にできた）。
+
+#### チェック 2 — 別 `room` に漏れない
+
+**結果** — **ステイ**（デモのため今回は未実施）
+
+**理由** — ツアー同士の干渉確認は本番寄せまで保留。単一デモ研修では優先度を下げる。
+
+#### チェック 3 — 別 `client` に漏れない
+
+**結果** — **ステイ**（デモのため今回は未実施）
+
+**理由** — チェック 2 と同様。第 2 client ブックの用意は本番運用検討時。
+
+#### チェック 4 — 研修コード変更（実シート）
+
+**結果** — **未記録**（今回の別端末確認では未実施）
+
+**補足** — 実装・Vitest / 手元 GAS での確認は別途あり。必要なら Pages 上で追試する。
+
+#### チェック 5 — 管理者コード変更（実シート）
+
+**結果** — **未記録**（今回の別端末確認では未実施）
+
+#### チェック 6 — API エラー時の UI
+
+**結果** — **未記録**
+
+#### フェーズ 2 サマリー（デモ）
+
+**完了** — チェック 1（別端末・GitHub Pages・実 GAS）
+
+**ステイ** — チェック 2〜3（room / client 分離）
+
+**未記録** — チェック 4〜6
+
 ---
 
 ## 7. フェーズ 3 — 実 GAS の自動テスト（opt-in）
@@ -361,6 +421,7 @@ npm run dev:admin            # 5174
 ### 7.1 コマンド
 
 ```bash
+npm run preflight:real-sheet   # 資格情報の事前確認（推奨）
 npm run test:e2e:real-sheet
 ```
 
@@ -378,9 +439,17 @@ npm run test:e2e:real-sheet
 
 ### 7.3 テストの範囲
 
-**含む** — `e2e/real-sheet-api.spec.ts` の API 直叩き（verify → POST responses → GET responses、別 client / 別 room で ID が返らない）
+**含む** — `e2e/real-sheet-api.spec.ts` の API 直叩き（**2026-06-05 拡張・5 本・serial**）
+
+1. **preflight** — `settings`・`rooms/verify`・`GET responses` が現行 env で通るか
+2. **別 client / 別 room** — E2E 回答が他 client / 他 room に返らない
+3. **研修コード変更** — 旧コード拒否・新コード OK（**最後に元の研修コードへ復元**）
+4. **管理者コード変更** — 旧 token 拒否・新 token OK（**最後に元の token へ復元**）
+5. **responses/clear** — 当該 room の E2E 行を削除
 
 **含まない** — 5 問 UI 一通り（それは `npm run test:e2e` の mock 側）
+
+**資格情報がずれたとき** — preflight が skip し、メッセージを出す。GAS で `resetDemoCredentials()`（または `resetDemoTrainingCode()` + `resetDemoAdminToken()`）で **demo-2026 / admin-demo-2026** に戻す。本番仕様では研修コード平文はシートに無い（hash のみ）— [gas/APPSCRIPT-COPY.md](../gas/APPSCRIPT-COPY.md) §C。
 
 ### 7.4 データ汚染への注意
 
@@ -404,7 +473,9 @@ npm run test:e2e:real-sheet
 
 #### 本番ホスト
 
-**内容** — 静的ビルド + iframe URL に `?client=`。`VITE_*` はビルド時に埋め込む。
+**現状（2026-06-05）** — GitHub Pages デプロイ済み（[`.github/workflows/pages.yml`](../.github/workflows/pages.yml)）。受講者・管理者は `https://shintaro0403.github.io/experteye360/participant/` / `…/admin/`。`VITE_*` は Actions Variables からビルド時に埋め込む。
+
+**残り** — 3DVista 実機 iframe、独自ドメイン、`?client=` 本番 URL の確定。
 
 **ドキュメント** — [TECHNICAL-SPEC.md §8](./TECHNICAL-SPEC.md#8-未決定オープン項目) の未決定項目を解消しながら進める。
 
@@ -433,7 +504,7 @@ npm run test:e2e:real-sheet
 
 **「速い回帰」が残っている**
 
-- `npm test`（108 tests 相当）Green
+- `npm test`（127 tests 相当）Green
 - `npm run test:e2e`（mock）Green
 
 **完了していなくてもよいもの（別タスク）**
@@ -516,3 +587,7 @@ npm run test:e2e:real-sheet
 **0.1**（2026-06-04）— 初版。レイヤー別方針、フェーズ 1〜4、識別子対応、完了基準、トラブルシュート
 
 **0.2**（2026-06-04）— §0.5 TDD ハイブリッド。フェーズ 1 進捗チェックリスト・`smoke:phase1-sheet`・example 雛形
+
+**0.3**（2026-06-05）— §6.1 フェーズ 2 実施記録（別端末疎通 OK・room/client ステイ）。§0 結論・§8 本番ホスト（GitHub Pages）を更新
+
+**0.4**（2026-06-05）— フェーズ 3: `real-sheet-api.spec.ts` を 5 本に拡張（preflight・コード変更・clear・GAS エラー envelope 対応）

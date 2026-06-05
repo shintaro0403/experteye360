@@ -31,7 +31,7 @@
 
 **研修コード・管理者コード入室** — **実装済み**（local 平文照合 / Sheet API hash 照合）
 
-**永続化** — `VITE_STORAGE_BACKEND=local` は `localStorage`、`VITE_STORAGE_BACKEND=sheet` は GAS Sheet API。受講者送信 → 管理者回答取得のライブ疎通まで確認済み。
+**永続化** — `VITE_STORAGE_BACKEND=local` は `localStorage`、`VITE_STORAGE_BACKEND=sheet` は GAS Sheet API。受講者送信 → 管理者回答取得のライブ疎通は手元・**別端末（GitHub Pages）** で確認済み（2026-06-05、[docs/MOCK-TO-PRODUCTION.md §6.1](docs/MOCK-TO-PRODUCTION.md#61-フェーズ-2-実施記録2026-06-05)）。
 
 **講師・管理者の回答一覧・詳細** — **実装済み**
 
@@ -45,7 +45,7 @@
 
 **自動テスト** — 詳細は [自動テストと CI](#自動テストと-ci)。Vitest **18 files / 127 tests** Green。実 GAS 到達性は `npm run smoke:phase1-sheet`（`settings` / `responses/clear` / `rooms/access-code` 等）
 
-**未完了（本番寄せ）** — 複数 `client` / 複数 `room` の実環境分離確認（手動 A）、OJT 管理者 UI、実 PDF 目視
+**未完了（本番寄せ）** — 複数 `client` / 複数 `room` の実環境分離確認（手動 A・**デモのためステイ**）、OJT 管理者 UI、実 PDF 目視、フェーズ 2 チェック 4〜6 の未記録項目
 
 #### 受講者回答フロー（5問）
 
@@ -125,7 +125,7 @@ npm run test:watch    # 開発中の監視
 npm run build:all     # 両 Web の production build（型・bundling 確認）
 npm run smoke:phase1-sheet   # 手元 .env の実 GAS 到達性（sheet backend 時）
 npm run test:e2e           # Playwright + Sheet API mock
-npm run test:e2e:real-sheet  # 実 GAS（opt-in・.env 要）
+npm run test:e2e:real-sheet  # 実 GAS（opt-in・5 本・preflight 含む。.env の研修コード・管理者 token を実シートに合わせる）
 ```
 
 各 Web の型だけ見る場合: `npm run typecheck --prefix participant-web` / `admin-web`。

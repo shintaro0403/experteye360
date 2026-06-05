@@ -64,7 +64,7 @@ async function submitFiveQuestionResponse(page: Page, participantName: string) {
   await clickNext(page);
 
   await page.getByPlaceholder("例：山田 太郎").fill(participantName);
-  await page.getByPlaceholder("例：営業部").fill("Phase4 テスト所属");
+  await page.getByPlaceholder("例：営業部").fill("Phase4所属");
   await clickNext(page);
 
   for (const [index, awareness] of awarenessByRound.entries()) {
@@ -110,7 +110,7 @@ test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
   test("受講者が送信した回答は同一 client + room だけに表示される", async ({ browser }) => {
     await resetSheetMock();
     const participant = await browser.newPage();
-    await submitFiveQuestionResponse(participant, "Phase4 共有確認");
+    await submitFiveQuestionResponse(participant, "Phase4確認");
     await participant.close();
 
     const admin = await browser.newPage();
@@ -120,7 +120,7 @@ test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
     await admin.getByRole("button", { name: "回答" }).click();
 
     await expect(admin.getByRole("heading", { name: "回答一覧（1）" })).toBeVisible();
-    await expect(admin.getByText("Phase4 共有確認")).toBeVisible();
+    await expect(admin.getByText("Phase4確認")).toBeVisible();
 
     const otherRoomResponses = await loadMockResponses("room-other");
     expect(otherRoomResponses).toEqual([]);
@@ -143,7 +143,7 @@ test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
 
     const admin = await browser.newPage();
     await loginAdmin(admin);
-    await admin.getByPlaceholder("受講者が入力するコード").fill("NEXT-2026");
+    await admin.getByPlaceholder("新しい研修コード（変更時のみ入力）").fill("NEXT-2026");
     const saved = admin.waitForEvent("dialog");
     await admin.getByRole("button", { name: "研修コードを保存" }).click();
     const savedDialog = await saved;
@@ -172,13 +172,13 @@ test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
     await page.getByRole("button", { name: "管理者コードを変更" }).click();
     await expect(page.getByRole("status")).toContainText("管理者コードを変更しました");
 
-    await page.getByRole("button", { name: "ロック" }).click();
+    await page.getByRole("button", { name: "管理者コード入力に戻る" }).click();
     await page.getByPlaceholder("管理者コード").fill("admin-demo");
     await page.getByRole("button", { name: "入室する" }).click();
     await expect(page.getByRole("alert")).toContainText("管理者コードが正しくありません");
 
     await page.getByPlaceholder("管理者コード").fill("admin-next");
     await page.getByRole("button", { name: "入室する" }).click();
-    await expect(page.getByRole("button", { name: "ロック" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "管理者コード入力に戻る" })).toBeVisible();
   });
 });

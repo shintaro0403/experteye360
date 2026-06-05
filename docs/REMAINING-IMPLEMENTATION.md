@@ -48,7 +48,7 @@
 - シーン・カード編集
 - 回答一覧・詳細
 
-**未完了** — 実在する複数 `client` / 複数 `room` の手動確認、PDF 目視確認、OJT UI
+**未完了** — 実在する複数 `client` / 複数 `room` の手動確認（**デモのためステイ**）、PDF 目視確認、OJT UI
 
 **UI 応答性（2 秒以内）** — `appDataLoad.ts` / `useAppData.ts` で初回以外は非ブロッキング再読込、並列 fetch、保存後の楽観反映、storage debounce を実装済み（`appDataLoad.test.ts` Green）
 
@@ -82,7 +82,7 @@
 
 **状態** — mock E2E 6 tests Green + 実 GAS / 実シート 1 test Green
 
-**注意** — 受講者 → 管理者共有の本番同等確認は、ライブ GAS の手動疎通と Sheet API mock の Playwright では Green。複数 `client` / 複数 `room` の実環境分離確認はまだ残る。
+**注意** — 受講者 → 管理者共有の本番同等確認は、ライブ GAS の手動疎通・Sheet API mock の Playwright・**別端末 GitHub Pages（2026-06-05）** で Green。複数 `client` / 複数 `room` の実環境分離確認はデモのためステイ（[MOCK-TO-PRODUCTION.md §6.1](./MOCK-TO-PRODUCTION.md#61-フェーズ-2-実施記録2026-06-05)）。
 
 ---
 
@@ -128,10 +128,14 @@
 
 **残り**
 
-- 研修コード変更後の旧コード拒否・新コード入室を Sheet backend 実環境で確認
-- 複数 `client` / 複数 `room` の手動分離確認
-- Sheet backend のライブ GAS / 複数環境確認
+- 研修コード変更後の旧コード拒否・新コード入室を Sheet backend 実環境で確認（別端末では未記録）
+- 複数 `client` / 複数 `room` の手動分離確認（**デモのためステイ**）
+- API エラー時 UI の手動確認（未記録）
 - 本番運用向けの監査・バックアップ・エラー文言整理
+
+**2026-06-05 確認済み**
+
+- 別端末（GitHub Pages）で受講者送信 → 管理者が同一 `client` の回答を確認（フェーズ 2 チェック 1）
 
 **目的** — 受講者・管理者・別端末が同じ研修データを共有し、契約組織と研修回ごとにデータを分離する。
 

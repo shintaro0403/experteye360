@@ -14,6 +14,18 @@
 3. 関数 `logScriptPropertyStatus` → ログが `OK: MASTER_ID=...` なら完了（再デプロイ不要）
 4. 手元で `npm run smoke:phase1-sheet`
 
+## C. デモ資格情報を初期値に戻す（研修コード・管理者コードを変えたあと）
+
+Apps Script エディタで **実行**（再デプロイ不要）。
+
+**`resetDemoTrainingCode()`** — 研修コード → `demo-2026`（`rooms.accessCodeHash` のみ更新）
+
+**`resetDemoAdminToken()`** — 管理者コード → `admin-demo-2026`
+
+**`resetDemoCredentials()`** — 上記両方
+
+そのあと `npm run preflight:real-sheet` または `npm run smoke:phase1-sheet` で確認。
+
 ---
 
 # 新しいデプロイ —「説明」欄に貼る文
@@ -26,7 +38,7 @@ Apps Script → **デプロイ** → **新しいデプロイ** → 歯車 → **
 ## いま貼る用（研修コード保存・管理者コード変更 API 込み）
 
 ```text
-ExpertEye360 Web API（lipronext-demo）。settings/responses/responses/clear/rooms/verify/rooms/access-code/admin/token。フロント VITE_SHEET_API_BASE はこのデプロイ URL に更新。2026-06-05 再デプロイ。
+ExpertEye360 Web API v5（lipronext-demo）。resetDemoTrainingCode/resetDemoCredentials 込み。settings/responses/responses/clear/rooms/verify/rooms/access-code/admin/token。VITE_SHEET_API_BASE をこの URL に更新。2026-06-05 15:56 デプロイ。
 ```
 
 ---

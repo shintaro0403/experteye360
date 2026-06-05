@@ -22,8 +22,8 @@ const env = {
   E2E_REAL_SHEET: "1",
   E2E_REAL_SHEET_API_BASE: apiBaseUrl,
   E2E_REAL_CLIENT_ID: clientId,
-  E2E_REAL_ADMIN_TOKEN: process.env.E2E_REAL_ADMIN_TOKEN || "admin-demo-2026",
-  E2E_REAL_TRAINING_CODE: process.env.E2E_REAL_TRAINING_CODE || "demo-2026",
+  E2E_REAL_ADMIN_TOKEN: process.env.E2E_REAL_ADMIN_TOKEN || "admin-demo-2026", // SHEET_DEMO_ADMIN_TOKEN
+  E2E_REAL_TRAINING_CODE: process.env.E2E_REAL_TRAINING_CODE || "demo-2026", // SHEET_DEMO_TRAINING_CODE
   E2E_REAL_OTHER_CLIENT_ID: process.env.E2E_REAL_OTHER_CLIENT_ID || `${clientId || "client"}-other-e2e`,
 };
 

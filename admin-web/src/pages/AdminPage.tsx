@@ -23,6 +23,12 @@ import type { ParticipantSubmission, Scene } from "@shared/types";
 import { ActionButton } from "../components/ActionButton";
 import { CardSlotsField, cardsToSlots, slotsToCards } from "../components/CardSlotsField";
 import { ImeInput } from "../components/ImeField";
+import {
+  LOCAL_DEMO_ADMIN_CODE,
+  LOCAL_DEMO_TRAINING_CODE,
+  SHEET_DEMO_ADMIN_TOKEN,
+  SHEET_DEMO_TRAINING_CODE,
+} from "@shared/demoCredentials";
 import { useAppData } from "../hooks/useAppData";
 import { usePendingAction } from "../hooks/usePendingAction";
 
@@ -271,8 +277,12 @@ export function AdminPage() {
   }, [settings.tourUrl]);
 
   useEffect(() => {
-    const room = primaryTrainingRoom(settings);
-    setTrainingCodeDraft(room.accessCode);
+    if (isSheetStorageBackend()) {
+      // 本番（Sheet）: 平文はシートに保存されない。変更時のみ入力欄に打つ。
+      setTrainingCodeDraft("");
+      return;
+    }
+    setTrainingCodeDraft(primaryTrainingRoom(settings).accessCode);
   }, [settings.rooms, settings]);
 
   const returnToAdminCodeEntry = () => {
@@ -546,8 +556,8 @@ export function AdminPage() {
               </ActionButton>
             </div>
             <p className="a-hint" style={{ marginTop: "1rem" }}>
-              初回デモ: 管理者コード <code>{isSheetStorageBackend() ? "admin-demo-2026" : "admin-demo"}</code> /
-              受講者研修コード <code>{isSheetStorageBackend() ? "demo-2026" : "DEMO-2026"}</code>
+              初回デモ: 管理者コード <code>{isSheetStorageBackend() ? SHEET_DEMO_ADMIN_TOKEN : LOCAL_DEMO_ADMIN_CODE}</code> /
+              受講者研修コード <code>{isSheetStorageBackend() ? SHEET_DEMO_TRAINING_CODE : LOCAL_DEMO_TRAINING_CODE}</code>
               （ローカルはアプリごとに storage が分かれるため、管理者で研修コードを変更した場合は受講者側の再読込が必要です）
             </p>
           </div>
@@ -606,13 +616,25 @@ export function AdminPage() {
             <h2>入室・研修回</h2>
             <p className="a-hint">
               受講者には<strong>研修コード</strong>を案内します。管理者の入室には<strong>管理者コード</strong>を使います（別物）。
+              {isSheetStorageBackend() && (
+                <>
+                  {" "}
+                  本番（Sheet）では研修コードの<strong>平文はシートに保存されません</strong>（hash のみ）。
+                  変更時のみ下欄に<strong>新しいコード</strong>を入力して保存してください。初期デモは{" "}
+                  <code>{SHEET_DEMO_TRAINING_CODE}</code>（GAS の <code>resetDemoTrainingCode()</code> で復元）。
+                </>
+              )}
             </p>
             <AdminLabel label={`研修コード（${primaryTrainingRoom(settings).displayName}）`}>
               <ImeInput
                 className="a-input"
                 value={trainingCodeDraft}
                 onChange={setTrainingCodeDraft}
-                placeholder="受講者が入力するコード"
+                placeholder={
+                  isSheetStorageBackend()
+                    ? "新しい研修コード（変更時のみ入力）"
+                    : "受講者が入力するコード"
+                }
               />
             </AdminLabel>
             <div className="a-actions">

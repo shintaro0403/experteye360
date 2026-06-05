@@ -89,6 +89,24 @@ function resetDemoAdminToken() {
   Logger.log(`管理者コードを ${DEMO_CONFIG.adminToken} に戻しました`);
 }
 
+/** 研修コードを demo-2026 に戻す（rooms.accessCodeHash のみ更新。平文はシートに保存しない） */
+function resetDemoTrainingCode() {
+  const context = resolveClient_(DEMO_CONFIG.clientId);
+  updateRowByKey_(getSheet_(context.clientBook, "rooms"), "roomId", DEMO_CONFIG.roomId, {
+    accessCodeHash: hashSecret_(DEMO_CONFIG.trainingCode),
+  });
+  Logger.log(
+    `研修コードを ${DEMO_CONFIG.trainingCode} に戻しました（roomId=${DEMO_CONFIG.roomId}）`,
+  );
+}
+
+/** デモの管理者コード・研修コードを初期値に戻す（E2E / preflight 前の復元用） */
+function resetDemoCredentials() {
+  resetDemoAdminToken();
+  resetDemoTrainingCode();
+  Logger.log("デモ資格情報を初期値に戻しました");
+}
+
 /** キー設定済みか確認（実行ログを見る） */
 function logScriptPropertyStatus() {
   const id = PropertiesService.getScriptProperties().getProperty(SCRIPT_PROP_MASTER_SPREADSHEET_ID);

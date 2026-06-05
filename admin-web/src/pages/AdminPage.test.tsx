@@ -403,7 +403,9 @@ describe("AdminPage", () => {
   }
 
   function getTrainingCodeInput(): HTMLInputElement {
-    const input = container.querySelector<HTMLInputElement>('input[placeholder="受講者が入力するコード"]');
+    const input =
+      container.querySelector<HTMLInputElement>('input[placeholder="新しい研修コード（変更時のみ入力）"]') ??
+      container.querySelector<HTMLInputElement>('input[placeholder="受講者が入力するコード"]');
     if (!input) throw new Error("training code input not found");
     return input;
   }
