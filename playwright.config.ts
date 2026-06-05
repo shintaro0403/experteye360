@@ -12,7 +12,10 @@ export default defineConfig({
   expect: {
     timeout: 5_000,
   },
+  // 単一・状態共有の mock サーバー（scripts/e2e-sheet-api-server.mjs）を複数ワーカーが
+  // 並列に叩くと state 競合で flaky になるため、E2E は直列（単一ワーカー）で実行する。
   fullyParallel: false,
+  workers: 1,
   reporter: "list",
   use: {
     trace: "on-first-retry",
