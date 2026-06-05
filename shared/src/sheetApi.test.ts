@@ -174,7 +174,7 @@ describe("sheetApi 契約", () => {
     await expect(loadSheetSettings({
       apiBaseUrl: API_BASE_URL,
       clientId: TEST_CLIENT,
-    })).rejects.toThrow("Sheet API request failed: 401");
+    })).rejects.toThrow("Sheet API request failed: Invalid admin token");
   });
 
   it("すべての API 呼び出しに client クエリを付ける", async () => {

@@ -12,6 +12,7 @@
     "test:e2e": "playwright test",
     "test:e2e:real-sheet": "node scripts/run-real-sheet-e2e.mjs",
     "smoke:phase1-sheet": "node scripts/phase1-sheet-smoke.mjs",
+    "check:no-env": "node scripts/check-no-env-committed.mjs",
     "test:watch": "vitest"
   },
   "devDependencies": {

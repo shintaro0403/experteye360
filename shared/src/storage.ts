@@ -9,7 +9,10 @@ import {
   loadSheetSettings,
   saveSheetSettings,
   verifyTrainingCodeViaApi,
+  sheetApiErrorDetail,
 } from "./storage/sheet";
+
+export { sheetApiErrorDetail };
 import type { AppSettings, ParticipantSubmission } from "./types";
 
 const KEY_SETTINGS = "expertEye360:settings";

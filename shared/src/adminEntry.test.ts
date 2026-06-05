@@ -7,6 +7,7 @@ import {
   SESSION_ADMIN_TOKEN_KEY,
   setAdminSessionActive,
   setAdminSessionToken,
+  validateSheetAdminCodeChange,
   verifyAdminCode,
 } from "./adminEntry";
 
@@ -42,6 +43,42 @@ describe("changeAdminAccessCode", () => {
 
   it("条件を満たせば変更できる", () => {
     expect(changeAdminAccessCode("admin-demo", "admin-next", "admin-demo")).toEqual({ ok: true });
+  });
+});
+
+describe("validateSheetAdminCodeChange", () => {
+  const session = "admin-demo-2026";
+
+  it("現在欄が空のときは API 前に拒否する", () => {
+    expect(validateSheetAdminCodeChange("", "admin-next", session)).toEqual({
+      ok: false,
+      error: "現在の管理者コードを入力してください",
+    });
+  });
+
+  it("現在欄がセッション token と一致しないときは拒否する", () => {
+    expect(validateSheetAdminCodeChange("wrong", "admin-next", session)).toEqual({
+      ok: false,
+      error: "現在の管理者コードが正しくありません",
+    });
+  });
+
+  it("新コードが短すぎるときは拒否する", () => {
+    expect(validateSheetAdminCodeChange(session, "abc", session)).toEqual({
+      ok: false,
+      error: "新しい管理者コードは4文字以上にしてください",
+    });
+  });
+
+  it("新コードが現在と同じときは拒否する", () => {
+    expect(validateSheetAdminCodeChange(session, session, session)).toEqual({
+      ok: false,
+      error: "新しい管理者コードは現在と異なるものにしてください",
+    });
+  });
+
+  it("条件を満たせば変更できる", () => {
+    expect(validateSheetAdminCodeChange(session, "admin-next-99", session)).toEqual({ ok: true });
   });
 });
 

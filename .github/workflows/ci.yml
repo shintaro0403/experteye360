@@ -30,6 +30,9 @@ jobs:
             participant-web/package-lock.json
             admin-web/package-lock.json
 
+      - name: No tracked env files (.env.development 等)
+        run: npm run check:no-env
+
       - name: Install dependencies (root + both web apps)
         run: npm run install:all
 

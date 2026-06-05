@@ -150,7 +150,9 @@ npm run build:all     # 両 Web の production build（型・bundling 確認）
 
 **依存関係は 3 か所** — ルート（Vitest）・`participant-web`・`admin-web`。ルートだけ入れるとビルドや型チェックが「モジュールがない」で落ちる。ローカルも CI も `install:all` を使う。
 
-**`.env.development` は Git に無い** — API URL や client ID は各開発者の手元ファイル。最小 CI は Vitest とビルドだけなので不要。本番 URL をビルドに埋め込む運用を始めたら、CI 用に Variables / Secrets で渡す設計が必要になる。
+**`.env.development` は Git に無い** — API URL や client ID は各開発者の手元ファイル（`.gitignore` で除外）。CI は `npm run check:no-env` で **追跡済みの .env*（`*.example` 除く）が無いこと**も確認する。本番 URL をビルドに埋め込む運用を始めたら、CI 用に Variables / Secrets で渡す設計が必要になる。
+
+**ローカルでも確認** — `npm run check:no-env`（コミット前の確認用）
 
 ---
 

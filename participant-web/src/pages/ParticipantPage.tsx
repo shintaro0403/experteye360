@@ -338,6 +338,16 @@ export function ParticipantPage() {
   const scene = settings.scenes[0] ?? null;
   const profileUnlocked = Boolean(verifiedRoomId);
 
+  const returnToTrainingCodeEntry = () => {
+    setVerifiedRoomId(null);
+    setVerifiedRoomIdState(null);
+    setTrainingCode("");
+    setStep(STEP_INTRO);
+    setParticipantName("");
+    setAffiliation("");
+    setFieldWarn(null);
+  };
+
   const tryVerifyTrainingCode = async () => {
     setIsVerifyingCode(true);
     const result = await verifyTrainingCodeAsync(trainingCode, settings.rooms);
@@ -507,7 +517,13 @@ export function ParticipantPage() {
                   />
                 </label>
               </div>
-              <Nav showBack={false} showNext onBack={() => {}} onNext={tryNext} warn={fieldWarn} />
+              <Nav
+                showBack
+                showNext
+                onBack={returnToTrainingCodeEntry}
+                onNext={tryNext}
+                warn={fieldWarn}
+              />
             </div>
           )}
 

@@ -1,8 +1,12 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TRAINING_CODE_MISMATCH_MESSAGE } from "@shared/roomEntry";
-import { setVerifiedRoomId } from "@shared/roomEntry";
+import {
+  getVerifiedRoomId,
+  SESSION_VERIFIED_ROOM_KEY,
+  TRAINING_CODE_MISMATCH_MESSAGE,
+  setVerifiedRoomId,
+} from "@shared/roomEntry";
 import { DEFAULT_SETTINGS } from "@shared/seed";
 import { verifyTrainingCodeAsync } from "@shared/storage";
 import { useAppData } from "../hooks/useAppData";
@@ -68,6 +72,27 @@ describe("ParticipantPage", () => {
       getButton("next").click();
     });
     expect(container.textContent).toContain(TRAINING_CODE_MISMATCH_MESSAGE);
+  });
+
+  it("名前入力画面で back を押すと研修コード入力に戻り検証状態を消す", async () => {
+    vi.mocked(verifyTrainingCodeAsync).mockResolvedValue({ ok: true, roomId: "room-demo-1" });
+    await render();
+    await act(async () => {
+      setInputValue(getTrainingCodeInput(), "DEMO-2026");
+    });
+    await act(async () => {
+      getButton("next").click();
+    });
+    expect(container.querySelector('input[placeholder="例：山田 太郎"]')).not.toBeNull();
+    expect(sessionStorage.getItem(SESSION_VERIFIED_ROOM_KEY)).toBe("room-demo-1");
+
+    await act(async () => {
+      getButton("back").click();
+    });
+
+    expect(getTrainingCodeInput()).not.toBeNull();
+    expect(container.querySelector('input[placeholder="例：山田 太郎"]')).toBeNull();
+    expect(getVerifiedRoomId()).toBeNull();
   });
 
   it("正しい研修コードのあと名前欄が表示される", async () => {

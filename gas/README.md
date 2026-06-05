@@ -65,11 +65,16 @@ room表示名: デモ研修 001
 
 1. Apps Script 右上の「デプロイ」から「新しいデプロイ」を選ぶ
 2. 種類は「ウェブアプリ」
-3. 実行ユーザーは「自分」
-4. アクセスできるユーザーは外部公開に合わせて「全員」または組織ポリシー上許される範囲を選ぶ
-5. デプロイ後に表示される Web App URL を控える
+3. **説明**（必須）— [APPSCRIPT-COPY.md](./APPSCRIPT-COPY.md) の文をコピーして貼る
+4. 実行ユーザーは「自分」
+5. アクセスできるユーザーは外部公開に合わせて「全員」または組織ポリシー上許される範囲を選ぶ
+6. デプロイ後に表示される Web App URL を控える
 
 Web App URL はフロントの `VITE_SHEET_API_BASE` に設定します。
+
+**重要** — `Code.gs` を更新しただけでは公開 URL の挙動は変わりません。研修コード変更（`rooms/access-code`）や管理者コード変更（`admin/token`）を使う場合は、必ず **「新しいデプロイ」** を作成し、表示された URL を `VITE_SHEET_API_BASE` に反映してください。古いデプロイのままだと管理画面で「Unknown route: POST rooms/access-code」となり、研修コードの保存に失敗します。
+
+確認: `npm run smoke:phase1-sheet` が `POST rooms/access-code ルートあり` まで Green であること。
 
 ## API 契約
 

@@ -1,3 +1,8 @@
+/**
+ * ExpertEye360 Sheet API (Web App)
+ * 説明文・デプロイ手順: gas/APPSCRIPT-COPY.md / gas/README.md
+ * 初回: setupDemo() → 新しいデプロイ → VITE_SHEET_API_BASE に URL を設定
+ */
 const SCRIPT_PROP_MASTER_SPREADSHEET_ID = "EXPERTEYE360_MASTER_SPREADSHEET_ID";
 
 const DEMO_CONFIG = {
@@ -53,6 +58,41 @@ function setupDemo() {
     clientId: DEMO_CONFIG.clientId,
     roomId: DEMO_CONFIG.roomId,
   }, null, 2));
+}
+
+/** 既存の ExpertEye360 Master があるとき。Drive の URL から ID をコピーして実行 */
+function linkMasterSpreadsheet(masterSpreadsheetId) {
+  const id = normalizeSecret_(masterSpreadsheetId);
+  if (!id) throw new Error("masterSpreadsheetId is required");
+  SpreadsheetApp.openById(id);
+  PropertiesService.getScriptProperties().setProperty(SCRIPT_PROP_MASTER_SPREADSHEET_ID, id);
+  Logger.log(`EXPERTEYE360_MASTER_SPREADSHEET_ID を設定しました: ${id}`);
+}
+
+/**
+ * エディタから実行する用（引数ダイアログが出ないため）。
+ * 1. 下の LINK_MASTER_SPREADSHEET_ID に ID を貼る
+ * 2. 関数一覧で runLinkMyMaster を選び ▶ 実行
+ */
+const LINK_MASTER_SPREADSHEET_ID = "";
+
+function runLinkMyMaster() {
+  linkMasterSpreadsheet(LINK_MASTER_SPREADSHEET_ID);
+}
+
+/** 管理者コードを admin-demo-2026 に戻す（マスター clients の hash を更新） */
+function resetDemoAdminToken() {
+  const clientsSheet = getMasterClientsSheet_();
+  updateRowByKey_(clientsSheet, "clientId", DEMO_CONFIG.clientId, {
+    adminTokenHash: hashSecret_(DEMO_CONFIG.adminToken),
+  });
+  Logger.log(`管理者コードを ${DEMO_CONFIG.adminToken} に戻しました`);
+}
+
+/** キー設定済みか確認（実行ログを見る） */
+function logScriptPropertyStatus() {
+  const id = PropertiesService.getScriptProperties().getProperty(SCRIPT_PROP_MASTER_SPREADSHEET_ID);
+  Logger.log(id ? `OK: MASTER_ID=${id}` : "NG: EXPERTEYE360_MASTER_SPREADSHEET_ID が未設定です");
 }
 
 function handleRequest_(e, method) {

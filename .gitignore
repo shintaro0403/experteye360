@@ -1,6 +1,9 @@
 node_modules/
 dist/
+# 秘密情報（*.example のみリポジトリ可）
 .env
+.env.*
+!.env.*.example
 .env.local
 .env.*.local
 *.log

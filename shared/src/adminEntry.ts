@@ -65,3 +65,26 @@ export function changeAdminAccessCode(
   }
   return { ok: true };
 }
+
+/** Sheet backend: 再入力した現在コードがセッション token と一致したときだけ API 変更可能 */
+export function validateSheetAdminCodeChange(
+  currentInput: string,
+  nextInput: string,
+  sessionAdminToken: string,
+): ChangeAdminCodeResult {
+  const current = currentInput.trim();
+  const next = nextInput.trim();
+  if (!current) {
+    return { ok: false, error: "現在の管理者コードを入力してください" };
+  }
+  if (!verifyAdminCode(current, sessionAdminToken)) {
+    return { ok: false, error: "現在の管理者コードが正しくありません" };
+  }
+  if (next.length < 4) {
+    return { ok: false, error: "新しい管理者コードは4文字以上にしてください" };
+  }
+  if (verifyAdminCode(next, sessionAdminToken)) {
+    return { ok: false, error: "新しい管理者コードは現在と異なるものにしてください" };
+  }
+  return { ok: true };
+}

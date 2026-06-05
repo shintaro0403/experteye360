@@ -145,9 +145,16 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
     throw new Error(`Sheet API request failed: ${response.status}`);
   }
   if (isSheetApiErrorBody(body)) {
-    throw new Error(`Sheet API request failed: ${body.status ?? body.error ?? "unknown"}`);
+    const detail = body.error?.trim() || String(body.status ?? "unknown");
+    throw new Error(`Sheet API request failed: ${detail}`);
   }
   return body as T;
+}
+
+/** Sheet API の ok:false / fetch 失敗を画面向け短文にする */
+export function sheetApiErrorDetail(err: unknown): string {
+  if (!(err instanceof Error)) return "";
+  return err.message.replace(/^Sheet API request failed:\s*/i, "").trim();
 }
 
 function isSheetApiErrorBody(body: unknown): body is SheetApiErrorBody {

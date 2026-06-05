@@ -6,6 +6,7 @@ import {
   isAdminSessionActive,
   setAdminSessionActive,
   setAdminSessionToken,
+  validateSheetAdminCodeChange,
   verifyAdminCode,
 } from "@shared/adminEntry";
 import { getConfidenceLabel } from "@shared/confidence";
@@ -15,6 +16,7 @@ import {
   changeAdminTokenAsync,
   changeTrainingCodeAsync,
   isSheetStorageBackend,
+  sheetApiErrorDetail,
   verifyAdminTokenAsync,
 } from "@shared/storage";
 import type { ParticipantSubmission, Scene } from "@shared/types";
@@ -167,6 +169,28 @@ function ResponseDetail({
   );
 }
 
+function formatTrainingCodeSaveError(err: unknown): string {
+  const detail = sheetApiErrorDetail(err);
+  if (detail.includes("Unknown route") && detail.includes("access-code")) {
+    return [
+      "研修コードの保存に失敗しました。",
+      "",
+      "実 GAS に研修コード変更 API（rooms/access-code）がありません。",
+      "gas/Code.gs を Apps Script に反映し、「新しいデプロイ」したあと .env の VITE_SHEET_API_BASE を新しい URL に更新してください。",
+    ].join("\n");
+  }
+  if (detail.includes("Invalid admin token")) {
+    return "研修コードの保存に失敗しました。管理者コードが無効です。一度ログアウトして、正しい管理者コードで再入室してください。";
+  }
+  if (detail.includes("Invalid room")) {
+    return "研修コードの保存に失敗しました。研修回 ID がシートと一致しません（例: demo-room-001）。設定の再読込後にもう一度お試しください。";
+  }
+  if (detail) {
+    return `研修コードの保存に失敗しました。\n\n（${detail}）`;
+  }
+  return "研修コードの保存に失敗しました。管理者コードを確認して再度お試しください。";
+}
+
 export function AdminPage() {
   const [adminToken, setAdminTokenState] = useState(() => getAdminSessionToken() ?? "");
   const [adminAuthed, setAdminAuthed] = useState(
@@ -211,6 +235,13 @@ export function AdminPage() {
     const room = primaryTrainingRoom(settings);
     setTrainingCodeDraft(room.accessCode);
   }, [settings.rooms, settings]);
+
+  const returnToAdminCodeEntry = () => {
+    setAdminSessionActive(false);
+    setAdminTokenState("");
+    setAdminAuthed(false);
+    setAdminLoginError(null);
+  };
 
   const tryAdminLogin = async () => {
     if (isSheetStorageBackend()) {
@@ -265,8 +296,8 @@ export function AdminPage() {
             : [{ ...room, accessCode: code }];
         applySettings({ ...settings, rooms: nextRooms });
         alert("研修コードを保存しました。受講者に新しいコードを案内してください。");
-      } catch {
-        alert("研修コードの保存に失敗しました。管理者コードを確認して再度お試しください。");
+      } catch (err) {
+        alert(formatTrainingCodeSaveError(err));
       }
       return;
     }
@@ -282,18 +313,18 @@ export function AdminPage() {
 
   const saveAdminCodeChange = async () => {
     if (isSheetStorageBackend()) {
-      const current = adminCurrentForChange.trim();
+      const result = validateSheetAdminCodeChange(
+        adminCurrentForChange,
+        adminNewCode,
+        adminToken,
+      );
+      if (!result.ok) {
+        setAdminChangeMsg(result.error);
+        return;
+      }
       const next = adminNewCode.trim();
-      if (next.length < 4) {
-        setAdminChangeMsg("新しい管理者コードは4文字以上にしてください");
-        return;
-      }
-      if (current === next) {
-        setAdminChangeMsg("新しい管理者コードは現在と異なるものにしてください");
-        return;
-      }
       try {
-        await changeAdminTokenAsync({ adminToken: current, nextAdminToken: next });
+        await changeAdminTokenAsync({ adminToken, nextAdminToken: next });
         setAdminSessionToken(next);
         setAdminTokenState(next);
         setAdminCurrentForChange("");
@@ -465,6 +496,13 @@ export function AdminPage() {
           <span className="a-topbar__brand">ExpertEye360</span>
           <span className="a-topbar__role">管理者</span>
           <div className="a-topbar__actions">
+            <button
+              type="button"
+              className="a-btn a-btn--secondary"
+              onClick={returnToAdminCodeEntry}
+            >
+              管理者コード入力に戻る
+            </button>
             <div className="a-topbar__reload">
               <button
                 type="button"
