@@ -41,7 +41,7 @@ jobs:
         env:
           VITE_PAGES_REPO: experteye360
           VITE_STORAGE_BACKEND: sheet
-          VITE_CLIENT_ID: ${{ vars.VITE_CLIENT_ID }}
+          VITE_CLIENT_ID: ${{ vars.VITE_CLIENT_ID || 'lipronext-demo' }}
           VITE_SHEET_API_BASE: ${{ vars.VITE_SHEET_API_BASE }}
 
       - name: Upload Pages artifact
