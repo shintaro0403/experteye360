@@ -120,19 +120,25 @@ function settingsForClient(client) {
   return state.settingsByClient[client] ?? null;
 }
 
-function isAuthorized(url) {
-  return url.searchParams.get("token") === state.adminToken;
+// SEC-SECRET-01: token はボディ優先・クエリはフォールバック
+function isAuthorized(url, body) {
+  const fromBody = body && typeof body.token === "string" ? body.token : "";
+  const fromQuery = url.searchParams.get("token") ?? "";
+  return (fromBody || fromQuery) === state.adminToken;
 }
 
 async function handleSheetApi(req, res, url) {
   const path = url.searchParams.get("path");
   const client = url.searchParams.get("client");
+  const body = req.method === "POST" ? await readJson(req) : {};
+  const hasToken =
+    url.searchParams.has("token") || (body && typeof body.token === "string" && body.token.length > 0);
   state.requestLog.push({
     method: req.method,
     path,
     client,
     room: url.searchParams.get("room"),
-    hasToken: url.searchParams.has("token"),
+    hasToken,
   });
   if (client !== CLIENT_ID) {
     sendJson(res, 404, { ok: false, error: "client_not_found" });
@@ -149,8 +155,18 @@ async function handleSheetApi(req, res, url) {
     return;
   }
 
+  if (req.method === "POST" && path === "settings") {
+    if (!isAuthorized(url, body)) {
+      sendJson(res, 403, { ok: false, error: "invalid_admin_token" });
+      return;
+    }
+    const next = body && body.settings !== undefined ? body.settings : body;
+    state.settingsByClient[client] = structuredClone(next);
+    sendJson(res, 200, { ok: true });
+    return;
+  }
+
   if (req.method === "POST" && path === "rooms/verify") {
-    const body = await readJson(req);
     const room = settings.rooms.find((r) => r.enabled !== false && r.accessCode === body.accessCode);
     if (!room) {
       sendJson(res, 403, { ok: false, error: "access_code_mismatch" });
@@ -161,11 +177,10 @@ async function handleSheetApi(req, res, url) {
   }
 
   if (req.method === "POST" && path === "rooms/access-code") {
-    if (!isAuthorized(url)) {
+    if (!isAuthorized(url, body)) {
       sendJson(res, 403, { ok: false, error: "invalid_admin_token" });
       return;
     }
-    const body = await readJson(req);
     const room = settings.rooms.find((r) => r.roomId === body.roomId);
     const nextAccessCode = typeof body.nextAccessCode === "string" ? body.nextAccessCode.trim() : "";
     if (!room || !nextAccessCode) {
@@ -178,11 +193,10 @@ async function handleSheetApi(req, res, url) {
   }
 
   if (req.method === "POST" && path === "admin/token") {
-    if (!isAuthorized(url)) {
+    if (!isAuthorized(url, body)) {
       sendJson(res, 403, { ok: false, error: "invalid_admin_token" });
       return;
     }
-    const body = await readJson(req);
     const nextAdminToken = typeof body.nextAdminToken === "string" ? body.nextAdminToken.trim() : "";
     if (nextAdminToken.length < 4) {
       sendJson(res, 400, { ok: false, error: "invalid_next_admin_token" });
@@ -201,7 +215,7 @@ async function handleSheetApi(req, res, url) {
       return;
     }
     if (req.method === "POST") {
-      if (!isAuthorized(url)) {
+      if (!isAuthorized(url, body)) {
         sendJson(res, 403, { ok: false, error: "invalid_admin_token" });
         return;
       }
@@ -211,6 +225,21 @@ async function handleSheetApi(req, res, url) {
     }
   }
 
+  // SEC-SECRET-01: token をボディで受け取る読み取り経路
+  if (req.method === "POST" && path === "responses/query") {
+    const room = url.searchParams.get("room");
+    if (!room) {
+      sendJson(res, 400, { ok: false, error: "room_required" });
+      return;
+    }
+    if (!isAuthorized(url, body)) {
+      sendJson(res, 403, { ok: false, error: "invalid_admin_token" });
+      return;
+    }
+    sendJson(res, 200, roomResponses(client, room));
+    return;
+  }
+
   if (path === "responses") {
     const room = url.searchParams.get("room");
     if (!room) {
@@ -218,7 +247,7 @@ async function handleSheetApi(req, res, url) {
       return;
     }
     if (req.method === "GET") {
-      if (!isAuthorized(url)) {
+      if (!isAuthorized(url, body)) {
         sendJson(res, 403, { ok: false, error: "invalid_admin_token" });
         return;
       }
@@ -226,8 +255,7 @@ async function handleSheetApi(req, res, url) {
       return;
     }
     if (req.method === "POST") {
-      const submission = await readJson(req);
-      roomResponses(client, room).unshift({ ...submission, roomId: room });
+      roomResponses(client, room).unshift({ ...body, roomId: room });
       sendJson(res, 200, { ok: true });
       return;
     }

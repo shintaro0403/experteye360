@@ -41,7 +41,7 @@ describe("sheetApi 契約", () => {
     expect(init?.method ?? "GET").toBe("GET");
   });
 
-  it("POST settings は client と token クエリを付け、AppSettings を送る", async () => {
+  it("POST settings は client クエリのみ付け、token と settings をボディで送る", async () => {
     const settings = makeSettings({ tourUrl: "https://example.com/admin-save" });
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ ok: true }));
 
@@ -53,18 +53,15 @@ describe("sheetApi 契約", () => {
     });
 
     const [url, init] = lastFetchCall();
-    expectUrlHasParams(String(url), {
-      path: "settings",
-      client: TEST_CLIENT,
-      token: TEST_ADMIN_TOKEN,
-    });
+    expectUrlHasParams(String(url), { path: "settings", client: TEST_CLIENT });
+    expectUrlMissingParams(String(url), ["token"]);
     expect(init?.method).toBe("POST");
-    expect(JSON.parse(String(init?.body))).toMatchObject({
-      tourUrl: "https://example.com/admin-save",
-    });
+    const sent = JSON.parse(String(init?.body));
+    expect(sent.token).toBe(TEST_ADMIN_TOKEN);
+    expect(sent.settings).toMatchObject({ tourUrl: "https://example.com/admin-save" });
   });
 
-  it("GET responses は client・room・token クエリを付け、回答配列として読める", async () => {
+  it("responses 取得は POST responses/query で client・room クエリ + token をボディで送る", async () => {
     const responses: ParticipantSubmission[] = [
       makeSubmission({ id: "sub-new", roomId: TEST_ROOM }),
     ];
@@ -80,15 +77,16 @@ describe("sheetApi 契約", () => {
     expect(result.map((r) => r.id)).toEqual(["sub-new"]);
     const [url, init] = lastFetchCall();
     expectUrlHasParams(String(url), {
-      path: "responses",
+      path: "responses/query",
       client: TEST_CLIENT,
       room: TEST_ROOM,
-      token: TEST_ADMIN_TOKEN,
     });
-    expect(init?.method ?? "GET").toBe("GET");
+    expectUrlMissingParams(String(url), ["token"]);
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(String(init?.body))).toEqual({ token: TEST_ADMIN_TOKEN });
   });
 
-  it("POST responses/clear は client・room・token クエリで当該 room の回答を全削除する", async () => {
+  it("POST responses/clear は client・room クエリ + token をボディで送り、当該 room を削除する", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ ok: true }));
 
     await clearSheetResponses({
@@ -103,10 +101,10 @@ describe("sheetApi 契約", () => {
       path: "responses/clear",
       client: TEST_CLIENT,
       room: TEST_ROOM,
-      token: TEST_ADMIN_TOKEN,
     });
+    expectUrlMissingParams(String(url), ["token"]);
     expect(init?.method).toBe("POST");
-    expect(init?.body).toBeUndefined();
+    expect(JSON.parse(String(init?.body))).toEqual({ token: TEST_ADMIN_TOKEN });
   });
 
   it("POST responses は client・room クエリと ParticipantSubmission ボディを送る", async () => {
@@ -244,7 +242,80 @@ describe("sheetApi 契約", () => {
     }
   });
 
-  it("GET responses は room ごとに URL を分け、別 room の回答を混ぜない", async () => {
+  it("SEC-SECRET-01: 管理者 token はどの API 呼び出しでも URL クエリに出さない", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(jsonResponse(makeSettings()))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+      .mockResolvedValueOnce(jsonResponse({ roomId: TEST_ROOM }))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }))
+      .mockResolvedValueOnce(jsonResponse({ ok: true }));
+
+    await loadSheetSettings({ apiBaseUrl: API_BASE_URL, clientId: TEST_CLIENT });
+    await saveSheetSettings({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      adminToken: TEST_ADMIN_TOKEN,
+      settings: makeSettings(),
+    });
+    await loadSheetResponses({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      roomId: TEST_ROOM,
+      adminToken: TEST_ADMIN_TOKEN,
+    });
+    await clearSheetResponses({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      roomId: TEST_ROOM,
+      adminToken: TEST_ADMIN_TOKEN,
+    });
+    await changeAdminTokenViaApi({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      adminToken: TEST_ADMIN_TOKEN,
+      nextAdminToken: "admin-next",
+    });
+    await changeTrainingCodeViaApi({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      adminToken: TEST_ADMIN_TOKEN,
+      roomId: TEST_ROOM,
+      nextAccessCode: "DEMO-2027",
+    });
+
+    for (const [url] of vi.mocked(fetch).mock.calls) {
+      const parsed = new URL(String(url), API_BASE_URL);
+      expect(parsed.searchParams.get("token")).toBeNull();
+      expect(String(url)).not.toContain(TEST_ADMIN_TOKEN);
+    }
+  });
+
+  it("SEC-NET-01: http の API ベース URL は HTTPS 必須エラーになる", async () => {
+    await expect(loadSheetSettings({
+      apiBaseUrl: "http://evil.example/exec",
+      clientId: TEST_CLIENT,
+    })).rejects.toThrow(/HTTPS/i);
+    expect(vi.mocked(fetch)).not.toHaveBeenCalled();
+  });
+
+  it("SEC-NET-01: localhost / 127.0.0.1 の http は開発用に許可する", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(jsonResponse(makeSettings()))
+      .mockResolvedValueOnce(jsonResponse(makeSettings()));
+
+    await expect(loadSheetSettings({
+      apiBaseUrl: "http://127.0.0.1:5198/exec",
+      clientId: TEST_CLIENT,
+    })).resolves.toBeDefined();
+    await expect(loadSheetSettings({
+      apiBaseUrl: "http://localhost:5198/exec",
+      clientId: TEST_CLIENT,
+    })).resolves.toBeDefined();
+  });
+
+  it("responses 取得は room ごとに分け、別 room の回答を混ぜない", async () => {
     vi.mocked(fetch).mockImplementation(async (input) => {
       const url = new URL(String(input));
       const room = url.searchParams.get("room");
@@ -295,7 +366,7 @@ describe("sheetApi 契約", () => {
     })).rejects.toThrow("Sheet API request failed: 403");
   });
 
-  it("POST settings は監査ログ対象の管理者操作として token を必ず付ける", async () => {
+  it("POST settings は監査ログ対象の管理者操作として token をボディに必ず付ける", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ ok: true, auditLogId: "audit-1" }));
 
     await saveSheetSettings({
@@ -305,8 +376,10 @@ describe("sheetApi 契約", () => {
       settings: makeSettings(),
     });
 
-    const [url] = lastFetchCall();
-    expectUrlHasParams(String(url), { client: TEST_CLIENT, token: TEST_ADMIN_TOKEN });
+    const [url, init] = lastFetchCall();
+    expectUrlHasParams(String(url), { client: TEST_CLIENT });
+    expectUrlMissingParams(String(url), ["token"]);
+    expect(JSON.parse(String(init?.body)).token).toBe(TEST_ADMIN_TOKEN);
   });
 
   it("不正な管理者 token では管理者 API が 401 エラーになる", async () => {
@@ -320,7 +393,7 @@ describe("sheetApi 契約", () => {
     })).rejects.toThrow("Sheet API request failed: 401");
   });
 
-  it("管理者コード変更は現行 token と新しい token を送る", async () => {
+  it("管理者コード変更は現行 token と新しい token をボディで送る", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ ok: true }));
 
     await changeAdminTokenViaApi({
@@ -331,16 +404,16 @@ describe("sheetApi 契約", () => {
     });
 
     const [url, init] = lastFetchCall();
-    expectUrlHasParams(String(url), {
-      path: "admin/token",
-      client: TEST_CLIENT,
-      token: TEST_ADMIN_TOKEN,
-    });
+    expectUrlHasParams(String(url), { path: "admin/token", client: TEST_CLIENT });
+    expectUrlMissingParams(String(url), ["token"]);
     expect(init?.method).toBe("POST");
-    expect(JSON.parse(String(init?.body))).toEqual({ nextAdminToken: "admin-next" });
+    expect(JSON.parse(String(init?.body))).toEqual({
+      token: TEST_ADMIN_TOKEN,
+      nextAdminToken: "admin-next",
+    });
   });
 
-  it("研修コード変更は roomId と新しい研修コードを送り、管理者 token を必ず付ける", async () => {
+  it("研修コード変更は roomId と新しい研修コード、現行 token をボディで送る", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ ok: true }));
 
     await changeTrainingCodeViaApi({
@@ -352,14 +425,12 @@ describe("sheetApi 契約", () => {
     });
 
     const [url, init] = lastFetchCall();
-    expectUrlHasParams(String(url), {
-      path: "rooms/access-code",
-      client: TEST_CLIENT,
-      token: TEST_ADMIN_TOKEN,
-    });
+    expectUrlHasParams(String(url), { path: "rooms/access-code", client: TEST_CLIENT });
+    expectUrlMissingParams(String(url), ["token"]);
     expect(init?.method).toBe("POST");
     expect((init?.headers as Record<string, string>)["Content-Type"]).toBe("text/plain;charset=utf-8");
     expect(JSON.parse(String(init?.body))).toEqual({
+      token: TEST_ADMIN_TOKEN,
       roomId: TEST_ROOM,
       nextAccessCode: "DEMO-2027",
     });
@@ -407,5 +478,12 @@ function expectUrlHasParams(url: string, params: Record<string, string>): void {
   const parsed = new URL(url, API_BASE_URL);
   for (const [key, value] of Object.entries(params)) {
     expect(parsed.searchParams.get(key)).toBe(value);
+  }
+}
+
+function expectUrlMissingParams(url: string, keys: string[]): void {
+  const parsed = new URL(url, API_BASE_URL);
+  for (const key of keys) {
+    expect(parsed.searchParams.get(key)).toBeNull();
   }
 }

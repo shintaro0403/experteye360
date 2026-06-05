@@ -88,16 +88,18 @@ test.describe("Real Sheet API（実 GAS / 実シート）", () => {
 
     const otherClientBody = await fetchSheetJson<unknown>(
       apiBaseUrl,
-      "responses",
-      { client: otherClientId, room: resolvedRoomId, token: adminToken },
+      "responses/query",
+      { client: otherClientId, room: resolvedRoomId },
+      postJson({ token: adminToken }),
     );
     expect(JSON.stringify(otherClientBody)).not.toContain(submission.id);
     expect(isApiErrorBody(otherClientBody)).toBe(true);
 
     const otherRoomBody = await fetchSheetJson<unknown>(
       apiBaseUrl,
-      "responses",
-      { client: clientId, room: `${resolvedRoomId}-other-e2e`, token: adminToken },
+      "responses/query",
+      { client: clientId, room: `${resolvedRoomId}-other-e2e` },
+      postJson({ token: adminToken }),
     );
     expect(JSON.stringify(otherRoomBody)).not.toContain(submission.id);
     expect(isApiErrorBody(otherRoomBody)).toBe(true);
@@ -141,8 +143,9 @@ test.describe("Real Sheet API（実 GAS / 実シート）", () => {
 
       const oldTokenBody = await fetchSheetJson<unknown>(
         apiBaseUrl,
-        "responses",
-        { client: clientId, room: resolvedRoomId, token: originalToken },
+        "responses/query",
+        { client: clientId, room: resolvedRoomId },
+        postJson({ token: originalToken }),
       );
       expect(isApiErrorBody(oldTokenBody)).toBe(true);
 
@@ -257,8 +260,9 @@ async function listResponses(
 ): Promise<ParticipantSubmission[]> {
   const body = await fetchSheetJson<ParticipantSubmission[] | ApiErrorBody>(
     apiBaseUrl,
-    "responses",
-    { client: clientId, room: roomId, token: adminToken },
+    "responses/query",
+    { client: clientId, room: roomId },
+    postJson({ token: adminToken }),
   );
   if (isApiErrorBody(body)) {
     throw new Error(`Sheet API error on responses: ${body.status ?? "?"} ${body.error ?? "unknown"}`);
@@ -293,8 +297,8 @@ async function changeTrainingCode(
   const body = await fetchSheetJson<{ ok?: boolean } & Partial<ApiErrorBody>>(
     apiBaseUrl,
     "rooms/access-code",
-    { client: clientId, token: adminToken },
-    postJson({ roomId, nextAccessCode }),
+    { client: clientId },
+    postJson({ token: adminToken, roomId, nextAccessCode }),
   );
   assertSheetSuccess(body, "rooms/access-code");
 }
@@ -308,8 +312,8 @@ async function changeAdminToken(
   const body = await fetchSheetJson<{ ok?: boolean } & Partial<ApiErrorBody>>(
     apiBaseUrl,
     "admin/token",
-    { client: clientId, token: adminToken },
-    postJson({ nextAdminToken }),
+    { client: clientId },
+    postJson({ token: adminToken, nextAdminToken }),
   );
   assertSheetSuccess(body, "admin/token");
 }
@@ -323,8 +327,8 @@ async function clearResponses(
   const body = await fetchSheetJson<{ ok: boolean; deletedCount?: number } & Partial<ApiErrorBody>>(
     apiBaseUrl,
     "responses/clear",
-    { client: clientId, room: roomId, token: adminToken },
-    { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: "{}" },
+    { client: clientId, room: roomId },
+    postJson({ token: adminToken }),
   );
   return assertSheetSuccess(body, "responses/clear") as { ok: boolean; deletedCount?: number };
 }

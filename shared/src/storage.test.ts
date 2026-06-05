@@ -147,8 +147,9 @@ describe("storage（local）", () => {
     expect(parsed.searchParams.get("path")).toBe("responses/clear");
     expect(parsed.searchParams.get("client")).toBe("client-a");
     expect(parsed.searchParams.get("room")).toBe("room-a");
-    expect(parsed.searchParams.get("token")).toBe("admin-token");
+    expect(parsed.searchParams.get("token")).toBeNull();
     expect(init?.method).toBe("POST");
+    expect(JSON.parse(String(init?.body))).toEqual({ token: "admin-token" });
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
@@ -184,8 +185,9 @@ describe("storage（local）", () => {
     const parsed = new URL(String(url));
     expect(parsed.searchParams.get("path")).toBe("rooms/access-code");
     expect(parsed.searchParams.get("client")).toBe("client-a");
-    expect(parsed.searchParams.get("token")).toBe("admin-token");
+    expect(parsed.searchParams.get("token")).toBeNull();
     expect(JSON.parse(String(init?.body))).toEqual({
+      token: "admin-token",
       roomId: "room-a",
       nextAccessCode: "DEMO-2027",
     });

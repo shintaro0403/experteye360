@@ -133,7 +133,7 @@ test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
       expect.arrayContaining([
         expect.objectContaining({ method: "POST", path: "rooms/verify", client: "client-demo" }),
         expect.objectContaining({ method: "POST", path: "responses", client: "client-demo", room: "room-demo-1" }),
-        expect.objectContaining({ method: "GET", path: "responses", client: "client-demo", room: "room-demo-1", hasToken: true }),
+        expect.objectContaining({ method: "POST", path: "responses/query", client: "client-demo", room: "room-demo-1", hasToken: true }),
       ]),
     );
   });

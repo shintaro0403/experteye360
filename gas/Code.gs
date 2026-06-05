@@ -119,6 +119,7 @@ function handleRequest_(e, method) {
     if (method === "GET" && route === "settings") return json_(handleGetSettings_(e));
     if (method === "POST" && route === "settings") return json_(handlePostSettings_(e));
     if (method === "GET" && route === "responses") return json_(handleGetResponses_(e));
+    if (method === "POST" && route === "responses/query") return json_(handleQueryResponses_(e));
     if (method === "POST" && route === "responses") return json_(handlePostResponses_(e));
     if (method === "POST" && route === "responses/clear") return json_(handleClearResponses_(e));
     if (method === "POST" && route === "rooms/verify") return json_(handleVerifyRoom_(e));
@@ -141,9 +142,11 @@ function handleGetSettings_(e) {
 
 function handlePostSettings_(e) {
   const context = resolveClient_(requiredParam_(e, "client"));
-  verifyAdminToken_(context.clientRecord, requiredParam_(e, "token"));
+  const body = readJsonBody_(e);
+  verifyAdminToken_(context.clientRecord, tokenFromRequest_(e, body));
 
-  const settings = readJsonBody_(e);
+  // SEC-SECRET-01: 新契約は {token, settings}、旧契約は settings 直送りの両方を許容
+  const settings = body && body.settings !== undefined ? body.settings : body;
   const settingsSheet = getSheet_(context.clientBook, "settings");
   const now = nowIso_();
   upsertRowByKey_(settingsSheet, "key", "default", {
@@ -158,23 +161,36 @@ function handlePostSettings_(e) {
   return { ok: true };
 }
 
+// SEC-SECRET-01: token をボディで受ける読み取り経路（推奨）
+function handleQueryResponses_(e) {
+  const context = resolveClient_(requiredParam_(e, "client"));
+  const body = readJsonBody_(e);
+  verifyAdminToken_(context.clientRecord, tokenFromRequest_(e, body));
+  const roomId = requiredParam_(e, "room");
+  verifyRoomId_(context.clientBook, roomId);
+  return queryResponses_(context.clientBook, roomId);
+}
+
+// 旧経路（token をクエリで受ける GET）。後方互換のため残す
 function handleGetResponses_(e) {
   const context = resolveClient_(requiredParam_(e, "client"));
   verifyAdminToken_(context.clientRecord, requiredParam_(e, "token"));
   const roomId = requiredParam_(e, "room");
   verifyRoomId_(context.clientBook, roomId);
+  return queryResponses_(context.clientBook, roomId);
+}
 
-  const responses = readObjects_(getSheet_(context.clientBook, "responses"))
+function queryResponses_(clientBook, roomId) {
+  return readObjects_(getSheet_(clientBook, "responses"))
     .filter((row) => row.room_id === roomId)
     .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
     .map((row) => JSON.parse(row.submission_json));
-
-  return responses;
 }
 
 function handleClearResponses_(e) {
   const context = resolveClient_(requiredParam_(e, "client"));
-  verifyAdminToken_(context.clientRecord, requiredParam_(e, "token"));
+  const body = readJsonBody_(e);
+  verifyAdminToken_(context.clientRecord, tokenFromRequest_(e, body));
   const roomId = requiredParam_(e, "room");
   verifyRoomId_(context.clientBook, roomId);
 
@@ -230,9 +246,9 @@ function handleVerifyRoom_(e) {
 
 function handleChangeRoomAccessCode_(e) {
   const context = resolveClient_(requiredParam_(e, "client"));
-  verifyAdminToken_(context.clientRecord, requiredParam_(e, "token"));
-
   const body = readJsonBody_(e);
+  verifyAdminToken_(context.clientRecord, tokenFromRequest_(e, body));
+
   const roomId = normalizeSecret_(body.roomId);
   const nextAccessCode = normalizeSecret_(body.nextAccessCode);
   if (!roomId) throw apiError_(400, "roomId is required");
@@ -252,9 +268,9 @@ function handleChangeRoomAccessCode_(e) {
 function handleChangeAdminToken_(e) {
   const clientId = requiredParam_(e, "client");
   const context = resolveClient_(clientId);
-  verifyAdminToken_(context.clientRecord, requiredParam_(e, "token"));
-
   const body = readJsonBody_(e);
+  verifyAdminToken_(context.clientRecord, tokenFromRequest_(e, body));
+
   const nextAdminToken = normalizeSecret_(body.nextAdminToken);
   if (!nextAdminToken) throw apiError_(400, "nextAdminToken is required");
 
@@ -446,6 +462,15 @@ function requiredParam_(e, name) {
   return String(value);
 }
 
+// SEC-SECRET-01: token はボディ優先で受け取り、旧クライアント互換でクエリもフォールバック
+function tokenFromRequest_(e, body) {
+  const fromBody = body && body.token ? String(body.token) : "";
+  const fromQuery = e && e.parameter && e.parameter.token ? String(e.parameter.token) : "";
+  const token = normalizeSecret_(fromBody || fromQuery);
+  if (!token) throw apiError_(400, "token is required");
+  return token;
+}
+
 function readJsonBody_(e) {
   const contents = e && e.postData ? e.postData.contents : "";
   if (!contents) return {};
@@ -469,7 +494,7 @@ function readObjects_(sheet) {
 
 function appendObject_(sheet, object) {
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
-  sheet.appendRow(headers.map((header) => object[header] !== undefined ? object[header] : ""));
+  sheet.appendRow(headers.map((header) => sanitizeCell_(object[header] !== undefined ? object[header] : "")));
 }
 
 function upsertRowByKey_(sheet, keyHeader, keyValue, object) {
@@ -491,7 +516,7 @@ function updateRow_(sheet, rowNumber, patch) {
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
   const row = sheet.getRange(rowNumber, 1, 1, headers.length).getValues()[0];
   headers.forEach((header, index) => {
-    if (Object.prototype.hasOwnProperty.call(patch, header)) row[index] = patch[header];
+    if (Object.prototype.hasOwnProperty.call(patch, header)) row[index] = sanitizeCell_(patch[header]);
   });
   sheet.getRange(rowNumber, 1, 1, headers.length).setValues([row]);
 }
@@ -570,6 +595,16 @@ function hashSecret_(value) {
     hex.push(`0${normalized.toString(16)}`.slice(-2));
   }
   return hex.join("");
+}
+
+// SEC-INPUT-01: 数式インジェクション対策（shared/src/security/sanitizeCell.ts と同一仕様）
+function sanitizeCell_(value) {
+  if (typeof value !== "string" || value.length === 0) return value;
+  const first = value.charAt(0);
+  if (["=", "+", "-", "@", "\t", "\r", "\n"].indexOf(first) !== -1) {
+    return `'${value}`;
+  }
+  return value;
 }
 
 function normalizeSecret_(value) {

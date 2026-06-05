@@ -467,9 +467,9 @@ npm run test:e2e:real-sheet
 
 #### GitHub Actions（最小 CI）
 
-**現状** — [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) は Vitest + typecheck + build のみ。実 GAS は触らない。
+**現状（2026-06-05）** — [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) に Vitest + typecheck + build に加え、**mock E2E（Playwright / chromium）を搭載済み**。`npx playwright install --with-deps chromium` → `npm run test:e2e` を push / PR（main）で実行し、Green を確認。実 GAS は触らない（`real-sheet-api.spec.ts` は env 未設定で自動 skip）。失敗時は `test-results/` を artifact 保存。
 
-**次の一手** — 別 workflow で `npm run test:e2e`（mock）を載せる。実 GAS は PR 毎非推奨（Secrets・クォータ・データ汚染）。
+**次の一手（任意）** — 実 GAS は PR 毎非推奨（Secrets・クォータ・データ汚染）。必要なら別 workflow の `schedule:` で `test:e2e:real-sheet` を週次実行（`E2E_REAL_*` を Secrets 化）。
 
 #### 本番ホスト
 
@@ -591,3 +591,5 @@ npm run test:e2e:real-sheet
 **0.3**（2026-06-05）— §6.1 フェーズ 2 実施記録（別端末疎通 OK・room/client ステイ）。§0 結論・§8 本番ホスト（GitHub Pages）を更新
 
 **0.4**（2026-06-05）— フェーズ 3: `real-sheet-api.spec.ts` を 5 本に拡張（preflight・コード変更・clear・GAS エラー envelope 対応）
+
+**0.5**（2026-06-05）— フェーズ 4: `ci.yml` に mock E2E（Playwright/chromium）を搭載し GitHub Actions で Green を確認。`participant-admin-flow.spec.ts` を現 UI に追従（名前・所属 10 文字制限、研修コード欄プレースホルダー、「管理者コード入力に戻る」へのリネーム）

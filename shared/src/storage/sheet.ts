@@ -61,9 +61,8 @@ export async function saveSheetSettings(input: SaveSheetSettingsInput): Promise<
   await requestJson<unknown>(
     buildUrl(input.apiBaseUrl, "settings", {
       client: input.clientId,
-      token: input.adminToken,
     }),
-    postJson(input.settings),
+    postJson({ token: input.adminToken, settings: input.settings }),
   );
 }
 
@@ -71,11 +70,11 @@ export async function loadSheetResponses(
   input: LoadSheetResponsesInput,
 ): Promise<ParticipantSubmission[]> {
   return requestJson<ParticipantSubmission[]>(
-    buildUrl(input.apiBaseUrl, "responses", {
+    buildUrl(input.apiBaseUrl, "responses/query", {
       client: input.clientId,
       room: input.roomId,
-      token: input.adminToken,
     }),
+    postJson({ token: input.adminToken }),
   );
 }
 
@@ -84,9 +83,8 @@ export async function clearSheetResponses(input: ClearSheetResponsesInput): Prom
     buildUrl(input.apiBaseUrl, "responses/clear", {
       client: input.clientId,
       room: input.roomId,
-      token: input.adminToken,
     }),
-    { method: "POST" },
+    postJson({ token: input.adminToken }),
   );
 }
 
@@ -115,9 +113,8 @@ export async function changeAdminTokenViaApi(input: ChangeAdminTokenViaApiInput)
   await requestJson<unknown>(
     buildUrl(input.apiBaseUrl, "admin/token", {
       client: input.clientId,
-      token: input.adminToken,
     }),
-    postJson({ nextAdminToken: input.nextAdminToken }),
+    postJson({ token: input.adminToken, nextAdminToken: input.nextAdminToken }),
   );
 }
 
@@ -127,17 +124,30 @@ export async function changeTrainingCodeViaApi(
   await requestJson<unknown>(
     buildUrl(input.apiBaseUrl, "rooms/access-code", {
       client: input.clientId,
-      token: input.adminToken,
     }),
     postJson({
+      token: input.adminToken,
       roomId: input.roomId,
       nextAccessCode: input.nextAccessCode,
     }),
   );
 }
 
+/**
+ * SEC-NET-01: API ベース URL は HTTPS 必須。
+ * 開発・E2E 用に localhost / 127.0.0.1 の http のみ許可する。
+ */
+const DEV_PLAINTEXT_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+
+function assertSecureApiBase(url: URL): void {
+  if (url.protocol === "https:") return;
+  if (url.protocol === "http:" && DEV_PLAINTEXT_HOSTS.has(url.hostname)) return;
+  throw new Error("Sheet API base URL must use HTTPS");
+}
+
 function buildUrl(apiBaseUrl: string, path: string, params: Record<string, string>): string {
   const url = new URL(apiBaseUrl);
+  assertSecureApiBase(url);
   url.searchParams.set("path", path);
   for (const [key, value] of Object.entries(params)) {
     url.searchParams.set(key, value);
