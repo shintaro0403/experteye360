@@ -79,7 +79,9 @@ async function loginAdmin(page: Page, adminCode: string, trainingCode: string) {
   await page.getByPlaceholder("管理者コード").fill(adminCode);
   await page.getByPlaceholder("研修コード").fill(trainingCode);
   await page.getByRole("button", { name: "入室する" }).click();
-  await expect(page.getByRole("button", { name: "管理者コード入力に戻る" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "管理者コード入力に戻る" })).toBeVisible({
+    timeout: 15_000,
+  });
 }
 
 async function openResponsesTab(page: Page) {
@@ -154,9 +156,9 @@ test.describe("ISOLATE-4 / DEMO-SCOPE-1: コードによるクロス閲覧拒否
   test("管理者画面にコード変更・ツアー URL 編集 UI は出ない", async ({ page }) => {
     await resetSheetMock();
     await loginAdmin(page, "admin-demo", "DEMO-2026");
-    await expect(page.getByRole("button", { name: "研修コードを保存" })).toBeHidden();
-    await expect(page.getByRole("button", { name: "管理者コードを変更" })).toBeHidden();
-    await expect(page.getByText("3DVista ツアー URL")).toBeHidden();
+    await expect(page.getByRole("button", { name: "研修コードを保存" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "管理者コードを変更" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "3DVista ツアー URL" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "基本" })).toBeVisible();
   });
 

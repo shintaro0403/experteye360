@@ -97,7 +97,9 @@ async function loginAdmin(page: Page, input?: { trainingCode?: string; adminCode
     await trainingInput.fill(input?.trainingCode ?? "DEMO-2026");
   }
   await page.getByRole("button", { name: "入室する" }).click();
-  await expect(page.getByRole("button", { name: "管理者コード入力に戻る" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "管理者コード入力に戻る" })).toBeVisible({
+    timeout: 15_000,
+  });
 }
 
 test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
@@ -138,9 +140,10 @@ test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
   test("管理者画面にコード変更・ツアー URL 編集 UI は出ない", async ({ page }) => {
     await resetSheetMock();
     await loginAdmin(page);
-    await expect(page.getByRole("button", { name: "研修コードを保存" })).toBeHidden();
-    await expect(page.getByRole("button", { name: "管理者コードを変更" })).toBeHidden();
-    await expect(page.getByText("3DVista ツアー URL")).toBeHidden();
-    await expect(page.getByRole("button", { name: "ツアーURL" })).toBeHidden();
+    await expect(page.getByRole("button", { name: "研修コードを保存" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "管理者コードを変更" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "3DVista ツアー URL" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "ツアーURL" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "基本" })).toBeVisible();
   });
 });

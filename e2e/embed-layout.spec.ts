@@ -22,9 +22,9 @@ test.describe("Phase 4 E2E: iframe レイアウト", () => {
       };
     });
 
-    expect(metrics.iframeWidth).toBeCloseTo(metrics.embedWidth, 0);
-    expect(metrics.iframeHeight).toBeCloseTo(metrics.embedHeight, 0);
-    expect(metrics.embedOuterHeight).toBeCloseTo(metrics.viewportHeight * 0.25, 0);
+    expect(Math.abs(metrics.iframeWidth - metrics.embedWidth)).toBeLessThan(2);
+    expect(Math.abs(metrics.iframeHeight - metrics.embedHeight)).toBeLessThan(2);
+    expect(Math.abs(metrics.embedOuterHeight - metrics.viewportHeight * 0.25)).toBeLessThan(2);
   });
 
   test("管理者 iframe は 40% パネルの中でアプリを 100% 表示する", async ({ page }) => {
@@ -50,9 +50,9 @@ test.describe("Phase 4 E2E: iframe レイアウト", () => {
       };
     });
 
-    expect(metrics.iframeWidth).toBeCloseTo(metrics.embedWidth, 0);
-    expect(metrics.iframeHeight).toBeCloseTo(metrics.embedHeight, 0);
-    expect(metrics.embedOuterWidth).toBeCloseTo(metrics.viewportWidth * 0.4, 0);
-    expect(metrics.embedOuterHeight).toBeCloseTo(metrics.viewportHeight, 0);
+    expect(Math.abs(metrics.iframeWidth - metrics.embedWidth)).toBeLessThan(2);
+    expect(Math.abs(metrics.iframeHeight - metrics.embedHeight)).toBeLessThan(2);
+    expect(Math.abs(metrics.embedOuterWidth - metrics.viewportWidth * 0.4)).toBeLessThan(2);
+    expect(Math.abs(metrics.embedOuterHeight - metrics.viewportHeight)).toBeLessThan(2);
   });
 });

@@ -8,6 +8,8 @@ const sheetBackendEnv = {
 
 export default defineConfig({
   testDir: "./e2e",
+  // CI では mock E2E のみ（実 GAS は Secrets 未設定時に preflight が落ちるため除外）
+  testIgnore: process.env.CI ? ["**/real-sheet-api.spec.ts"] : undefined,
   timeout: 30_000,
   expect: {
     timeout: 5_000,
