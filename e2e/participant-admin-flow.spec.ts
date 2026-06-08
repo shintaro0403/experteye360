@@ -92,10 +92,9 @@ async function submitFiveQuestionResponse(page: Page, participantName: string) {
 async function loginAdmin(page: Page, input?: { trainingCode?: string; adminCode?: string }) {
   await clearBrowserStorage(page, ADMIN_URL);
   await page.getByPlaceholder("管理者コード").fill(input?.adminCode ?? "admin-demo");
-  const trainingInput = page.getByPlaceholder("研修コード");
-  if (await trainingInput.isVisible()) {
-    await trainingInput.fill(input?.trainingCode ?? "DEMO-2026");
-  }
+  await page.getByRole("button", { name: "続ける" }).click();
+  await expect(page.getByRole("heading", { name: "研修コード" })).toBeVisible();
+  await page.getByPlaceholder("研修コード").fill(input?.trainingCode ?? "DEMO-2026");
   await page.getByRole("button", { name: "入室する" }).click();
   await expect(page.getByRole("button", { name: "管理者コード入力に戻る" })).toBeVisible({
     timeout: 15_000,

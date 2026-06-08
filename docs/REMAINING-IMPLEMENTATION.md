@@ -875,6 +875,10 @@ flowchart TD
 
 **状態** — 実装済み（`e2e/isolate-code-separation.spec.ts` Green）
 
+#### ADMIN-2STEP-1 — 管理者 2 段階入室（研修コードゲート）
+
+**状態** — 実装中（TDD）
+
 各フェーズは [TEST-DESIGN.md §2.0.4](./TEST-DESIGN.md#204-機能ごとの実装フロー6-ステップ) の 6 ステップ（受け入れ条件 → テスト → Red → 最小実装 → Green）で進める。
 
 ---
@@ -989,8 +993,10 @@ flowchart TD
 - `settings.adminRoomScope === 'trainingCode'` のとき、管理者入室は **共有管理者コード + 研修コード** の 2 入力。
 - 共有管理者コードが正しく、研修コードが room A に一致 → room A だけが操作対象。
 - 同じ共有管理者コードでも、研修コード B → room B のみ（room A の回答は見えない）。
-- 管理者画面から **研修コード変更・管理者コード変更・3DVista ツアー URL 編集 UI を削除**（API は GAS に残すが UI なし）。「基本」タブは研修回の表示のみ。
+- 管理者画面から **研修コード変更・管理者コード変更・3DVista ツアー URL 編集 UI を削除**（API は GAS に残すが UI なし）。「基本」タブは研修回の表示と **受講者向け研修コードの保存** のみ。
 - `adminRoomScope` 未指定または `'adminCode'` のときは ISOLATE-1〜2 の既存挙動を維持。
+
+**注** — 管理者入室 UI の 2 段階化は [§6.7 ADMIN-2STEP-1](#67-admin-2step-1--管理者-2-段階入室研修コードゲート) が正本（DEMO-SCOPE-1 の「同一画面 2 入力」は置き換え）。
 
 **成功条件**
 
@@ -1010,10 +1016,56 @@ flowchart TD
 - `AdminPage`: 入室フォームに研修コード欄、base タブで変更 UI を条件非表示
 - E2E mock: `adminRoomScope: 'trainingCode'`、room ごとの `adminAccessCode` を外す
 
-**状態** — TDD 実装済み（Vitest + mock E2E Green）
+**状態** — TDD 実装済み（Vitest + mock E2E Green）。入室 UI は §6.7 ADMIN-2STEP-1 で 2 段階化予定。
+
+---
+
+### 6.7 ADMIN-2STEP-1 — 管理者 2 段階入室（研修コードゲート）
+
+**目的** — 管理者コードは「研修コードを入力していい権限」だけ与え、研修コード入力で **1 room = 1 管理画面** を確定する。受講者は管理者が保存した研修コードのうち一致した room にだけ回答する。
+
+**プロダクト方針（ブレ禁止）**
+
+1. **管理者コード** — 正しければ **研修コード入力画面（ゲート）** に進む。シーン・カード・回答タブはまだ出さない。
+2. **研修コード** — 入力・決定すると、その room 専用の管理画面（基本 / シーン・カード / 回答）に入る。
+3. **1 研修コード = 1 管理画面（room）** — コードが違えばシーン・カード・回答もすべて別。
+4. **受講者研修コード** — 管理者が「基本」タブで保存したコード。受講者入力が room の `accessCode` と一致した回答だけ、その room の管理画面に表示される。
+
+**受け入れ条件**
+
+- `adminRoomScope === 'trainingCode'` のとき:
+  - **第 1 画面**: 管理者コードのみ。成功 → 研修コードゲート（第 2 画面）。**タブは出ない**。
+  - **第 2 画面**: 研修コードのみ。成功 → 従来の管理画面。`roomId` をセッションに保存。
+  - 第 1 画面に研修コード欄を **出さない**（同時入力は不可）。
+  - 第 2 画面に管理者コード欄を **出さない**。
+  - 「管理者コード入力に戻る」で第 1 画面へ。ゲート・room セッションをクリア。
+  - 入室後の初期タブは **基本**。
+- 管理者コード変更 UI・3DVista ツアー URL 編集 UI は **出さない**（従来どおり）。
+- 「基本」タブの **研修コードを保存** は残す（受講者向けコードの設定）。
+- `adminRoomScope` 未指定 / `'adminCode'` は **1 段階入室**（ISOLATE-1〜2）を維持。
+
+**成功条件**
+
+- `adminEntry.test.ts`（ゲートセッション）/ `AdminPage.test.tsx`（2 段階 UI）/ `e2e/isolate-code-separation.spec.ts`（E2E 2 段階 login）が Green。
+- 既存 Vitest・mock E2E を壊さない。
+
+**どのようにテストするか**
+
+- shared: `SESSION_ADMIN_GATE_KEY` / `isAdminTrainingGateActive` / `setAdminTrainingGateActive`。ゲートのみ・フル入室・ログアウト時クリアを assert。
+- AdminPage: デモスコープで (1) 管理者コードのみ → ゲート表示・タブ非表示 (2) 研修コード → room 確定・基本タブ (3) 別研修コード → 別 room。
+- E2E: `loginAdmin` を 2 クリックに分割。ゲート通過前に「シーン・カード」タブが無いことを assert。
+
+**コード上の期待値**
+
+- `shared/src/adminEntry.ts` — `SESSION_ADMIN_GATE_KEY`, `isAdminTrainingGateActive()`, `setAdminTrainingGateActive()`, `isAdminWorkspaceActive()`（`adminAuth && roomId`）
+- `AdminPage.tsx` — 3 状態: `!gate && !workspace` / `gate && !workspace` / `workspace`
+- 第 1 ボタン文言: `続ける`、第 2 ボタン文言: `入室する`
+- 第 2 画面見出し: `研修コード`
+
+**状態** — 実装中（TDD）
 
 ---
 
 ## 5. 次に着手するなら
 
-**ISOLATE-1〜4 完了。DEMO-SCOPE-1 実装中。** 次は PDF 目視・実 GAS への `adminTokenHash` 列追加（手動）・本番 hardening など [§5 旧メモ](#5-次に着手するなら) を参照。
+**ADMIN-2STEP-1 実装中。** 次は PDF 目視・実 GAS への `adminTokenHash` 列追加（手動）・本番 hardening など [§5 旧メモ](#5-次に着手するなら) を参照。

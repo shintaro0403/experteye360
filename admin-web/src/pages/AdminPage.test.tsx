@@ -1,7 +1,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SESSION_ADMIN_AUTH_KEY, SESSION_ADMIN_ROOM_KEY, SESSION_ADMIN_TOKEN_KEY } from "@shared/adminEntry";
+import { SESSION_ADMIN_AUTH_KEY, SESSION_ADMIN_GATE_KEY, SESSION_ADMIN_ROOM_KEY, SESSION_ADMIN_TOKEN_KEY } from "@shared/adminEntry";
 import { DEFAULT_SETTINGS } from "@shared/seed";
 import { generateParticipantPdf } from "@shared/pdfExport";
 import { verifyAdminTokenAsync } from "@shared/storage";
@@ -37,6 +37,7 @@ describe("AdminPage", () => {
     sessionStorage.clear();
     sessionStorage.setItem(SESSION_ADMIN_AUTH_KEY, "1");
     sessionStorage.setItem(SESSION_ADMIN_TOKEN_KEY, "admin-demo-2026");
+    sessionStorage.setItem(SESSION_ADMIN_ROOM_KEY, "room-demo-1");
     container = document.createElement("div");
     document.body.appendChild(container);
     root = null;
@@ -133,7 +134,40 @@ describe("AdminPage", () => {
     expect(sessionStorage.getItem(SESSION_ADMIN_ROOM_KEY)).toBe("demo-room-001");
   });
 
-  it("DEMO-SCOPE-1: デモスコープでは共有管理者コード + 研修コードで room を特定する", async () => {
+  it("ADMIN-2STEP-1: 管理者コードのみで研修コードゲートへ（タブは出ない）", async () => {
+    sessionStorage.clear();
+    const demoScopedSettings = makeSettings({
+      adminRoomScope: "trainingCode",
+      adminAccessCode: "admin-demo",
+      rooms: [
+        {
+          roomId: "room-demo-1",
+          displayName: "A社デモ",
+          accessCode: "DEMO-2026",
+          enabled: true,
+        },
+      ],
+    });
+    mockUseAppData({ settings: demoScopedSettings });
+    await render();
+    expect(container.querySelector('input[placeholder="研修コード"]')).toBeNull();
+    const adminInput = container.querySelector<HTMLInputElement>('input[placeholder="管理者コード"]');
+    if (!adminInput) throw new Error("admin login input not found");
+    await act(async () => {
+      setInputValue(adminInput, "admin-demo");
+    });
+    await act(async () => {
+      getButton("続ける").click();
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("研修コード");
+    expect(container.querySelector('input[placeholder="研修コード"]')).not.toBeNull();
+    expect(container.textContent).not.toContain("シーン・カード");
+    expect(sessionStorage.getItem(SESSION_ADMIN_GATE_KEY)).toBe("1");
+    expect(sessionStorage.getItem(SESSION_ADMIN_ROOM_KEY)).toBeNull();
+  });
+
+  it("ADMIN-2STEP-1: ゲートで研修コード入力後に room 確定・基本タブ表示", async () => {
     sessionStorage.clear();
     const demoScopedSettings = makeSettings({
       adminRoomScope: "trainingCode",
@@ -156,10 +190,59 @@ describe("AdminPage", () => {
     mockUseAppData({ settings: demoScopedSettings });
     await render();
     const adminInput = container.querySelector<HTMLInputElement>('input[placeholder="管理者コード"]');
-    const trainingInput = container.querySelector<HTMLInputElement>('input[placeholder="研修コード"]');
-    if (!adminInput || !trainingInput) throw new Error("demo scoped login inputs not found");
+    if (!adminInput) throw new Error("admin login input not found");
     await act(async () => {
       setInputValue(adminInput, "admin-demo");
+      getButton("続ける").click();
+      await Promise.resolve();
+    });
+    const trainingInput = container.querySelector<HTMLInputElement>('input[placeholder="研修コード"]');
+    if (!trainingInput) throw new Error("training gate input not found");
+    await act(async () => {
+      setInputValue(trainingInput, "OTHER-2026");
+      getButton("入室する").click();
+      await Promise.resolve();
+    });
+    expect(verifyAdminTokenAsync).toHaveBeenCalledWith("admin-demo", "room-other");
+    expect(sessionStorage.getItem(SESSION_ADMIN_ROOM_KEY)).toBe("room-other");
+    expect(container.textContent).toContain("基本");
+    expect(container.textContent).toContain("研修コードを保存");
+  });
+
+  it("DEMO-SCOPE-1 / ADMIN-2STEP-1: 2 段階で room を特定する", async () => {
+    sessionStorage.clear();
+    const demoScopedSettings = makeSettings({
+      adminRoomScope: "trainingCode",
+      adminAccessCode: "admin-demo",
+      rooms: [
+        {
+          roomId: "room-demo-1",
+          displayName: "A社デモ",
+          accessCode: "DEMO-2026",
+          enabled: true,
+        },
+        {
+          roomId: "room-other",
+          displayName: "B社デモ",
+          accessCode: "OTHER-2026",
+          enabled: true,
+        },
+      ],
+    });
+    mockUseAppData({ settings: demoScopedSettings });
+    await render();
+    const adminInput = container.querySelector<HTMLInputElement>('input[placeholder="管理者コード"]');
+    if (!adminInput) throw new Error("admin login input not found");
+    await act(async () => {
+      setInputValue(adminInput, "admin-demo");
+    });
+    await act(async () => {
+      getButton("続ける").click();
+      await Promise.resolve();
+    });
+    const trainingInput = container.querySelector<HTMLInputElement>('input[placeholder="研修コード"]');
+    if (!trainingInput) throw new Error("training gate input not found");
+    await act(async () => {
       setInputValue(trainingInput, "OTHER-2026");
     });
     await act(async () => {

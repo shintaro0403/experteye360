@@ -1,6 +1,8 @@
 export const SESSION_ADMIN_AUTH_KEY = "expertEye360:adminAuth";
 export const SESSION_ADMIN_TOKEN_KEY = "expertEye360:adminToken";
 export const SESSION_ADMIN_ROOM_KEY = "expertEye360:adminRoomId";
+/** ADMIN-2STEP-1: 管理者コード通過後・研修コード未確定 */
+export const SESSION_ADMIN_GATE_KEY = "expertEye360:adminGate";
 
 export function verifyAdminCode(input: string, expectedAccessCode: string): boolean {
   const a = input.trim();
@@ -24,6 +26,7 @@ export function setAdminSessionActive(active: boolean): void {
       sessionStorage.removeItem(SESSION_ADMIN_AUTH_KEY);
       sessionStorage.removeItem(SESSION_ADMIN_TOKEN_KEY);
       sessionStorage.removeItem(SESSION_ADMIN_ROOM_KEY);
+      sessionStorage.removeItem(SESSION_ADMIN_GATE_KEY);
     }
   } catch {
     /* private mode 等 */
@@ -62,6 +65,29 @@ export function setAdminSessionRoomId(roomId: string | null): void {
   } catch {
     /* private mode 等 */
   }
+}
+
+/** 管理者コード通過後、研修コード入力待ち（第 2 画面） */
+export function isAdminTrainingGateActive(): boolean {
+  try {
+    return sessionStorage.getItem(SESSION_ADMIN_GATE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setAdminTrainingGateActive(active: boolean): void {
+  try {
+    if (active) sessionStorage.setItem(SESSION_ADMIN_GATE_KEY, "1");
+    else sessionStorage.removeItem(SESSION_ADMIN_GATE_KEY);
+  } catch {
+    /* private mode 等 */
+  }
+}
+
+/** 研修コード確定済みの管理画面（room スコープ付き入室） */
+export function isAdminWorkspaceActive(): boolean {
+  return isAdminSessionActive() && Boolean(getAdminSessionRoomId()?.trim());
 }
 
 export type ChangeAdminCodeResult = { ok: true } | { ok: false; error: string };

@@ -77,6 +77,8 @@ async function submitFiveQuestionResponse(
 async function loginAdmin(page: Page, adminCode: string, trainingCode: string) {
   await clearBrowserStorage(page, ADMIN_URL);
   await page.getByPlaceholder("管理者コード").fill(adminCode);
+  await page.getByRole("button", { name: "続ける" }).click();
+  await expect(page.getByRole("heading", { name: "研修コード" })).toBeVisible();
   await page.getByPlaceholder("研修コード").fill(trainingCode);
   await page.getByRole("button", { name: "入室する" }).click();
   await expect(page.getByRole("button", { name: "管理者コード入力に戻る" })).toBeVisible({
@@ -151,6 +153,16 @@ test.describe("ISOLATE-4 / DEMO-SCOPE-1: コードによるクロス閲覧拒否
     await expect(adminB.getByText("RoomB 花子")).toBeVisible();
     await expect(adminB.getByText("RoomA 太郎")).toBeHidden();
     await adminB.close();
+  });
+
+  test("ADMIN-2STEP-1: 管理者コード通過後は研修コードゲートのみ（管理タブは出ない）", async ({ page }) => {
+    await resetSheetMock();
+    await page.goto(ADMIN_URL);
+    await page.getByPlaceholder("管理者コード").fill("admin-demo");
+    await page.getByRole("button", { name: "続ける" }).click();
+    await expect(page.getByRole("heading", { name: "研修コード" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "基本" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "シーン・カード" })).toHaveCount(0);
   });
 
   test("管理者画面に管理者コード変更・ツアー URL 編集 UI は出ない", async ({ page }) => {

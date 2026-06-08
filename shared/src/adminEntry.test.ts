@@ -3,12 +3,16 @@ import {
   changeAdminAccessCode,
   getAdminSessionToken,
   isAdminSessionActive,
+  isAdminTrainingGateActive,
+  isAdminWorkspaceActive,
   SESSION_ADMIN_AUTH_KEY,
+  SESSION_ADMIN_GATE_KEY,
   SESSION_ADMIN_ROOM_KEY,
   SESSION_ADMIN_TOKEN_KEY,
   setAdminSessionRoomId,
   setAdminSessionActive,
   setAdminSessionToken,
+  setAdminTrainingGateActive,
   validateSheetAdminCodeChange,
   verifyAdminCode,
 } from "./adminEntry";
@@ -112,5 +116,42 @@ describe("admin session storage", () => {
     expect(sessionStorage.getItem(SESSION_ADMIN_ROOM_KEY)).toBe("room-0505");
     setAdminSessionActive(false);
     expect(sessionStorage.getItem(SESSION_ADMIN_ROOM_KEY)).toBeNull();
+  });
+});
+
+describe("ADMIN-2STEP-1: admin training gate session", () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    sessionStorage.clear();
+  });
+
+  it("ゲートのみのとき isAdminTrainingGateActive は true、isAdminWorkspaceActive は false", () => {
+    setAdminTrainingGateActive(true);
+    setAdminSessionToken("admin-demo");
+    expect(isAdminTrainingGateActive()).toBe(true);
+    expect(isAdminWorkspaceActive()).toBe(false);
+    expect(isAdminSessionActive()).toBe(false);
+  });
+
+  it("フル入室後は isAdminWorkspaceActive が true、ゲートは false にできる", () => {
+    setAdminTrainingGateActive(true);
+    setAdminSessionActive(true);
+    setAdminSessionToken("admin-demo");
+    setAdminSessionRoomId("room-demo-1");
+    setAdminTrainingGateActive(false);
+    expect(isAdminWorkspaceActive()).toBe(true);
+    expect(isAdminTrainingGateActive()).toBe(false);
+  });
+
+  it("setAdminSessionActive(false) でゲートもクリアされる", () => {
+    setAdminTrainingGateActive(true);
+    setAdminSessionActive(true);
+    setAdminSessionRoomId("room-demo-1");
+    setAdminSessionActive(false);
+    expect(sessionStorage.getItem(SESSION_ADMIN_GATE_KEY)).toBeNull();
+    expect(isAdminWorkspaceActive()).toBe(false);
   });
 });

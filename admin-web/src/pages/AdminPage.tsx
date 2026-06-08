@@ -2,10 +2,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   getAdminSessionToken,
   getAdminSessionRoomId,
-  isAdminSessionActive,
+  isAdminTrainingGateActive,
+  isAdminWorkspaceActive,
   setAdminSessionActive,
   setAdminSessionRoomId,
   setAdminSessionToken,
+  setAdminTrainingGateActive,
 } from "@shared/adminEntry";
 import {
   resolveAdminRoomByCode,
@@ -44,6 +46,7 @@ import { usePendingAction } from "../hooks/usePendingAction";
 
 const ADMIN_ACTION = {
   login: "login",
+  enterTrainingCode: "enterTrainingCode",
   reload: "reload",
   addScene: "addScene",
   promoteScene: "promoteScene",
@@ -223,9 +226,10 @@ function formatClearResponsesError(err: unknown): string {
 
 export function AdminPage() {
   const [adminToken, setAdminTokenState] = useState(() => getAdminSessionToken() ?? "");
-  const [adminAuthed, setAdminAuthed] = useState(
-    () => isAdminSessionActive() && (!isSheetStorageBackend() || Boolean(getAdminSessionToken())),
+  const [adminGateActive, setAdminGateActiveState] = useState(
+    () => isAdminTrainingGateActive() && !isAdminWorkspaceActive(),
   );
+  const [adminWorkspaceActive, setAdminWorkspaceActiveState] = useState(() => isAdminWorkspaceActive());
   const {
     settings,
     setSettings,
@@ -236,8 +240,8 @@ export function AdminPage() {
     refreshing,
     error,
   } = useAppData({
-    adminToken: adminAuthed ? adminToken : null,
-    adminRoomId: adminAuthed ? getAdminSessionRoomId() : null,
+    adminToken: adminWorkspaceActive ? adminToken : null,
+    adminRoomId: adminWorkspaceActive ? getAdminSessionRoomId() : null,
   });
   const [adminCodeInput, setAdminCodeInput] = useState("");
   const [trainingCodeLoginInput, setTrainingCodeLoginInput] = useState("");
@@ -260,16 +264,31 @@ export function AdminPage() {
 
   const returnToAdminCodeEntry = () => {
     setAdminSessionActive(false);
+    setAdminTrainingGateActive(false);
     setAdminTokenState("");
-    setAdminAuthed(false);
+    setAdminGateActiveState(false);
+    setAdminWorkspaceActiveState(false);
     setAdminLoginError(null);
+    setTrainingCodeLoginInput("");
+  };
+
+  const completeWorkspaceLogin = (token: string, roomId: string) => {
+    setAdminSessionActive(true);
+    setAdminSessionToken(token);
+    setAdminSessionRoomId(roomId);
+    setAdminTokenState(token);
+    setAdminTrainingGateActive(false);
+    setAdminGateActiveState(false);
+    setAdminWorkspaceActiveState(true);
+    setAdminLoginError(null);
+    setTrainingCodeLoginInput("");
+    setTab("base");
   };
 
   const tryAdminLogin = () =>
     void runPending(ADMIN_ACTION.login, async () => {
       if (trainingCodeScopedAdmin) {
         const token = adminCodeInput.trim();
-        const trainingCode = trainingCodeLoginInput.trim();
         const sharedAdminOk = isSheetStorageBackend()
           ? canProceedToSharedAdminApiVerify(token, settings)
           : verifySharedAdminAccessCode(token, settings);
@@ -277,46 +296,12 @@ export function AdminPage() {
           setAdminLoginError("管理者コードが正しくありません");
           return;
         }
-        let roomId: string;
-        if (isSheetStorageBackend()) {
-          const verified = await verifyTrainingCodeAsync(trainingCode, settings.rooms);
-          if (!verified.ok) {
-            setAdminLoginError(verified.message);
-            return;
-          }
-          roomId = verified.roomId;
-        } else {
-          const room = resolveAdminRoomByTrainingCode(settings, trainingCode);
-          if (!room) {
-            setAdminLoginError(TRAINING_CODE_MISMATCH_MESSAGE);
-            return;
-          }
-          roomId = room.roomId;
-        }
-        if (isSheetStorageBackend()) {
-          try {
-            await verifyAdminTokenAsync(token, roomId);
-            setAdminSessionActive(true);
-            setAdminSessionToken(token);
-            setAdminSessionRoomId(roomId);
-            setAdminTokenState(token);
-            setAdminAuthed(true);
-            setAdminLoginError(null);
-            setAdminCodeInput("");
-            setTrainingCodeLoginInput("");
-            setTab("base");
-          } catch {
-            setAdminLoginError("管理者コードが正しくありません");
-          }
-          return;
-        }
-        setAdminSessionActive(true);
-        setAdminSessionRoomId(roomId);
-        setAdminAuthed(true);
+        setAdminSessionToken(token);
+        setAdminTokenState(token);
+        setAdminTrainingGateActive(true);
+        setAdminGateActiveState(true);
         setAdminLoginError(null);
         setAdminCodeInput("");
-        setTrainingCodeLoginInput("");
-        setTab("base");
         return;
       }
 
@@ -333,14 +318,8 @@ export function AdminPage() {
         }
         try {
           await verifyAdminTokenAsync(token, room.roomId);
-          setAdminSessionActive(true);
-          setAdminSessionToken(token);
-          setAdminSessionRoomId(room.roomId);
-          setAdminTokenState(token);
-          setAdminAuthed(true);
-          setAdminLoginError(null);
+          completeWorkspaceLogin(token, room.roomId);
           setAdminCodeInput("");
-          setTab("base");
         } catch {
           setAdminLoginError("管理者コードが正しくありません");
         }
@@ -351,13 +330,45 @@ export function AdminPage() {
       if (room) {
         setAdminSessionActive(true);
         setAdminSessionRoomId(room.roomId);
-        setAdminAuthed(true);
+        setAdminWorkspaceActiveState(true);
         setAdminLoginError(null);
         setAdminCodeInput("");
         setTab("base");
         return;
       }
       setAdminLoginError("管理者コードが正しくありません");
+    });
+
+  const tryTrainingCodeEnter = () =>
+    void runPending(ADMIN_ACTION.enterTrainingCode, async () => {
+      const token = (adminToken || getAdminSessionToken() || "").trim();
+      const trainingCode = trainingCodeLoginInput.trim();
+      if (!token) {
+        setAdminLoginError("管理者コード入力からやり直してください");
+        return;
+      }
+      let roomId: string;
+      if (isSheetStorageBackend()) {
+        const verified = await verifyTrainingCodeAsync(trainingCode, settings.rooms);
+        if (!verified.ok) {
+          setAdminLoginError(verified.message);
+          return;
+        }
+        roomId = verified.roomId;
+        try {
+          await verifyAdminTokenAsync(token, roomId);
+          completeWorkspaceLogin(token, roomId);
+        } catch {
+          setAdminLoginError("管理者コードが正しくありません");
+        }
+        return;
+      }
+      const room = resolveAdminRoomByTrainingCode(settings, trainingCode);
+      if (!room) {
+        setAdminLoginError(TRAINING_CODE_MISMATCH_MESSAGE);
+        return;
+      }
+      completeWorkspaceLogin(token, room.roomId);
     });
 
   useEffect(() => {
@@ -508,7 +519,7 @@ export function AdminPage() {
       URL.revokeObjectURL(url);
     });
 
-  if (!adminAuthed) {
+  if (!adminGateActive && !adminWorkspaceActive) {
     return (
       <div className="a-shell">
         <div className="a-page a-entry-gate">
@@ -516,7 +527,7 @@ export function AdminPage() {
             <h1>管理者コード</h1>
             <p>
               {trainingCodeScopedAdmin
-                ? "共有の管理者コードと、確認したい研修回の研修コードを入力してください。他社の研修回の回答は表示されません。"
+                ? "共有の管理者コードを入力してください。次の画面で操作する研修回の研修コードを入力します。"
                 : "管理者コードを入力してください。研修コードとは別のコードです。受講者向けの研修コードはログイン後に設定できます。"}
             </p>
             {adminLoginError && (
@@ -535,33 +546,20 @@ export function AdminPage() {
                 }}
               />
             </AdminLabel>
-            {trainingCodeScopedAdmin && (
-              <AdminLabel label="研修コード">
-                <ImeInput
-                  className="a-input"
-                  value={trainingCodeLoginInput}
-                  onChange={setTrainingCodeLoginInput}
-                  placeholder="研修コード"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") tryAdminLogin();
-                  }}
-                />
-              </AdminLabel>
-            )}
             <div className="a-actions">
               <ActionButton
                 className="a-btn a-btn--primary"
                 busy={isPending(ADMIN_ACTION.login)}
                 onClick={tryAdminLogin}
               >
-                入室する
+                {trainingCodeScopedAdmin ? "続ける" : "入室する"}
               </ActionButton>
             </div>
             <p className="a-hint" style={{ marginTop: "1rem" }}>
               {trainingCodeScopedAdmin ? (
                 <>
                   デモ: 管理者コードは全員共通 <code>{isSheetStorageBackend() ? SHEET_DEMO_ADMIN_TOKEN : LOCAL_DEMO_ADMIN_CODE}</code>
-                  。研修コードは会社・研修回ごとに異なります（受講者に案内されたコードを入力）。
+                  。研修コードは次の画面で入力します（会社・研修回ごとに異なります）。
                 </>
               ) : (
                 <>
@@ -571,6 +569,47 @@ export function AdminPage() {
                 </>
               )}
             </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (adminGateActive && !adminWorkspaceActive) {
+    return (
+      <div className="a-shell">
+        <div className="a-page a-entry-gate">
+          <div className="a-entry-card">
+            <h1>研修コード</h1>
+            <p>操作・閲覧する研修回の研修コードを入力してください。1 つの研修コードが 1 つの管理画面に対応します。</p>
+            {adminLoginError && (
+              <p className="a-entry-error" role="alert">
+                {adminLoginError}
+              </p>
+            )}
+            <AdminLabel label="研修コード">
+              <ImeInput
+                className="a-input"
+                value={trainingCodeLoginInput}
+                onChange={setTrainingCodeLoginInput}
+                placeholder="研修コード"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") tryTrainingCodeEnter();
+                }}
+              />
+            </AdminLabel>
+            <div className="a-actions">
+              <ActionButton
+                className="a-btn a-btn--primary"
+                busy={isPending(ADMIN_ACTION.enterTrainingCode)}
+                onClick={tryTrainingCodeEnter}
+              >
+                入室する
+              </ActionButton>
+              <button type="button" className="a-btn a-btn--secondary" onClick={returnToAdminCodeEntry}>
+                管理者コード入力に戻る
+              </button>
+            </div>
           </div>
         </div>
       </div>
