@@ -164,8 +164,9 @@ npm run test:e2e:real-sheet  # 実 GAS（opt-in・5 本・preflight 含む。.en
 
 1. GitHub → **Settings** → **Pages** → **Build and deployment** を **GitHub Actions** にする
 2. **Settings** → **Secrets and variables** → **Actions** → **Variables** に次を登録:
-   - `VITE_SHEET_API_BASE` — 実 GAS Web App URL（[gas/APPSCRIPT-COPY.md](gas/APPSCRIPT-COPY.md)）
+   - `VITE_SHEET_API_BASE` — 実 GAS Web App URL（現行は [gas/APPSCRIPT-COPY.md](gas/APPSCRIPT-COPY.md) の v7）
    - `VITE_CLIENT_ID` — 省略可（未設定時は `lipronext-demo`）
+3. `VITE_SHEET_API_BASE` を変えたあとは **main へ push** するか **Deploy GitHub Pages** workflow を手動実行する（URL はビルド時にのみ JS へ埋め込まれる）
 
 **公開 URL（リポジトリ名 `experteye360` の場合）**
 
