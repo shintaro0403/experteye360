@@ -393,7 +393,8 @@ function defaultSettings_() {
         enabled: true,
       },
     ],
-    adminAccessCode: "",
+    adminAccessCode: DEMO_CONFIG.adminToken,
+    adminRoomScope: "trainingCode",
   };
 }
 

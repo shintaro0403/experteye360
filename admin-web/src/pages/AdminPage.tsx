@@ -9,9 +9,14 @@ import {
   setAdminSessionToken,
   validateSheetAdminCodeChange,
 } from "@shared/adminEntry";
-import { resolveAdminRoomByCode, resolveAdminScopeRoom } from "@shared/adminRoom";
+import {
+  resolveAdminRoomByCode,
+  resolveAdminRoomForSheetLogin,
+  resolveAdminScopeRoom,
+} from "@shared/adminRoom";
 import {
   canChangeAccessCodes,
+  canProceedToSharedAdminApiVerify,
   isTrainingCodeScopedAdmin,
   resolveAdminRoomByTrainingCode,
   verifySharedAdminAccessCode,
@@ -312,7 +317,10 @@ export function AdminPage() {
       if (trainingCodeScopedAdmin) {
         const token = adminCodeInput.trim();
         const trainingCode = trainingCodeLoginInput.trim();
-        if (!verifySharedAdminAccessCode(token, settings)) {
+        const sharedAdminOk = isSheetStorageBackend()
+          ? canProceedToSharedAdminApiVerify(token, settings)
+          : verifySharedAdminAccessCode(token, settings);
+        if (!sharedAdminOk) {
           setAdminLoginError("管理者コードが正しくありません");
           return;
         }
@@ -363,7 +371,7 @@ export function AdminPage() {
           setAdminLoginError("管理者コードが正しくありません");
           return;
         }
-        const room = resolveAdminRoomByCode(settings, token);
+        const room = resolveAdminRoomForSheetLogin(settings, token);
         if (!room) {
           setAdminLoginError("管理者コードが正しくありません");
           return;

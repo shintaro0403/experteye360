@@ -27,6 +27,26 @@ export function resolveAdminRoomByCode(
   return null;
 }
 
+/**
+ * Sheet 入室用の room 特定。
+ * 平文 adminAccessCode が無い本番 settings では、単一 room なら API 照合へ進める。
+ */
+export function resolveAdminRoomForSheetLogin(
+  settings: AppSettings,
+  adminCode: string,
+): TrainingRoom | null {
+  const code = adminCode.trim();
+  if (!code) return null;
+
+  const matched = resolveAdminRoomByCode(settings, adminCode);
+  if (matched) return matched;
+
+  const enabledRooms = settings.rooms.filter((room) => room.enabled !== false);
+  if (enabledRooms.length === 1) return enabledRooms[0];
+
+  return null;
+}
+
 /** 入室済み管理者が操作対象とする研修回。セッション room → なければ先頭 room。 */
 export function resolveAdminScopeRoom(settings: AppSettings): TrainingRoom {
   const roomId = getAdminSessionRoomId();

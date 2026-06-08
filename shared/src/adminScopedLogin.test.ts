@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { makeSettings } from "./test/fixtures";
 import {
   canChangeAccessCodes,
+  canProceedToSharedAdminApiVerify,
   isTrainingCodeScopedAdmin,
   resolveAdminRoomByTrainingCode,
   verifySharedAdminAccessCode,
@@ -53,6 +54,27 @@ describe("DEMO-SCOPE-1: adminScopedLogin", () => {
     expect(verifySharedAdminAccessCode(" admin-demo ", demoScopedSettings)).toBe(true);
     expect(verifySharedAdminAccessCode("wrong", demoScopedSettings)).toBe(false);
     expect(verifySharedAdminAccessCode("", demoScopedSettings)).toBe(false);
+  });
+
+  it("Sheet: adminAccessCode が空なら入力があれば API 照合へ進める", () => {
+    const gasLike = makeSettings({
+      adminAccessCode: "",
+      rooms: [
+        {
+          roomId: "demo-room-001",
+          displayName: "GAS デモ",
+          accessCode: "",
+          enabled: true,
+        },
+      ],
+    });
+    expect(canProceedToSharedAdminApiVerify("admin-demo-2026", gasLike)).toBe(true);
+    expect(canProceedToSharedAdminApiVerify("", gasLike)).toBe(false);
+  });
+
+  it("Sheet: adminAccessCode があるときは一致が必要", () => {
+    expect(canProceedToSharedAdminApiVerify("admin-demo", demoScopedSettings)).toBe(true);
+    expect(canProceedToSharedAdminApiVerify("wrong", demoScopedSettings)).toBe(false);
   });
 
   it("研修コード DEMO-2026 は room-demo-1 に一致する", () => {

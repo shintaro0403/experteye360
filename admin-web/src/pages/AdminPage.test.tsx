@@ -233,6 +233,34 @@ describe("AdminPage", () => {
     expect(sessionStorage.getItem(SESSION_ADMIN_TOKEN_KEY)).toBeNull();
   });
 
+  it("Sheet: GAS 相当（adminAccessCode 空・単一 room）でも管理者 token で入室できる", async () => {
+    sessionStorage.clear();
+    const gasLikeSettings = makeSettings({
+      adminAccessCode: "",
+      rooms: [
+        {
+          roomId: "demo-room-001",
+          displayName: "GAS デモ",
+          accessCode: "",
+          enabled: true,
+        },
+      ],
+    });
+    mockUseAppData({ settings: gasLikeSettings });
+    await render();
+    const loginInput = container.querySelector<HTMLInputElement>('input[placeholder="管理者コード"]');
+    if (!loginInput) throw new Error("admin login input not found");
+    await act(async () => {
+      setInputValue(loginInput, "admin-demo-2026");
+    });
+    await act(async () => {
+      getButton("入室する").click();
+      await Promise.resolve();
+    });
+    expect(verifyAdminTokenAsync).toHaveBeenCalledWith("admin-demo-2026", "demo-room-001");
+    expect(sessionStorage.getItem(SESSION_ADMIN_ROOM_KEY)).toBe("demo-room-001");
+  });
+
   it("DEMO-SCOPE-1: デモスコープでは共有管理者コード + 研修コードで room を特定する", async () => {
     sessionStorage.clear();
     const demoScopedSettings = makeSettings({

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { makeSettings } from "./test/fixtures";
-import { resolveAdminRoomByCode, resolveAdminScopeRoom } from "./adminRoom";
+import {
+  resolveAdminRoomByCode,
+  resolveAdminRoomForSheetLogin,
+  resolveAdminScopeRoom,
+} from "./adminRoom";
 import { SESSION_ADMIN_ROOM_KEY, setAdminSessionRoomId } from "./adminEntry";
 
 /**
@@ -90,6 +94,26 @@ describe("resolveAdminRoomByCode（ISOLATE-1）", () => {
     });
     const room = resolveAdminRoomByCode(settings, "admin-demo");
     expect(room?.roomId).toBe("room-demo-1");
+  });
+
+  it("resolveAdminRoomForSheetLogin: 平文なし・単一 room なら API 照合用に room を返す", () => {
+    const gasLike = makeSettings({
+      adminAccessCode: "",
+      rooms: [
+        {
+          roomId: "demo-room-001",
+          displayName: "GAS デモ",
+          accessCode: "",
+          enabled: true,
+        },
+      ],
+    });
+    const room = resolveAdminRoomForSheetLogin(gasLike, "admin-demo-2026");
+    expect(room?.roomId).toBe("demo-room-001");
+  });
+
+  it("resolveAdminRoomForSheetLogin: 複数 room で平文なしは null", () => {
+    expect(resolveAdminRoomForSheetLogin(twoRoomSettings, "admin-demo-2026")).toBeNull();
   });
 
   it("resolveAdminScopeRoom はセッションの roomId を優先する", () => {

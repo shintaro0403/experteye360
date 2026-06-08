@@ -14,6 +14,18 @@ export function verifySharedAdminAccessCode(adminCode: string, settings: AppSett
   return verifyAdminCode(adminCode, settings.adminAccessCode);
 }
 
+/**
+ * Sheet 入室前の共有管理者コードチェック。
+ * 本番 settings は平文を持たない（adminAccessCode が空）ため、入力があれば API 照合へ進める。
+ */
+export function canProceedToSharedAdminApiVerify(adminCode: string, settings: AppSettings): boolean {
+  const code = adminCode.trim();
+  if (!code) return false;
+  const expected = settings.adminAccessCode?.trim();
+  if (!expected) return true;
+  return verifyAdminCode(code, expected);
+}
+
 export function resolveAdminRoomByTrainingCode(
   settings: AppSettings,
   trainingCode: string,
