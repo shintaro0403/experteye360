@@ -8,7 +8,6 @@ import {
   setAdminSessionRoomId,
   setAdminSessionToken,
   validateSheetAdminCodeChange,
-  verifyAdminCode,
 } from "@shared/adminEntry";
 import { resolveAdminRoomByCode, resolveAdminScopeRoom } from "@shared/adminRoom";
 import { getConfidenceLabel } from "@shared/confidence";
