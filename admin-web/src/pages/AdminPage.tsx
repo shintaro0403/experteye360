@@ -352,12 +352,11 @@ export function AdminPage() {
         setAdminLoginError(provisioned.message);
         return;
       }
-      if (provisioned.created) {
-        await setSettings(provisioned.settings);
-      }
       try {
         await verifyAdminTokenAsync(token, provisioned.room.roomId);
         completeWorkspaceLogin(token, provisioned.room.roomId);
+        // Sheet: provision API が settings を更新済み。local: provisionAdminRoomAsync が save 済み。
+        // 入室前の setSettings は adminToken 未付与の useAppData では失敗するため呼ばない。
         if (provisioned.created) {
           await refresh();
         }

@@ -81,7 +81,7 @@ async function loginAdmin(page: Page, adminCode: string, trainingCode: string) {
   await expect(page.getByRole("heading", { name: "研修コード" })).toBeVisible();
   await page.getByPlaceholder("研修コード").fill(trainingCode);
   await page.getByRole("button", { name: "入室する" }).click();
-  await expect(page.getByRole("button", { name: "管理者コード入力に戻る" })).toBeVisible({
+  await expect(page.locator('[data-admin-phase="workspace"]')).toBeVisible({
     timeout: 15_000,
   });
 }
@@ -176,6 +176,27 @@ test.describe("ISOLATE-4 / DEMO-SCOPE-1: コードによるクロス閲覧拒否
     await expect(page.getByRole("button", { name: "管理者コードを変更" })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "3DVista ツアー URL" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "基本" })).toBeVisible();
+  });
+
+  test("管理者ゲート: 未登録研修コードで room を新規作成して入室できる", async ({ page }) => {
+    await resetSheetMock();
+    await loginAdmin(page, "admin-demo", "BRAND-NEW-E2E-2026");
+    await expect(page.locator('[data-admin-phase="workspace"]')).toBeVisible();
+    await expect(page.getByText("正しい研修コードを入力してください")).toHaveCount(0);
+    await page.getByRole("button", { name: "回答", exact: true }).click();
+    await expect(page.getByText("回答一覧（0）")).toBeVisible();
+
+    const participant = await page.context().browser()!.newPage();
+    await submitFiveQuestionResponse(participant, {
+      participantName: "新規 room 太郎",
+      trainingCode: "BRAND-NEW-E2E-2026",
+    });
+    await participant.close();
+
+    await page.reload();
+    await loginAdmin(page, "admin-demo", "BRAND-NEW-E2E-2026");
+    await page.getByRole("button", { name: "回答", exact: true }).click();
+    await expect(page.getByText("新規 room 太郎")).toBeVisible();
   });
 
   test("API: 共有 token で room ごとに responses が分離される", async () => {

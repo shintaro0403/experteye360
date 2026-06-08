@@ -349,9 +349,29 @@ export async function provisionAdminRoomAsync(
       created: api.created,
       settings,
     };
-  } catch {
-    return { ok: false, message: "研修回の準備に失敗しました。しばらくしてから再度お試しください。" };
+  } catch (err) {
+    return { ok: false, message: formatProvisionRoomError(err) };
   }
+}
+
+/** 管理者ゲート②の provision 失敗を画面向けに整形 */
+export function formatProvisionRoomError(err: unknown): string {
+  const detail = sheetApiErrorDetail(err);
+  if (detail.includes("Unknown route") && detail.includes("rooms/provision")) {
+    return [
+      "研修回の準備に失敗しました。",
+      "",
+      "接続先 GAS に rooms/provision API がありません。",
+      "gas/Code.gs を Apps Script に反映し、「デプロイを管理」→ 既存デプロイの編集 → 新バージョンでデプロイしてください（URL は変えない）。",
+    ].join("\n");
+  }
+  if (detail.includes("Invalid admin token")) {
+    return "管理者コードが正しくありません。①からやり直してください。";
+  }
+  if (detail) {
+    return `研修回の準備に失敗しました。\n\n（${detail}）`;
+  }
+  return "研修回の準備に失敗しました。しばらくしてから再度お試しください。";
 }
 
 export async function verifyTrainingCodeAsync(

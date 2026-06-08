@@ -135,6 +135,33 @@ if (accessCodeProbe?.ok === false && accessCodeProbe.status === 401) {
   ok(`POST rooms/access-code ルートあり（応答: ${accessCodeProbe?.error || "ok"})`);
 }
 
+const provisionProbe = await requestJson(
+  buildUrl(apiBase, "rooms/provision", { client: clientId }),
+  {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({
+      token: "__smoke-invalid-token__",
+      accessCode: "__smoke-probe-do-not-use__",
+    }),
+  },
+  { allowApiError: true },
+);
+if (provisionProbe?.error?.includes("Unknown route")) {
+  fail(
+    "POST rooms/provision が未デプロイです。gas/Code.gs を反映し Apps Script で「デプロイを管理」→ 既存デプロイの編集 → 新バージョンでデプロイしてください。",
+  );
+}
+if (provisionProbe?.ok === false && provisionProbe.status === 401) {
+  ok("POST rooms/provision ルートあり（token 照合まで到達）");
+} else if (provisionProbe?.ok === true) {
+  fail(
+    "POST rooms/provision が不正 token を受理しました。GAS の verifyAdminTokenForSettings_ を確認してください。",
+  );
+} else {
+  ok(`POST rooms/provision ルートあり（応答: ${provisionProbe?.error || "ok"})`);
+}
+
 console.log("\nPhase 1 自動スモーク: すべて成功。");
 console.log("次: npm run dev:participant / dev:admin でブラウザ確認（§5.3）。");
 

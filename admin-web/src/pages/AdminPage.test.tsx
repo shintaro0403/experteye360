@@ -307,7 +307,6 @@ describe("AdminPage", () => {
 
   it("ADMIN-GATE: 未登録の研修コードで新規 room を作成して入室する", async () => {
     sessionStorage.clear();
-    const setSettings = vi.fn().mockResolvedValue(undefined);
     const demoScopedSettings = makeSettings({
       adminRoomScope: "trainingCode",
       adminAccessCode: "admin-demo",
@@ -320,7 +319,7 @@ describe("AdminPage", () => {
         },
       ],
     });
-    mockUseAppData({ settings: demoScopedSettings, setSettings });
+    mockUseAppData({ settings: demoScopedSettings });
     await render();
     await act(async () => {
       setInputValue(
@@ -338,7 +337,6 @@ describe("AdminPage", () => {
       getButton("入室する").click();
       await Promise.resolve();
     });
-    expect(setSettings).toHaveBeenCalled();
     expect(verifyAdminTokenAsync).toHaveBeenCalledWith(
       "admin-demo",
       expect.stringMatching(/^room-/),

@@ -2,9 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   appendResponse,
   changeTrainingCodeAsync,
+  formatProvisionRoomError,
   loadResponses,
   loadResponsesAsync,
   loadSettings,
+  provisionAdminRoomAsync,
   resetDemoData,
   saveResponses,
   saveResponsesAsync,
@@ -206,6 +208,65 @@ describe("storage（local）", () => {
 
     const [url] = vi.mocked(fetch).mock.calls[0];
     expect(new URL(String(url)).searchParams.get("client")).toBe("client-b");
+  });
+
+  it("formatProvisionRoomError: Unknown route は再デプロイ案内を含む", () => {
+    const message = formatProvisionRoomError(
+      new Error("Sheet API request failed: Unknown route: POST rooms/provision"),
+    );
+    expect(message).toContain("rooms/provision");
+    expect(message).toContain("新バージョン");
+  });
+
+  it("Sheet backend の provisionAdminRoomAsync は rooms/provision を呼ぶ", async () => {
+    vi.stubEnv("VITE_STORAGE_BACKEND", "sheet");
+    vi.stubEnv("VITE_SHEET_API_BASE", "https://script.google.com/macros/s/dev/exec");
+    vi.stubEnv("VITE_CLIENT_ID", "client-a");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(jsonResponse({ roomId: "room-1234", created: true })),
+    );
+
+    const result = await provisionAdminRoomAsync({
+      trainingCode: "1234",
+      adminToken: "admin-demo",
+      settings: makeSettings({ rooms: [] }),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.room.roomId).toBe("room-1234");
+    expect(result.created).toBe(true);
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(new URL(String(url)).searchParams.get("path")).toBe("rooms/provision");
+    expect(JSON.parse(String(init?.body))).toEqual({
+      token: "admin-demo",
+      accessCode: "1234",
+      displayName: "1234",
+    });
+  });
+
+  it("Sheet backend の provisionAdminRoomAsync は Unknown route を案内付きで返す", async () => {
+    vi.stubEnv("VITE_STORAGE_BACKEND", "sheet");
+    vi.stubEnv("VITE_SHEET_API_BASE", "https://script.google.com/macros/s/dev/exec");
+    vi.stubEnv("VITE_CLIENT_ID", "client-a");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(
+        jsonResponse({ ok: false, status: 404, error: "Unknown route: POST rooms/provision" }),
+      ),
+    );
+
+    const result = await provisionAdminRoomAsync({
+      trainingCode: "1234",
+      adminToken: "admin-demo",
+      settings: makeSettings({ rooms: [] }),
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toContain("rooms/provision");
+    expect(result.message).toContain("新バージョン");
   });
 
   it("Sheet backend の研修コード変更は API に委譲し、保存イベントを発火する", async () => {

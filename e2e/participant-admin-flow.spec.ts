@@ -96,7 +96,7 @@ async function loginAdmin(page: Page, input?: { trainingCode?: string; adminCode
   await expect(page.getByRole("heading", { name: "研修コード" })).toBeVisible();
   await page.getByPlaceholder("研修コード").fill(input?.trainingCode ?? "DEMO-2026");
   await page.getByRole("button", { name: "入室する" }).click();
-  await expect(page.getByRole("button", { name: "管理者コード入力に戻る" })).toBeVisible({
+  await expect(page.locator('[data-admin-phase="workspace"]')).toBeVisible({
     timeout: 15_000,
   });
 }
