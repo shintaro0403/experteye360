@@ -85,15 +85,34 @@ describe("AdminPage", () => {
     sessionStorage.clear();
   });
 
-  it("入室後は管理者コード変更・ツアー URL 編集 UI を出さない（研修コード保存は表示）", async () => {
+  it("SPEC-ADMIN-THREE-GATE-2026 §7: ③で管理者コード変更・ツアー URL・研修コード保存 UI を出さない", async () => {
     await render();
-    expect(container.textContent).toContain("研修コードを保存");
+    expect(container.querySelector('[data-admin-phase="workspace"]')).not.toBeNull();
+    expect(container.textContent).not.toContain("研修コードを保存");
+    expect(container.textContent).not.toContain("次の研修コード");
+    expect(container.textContent).not.toContain("受講者向け研修コード");
+    expect(
+      container.querySelector('[data-admin-phase="workspace"] input[placeholder="研修コード"]'),
+    ).toBeNull();
     expect(container.textContent).not.toContain("管理者コードを変更");
     expect(container.textContent).not.toContain("3DVista ツアー URL");
     expect(container.querySelector('input[placeholder="https://..."]')).toBeNull();
     expect(
       Array.from(container.querySelectorAll("button")).some((b) => b.textContent?.trim() === "ツアーURL"),
     ).toBe(false);
+  });
+
+  it("SPEC-ADMIN-THREE-GATE-2026 §3: ③の基本タブは研修回の表示のみ", async () => {
+    mockUseAppData({
+      settings: makeSettings({
+        adminRoomScope: "trainingCode",
+        rooms: [{ roomId: "room-demo-1", displayName: "デモ研修 001", accessCode: "DEMO-2026", enabled: true }],
+      }),
+    });
+    await render();
+    expect(container.textContent).toContain("研修回");
+    expect(container.textContent).toContain("デモ研修 001");
+    expect(container.textContent).not.toContain("研修コードを保存");
   });
 
   it("入室済みで管理者コード入力に戻ると入室画面に戻りセッションを消す", async () => {
@@ -270,7 +289,7 @@ describe("AdminPage", () => {
     expect(sessionStorage.getItem(SESSION_ADMIN_ROOM_KEY)).toBe("room-other");
     expect(container.querySelector('[data-admin-phase="workspace"]')).not.toBeNull();
     expect(container.textContent).toContain("基本");
-    expect(container.textContent).toContain("研修コードを保存");
+    expect(container.textContent).not.toContain("研修コードを保存");
   });
 
   it("DEMO-SCOPE-1 / ADMIN-2STEP-1: 2 段階で room を特定する", async () => {

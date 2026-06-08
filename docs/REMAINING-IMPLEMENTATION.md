@@ -125,7 +125,7 @@
 - `roomId` による研修回分離
 - 管理者 `token` 照合
 - 研修コードのハッシュ照合
-- 管理画面からの研修コード変更（`rooms.accessCodeHash` 更新）
+- GAS API による研修コード変更（`rooms/access-code` → `rooms.accessCodeHash` 更新）。管理画面③の保存 UI は [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md) に従い **無し**
 
 **残り**
 
@@ -370,19 +370,21 @@
 
 **状態** — 完了済み（Sheet API mock / `npm run test:e2e` Green）
 
-#### 次の TDD スライス（研修コード変更）
+#### 次の TDD スライス（研修コード変更 — API 層）
 
-**目的** — 管理者が Sheet backend 経由で研修コードを変更したあと、旧コードでは受講者入室できず、新コードだけで入室できることを固定する。
+**目的** — Sheet backend の `rooms/access-code` API で研修コードを変更したあと、旧コードでは受講者入室できず、新コードだけで入室できることを固定する。
 
-**受け入れ条件** — 管理者が `room-demo-1` の研修コードを `NEXT-2026` に保存できる。保存後、受講者画面で旧コード `DEMO-2026` は名前・所属入力へ進まず、新コード `NEXT-2026` は名前・所属入力へ進む。
+**注** — 2026-06-08 以降、デモ配布の管理画面③から研修コード保存 UI は **出さない**（[SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md)）。本スライスは **API 契約**（`changeTrainingCodeAsync` / GAS）のテストが対象。管理画面 UI 経由の E2E は本仕様のスコープ外。
 
-**成功条件** — `npm run test:e2e` が Green になり、失敗時は研修コード変更後の旧コード拒否 / 新コード入室のどちらが壊れたか分かる。
+**受け入れ条件** — API 経由で `room-demo-1` の研修コードを `NEXT-2026` に更新できる。更新後、受講者画面で旧コード `DEMO-2026` は名前・所属入力へ進まず、新コード `NEXT-2026` は名前・所属入力へ進む。
 
-**どのようにテストするか** — Playwright で管理者コード入室後、研修コード欄を変更して保存する。別ページの受講者画面を開き、旧コードで警告が出ること、新コードで名前入力欄が表示されることを assert する。
+**成功条件** — `storage.test.ts` / `sheetApi.test.ts` が Green。既存 Vitest を壊さない。
+
+**どのようにテストするか** — `storage.test.ts` / `sheetApi.test.ts` で `POST rooms/access-code` の成功・失敗を assert する。
 
 **コード上の期待値** — Sheet API mock は `POST rooms/access-code?client=...`（body `{ token, roomId, nextAccessCode }`）を受け取り、該当 room の `accessCode` を更新する。`POST rooms/verify` は更新後の room 設定で照合する。
 
-**状態** — 完了済み（Sheet API mock / `npm run test:e2e` Green）
+**状態** — 完了済み（API 層 Vitest Green）
 
 #### 次の TDD スライス（管理者コード変更）
 
@@ -875,9 +877,9 @@ flowchart TD
 
 **状態** — 実装済み（`e2e/isolate-code-separation.spec.ts` Green）
 
-#### ADMIN-2STEP-1 — 管理者 2 段階入室（研修コードゲート）
+#### ADMIN-2STEP-1 — 管理者 3 画面ゲート（研修コードゲート）
 
-**状態** — 実装中（TDD）
+**状態** — 実装済み（Vitest + E2E Green）。製品仕様の正本は [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md)。
 
 各フェーズは [TEST-DESIGN.md §2.0.4](./TEST-DESIGN.md#204-機能ごとの実装フロー6-ステップ) の 6 ステップ（受け入れ条件 → テスト → Red → 最小実装 → Green）で進める。
 
@@ -915,7 +917,7 @@ flowchart TD
 
 ### 6.3 ISOLATE-2 — 管理者 UI で room をスコープ（実装済み）
 
-**目的** — 管理者入室後、回答一覧・研修コード設定・全削除が **確定した room だけ** になる。
+**目的** — 管理者入室後、回答一覧・全削除が **確定した room だけ** になる。
 
 **受け入れ条件**
 
@@ -925,7 +927,7 @@ flowchart TD
 
 **成功条件** — `AdminPage.test.tsx` / `useAppData.test.tsx` / `appDataLoad.test.ts` Green。既存 Vitest を壊さない。
 
-**どのようにテストするか** — 2 room fixture で入室・研修コード保存・`loadResponsesAsync` の roomId を assert。
+**どのようにテストするか** — 2 room fixture で入室・`loadResponsesAsync` の roomId を assert。
 
 **コード上の期待値**
 
@@ -990,13 +992,13 @@ flowchart TD
 
 **受け入れ条件**
 
-- `settings.adminRoomScope === 'trainingCode'` のとき、管理者入室は **共有管理者コード + 研修コード** の 2 入力。
+- `settings.adminRoomScope === 'trainingCode'` のとき、管理者入室は **3 画面ゲート**（管理者コード → 研修コード → 管理画面）。
 - 共有管理者コードが正しく、研修コードが room A に一致 → room A だけが操作対象。
 - 同じ共有管理者コードでも、研修コード B → room B のみ（room A の回答は見えない）。
-- 管理者画面から **研修コード変更・管理者コード変更・3DVista ツアー URL 編集 UI を削除**（API は GAS に残すが UI なし）。「基本」タブは研修回の表示と **受講者向け研修コードの保存** のみ。
+- ③から **研修コード変更・管理者コード変更・3DVista ツアー URL 編集 UI を出さない**（API は GAS に残すが UI なし）。③の基本タブは **研修回の表示のみ**。
 - `adminRoomScope` 未指定または `'adminCode'` のときは ISOLATE-1〜2 の既存挙動を維持。
 
-**注** — 管理者入室 UI の 2 段階化は [§6.7 ADMIN-2STEP-1](#67-admin-2step-1--管理者-2-段階入室研修コードゲート) が正本（DEMO-SCOPE-1 の「同一画面 2 入力」は置き換え）。
+**注** — 製品仕様の正本は [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md)。DEMO-SCOPE-1 の「同一画面 2 入力」は廃止。実装チケットの経緯は [§6.7](#67-admin-2step-1--管理者-2-段階入室研修コードゲート) を参照。
 
 **成功条件**
 
@@ -1006,30 +1008,32 @@ flowchart TD
 **どのようにテストするか**
 
 - shared: 2 room fixture で共有 admin + 研修コード照合・不一致・スコープ判定を assert。
-- AdminPage: デモスコープ設定で 2 入力ログイン、コード変更 UI 非表示を assert。
+- AdminPage: デモスコープで 3 画面ゲート・③に研修コード保存 UI が無いことを assert（[SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md) §9）。
 - E2E: 同一 `admin-demo` + 異なる研修コードで回答タブのクロス閲覧拒否を assert。
 
 **コード上の期待値**
 
 - `AppSettings.adminRoomScope?: 'adminCode' | 'trainingCode'`
 - `isTrainingCodeScopedAdmin(settings)` / `verifySharedAdminAccessCode` / `resolveAdminRoomByTrainingCode` / `canChangeAccessCodes`
-- `AdminPage`: 入室フォームに研修コード欄、base タブで変更 UI を条件非表示
+- `AdminPage`: ②に研修コード欄のみ。③の base タブに研修コード保存ブロックなし
 - E2E mock: `adminRoomScope: 'trainingCode'`、room ごとの `adminAccessCode` を外す
 
-**状態** — TDD 実装済み（Vitest + mock E2E Green）。入室 UI は §6.7 ADMIN-2STEP-1 で 2 段階化予定。
+**状態** — TDD 実装済み（Vitest + mock E2E Green）。3 画面ゲートは §6.7 / [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md) に準拠。
 
 ---
 
-### 6.7 ADMIN-2STEP-1 — 管理者 2 段階入室（研修コードゲート）
+### 6.7 ADMIN-2STEP-1 — 管理者 3 画面ゲート（研修コードゲート）
 
-**目的** — 管理者コードは「研修コードを入力していい権限」だけ与え、研修コード入力で **1 room = 1 管理画面** を確定する。受講者は管理者が保存した研修コードのうち一致した room にだけ回答する。
+**正本** — 製品仕様は [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md)。本節は実装チケットの経緯用。
+
+**目的** — 管理者コードは「研修コードを入力していい権限」だけ与え、②の研修コード入力で **1 room = 1 管理画面** を確定する。受講者は room の `accessCode` と一致したコードで入室し、その room の回答だけ③に表示される。
 
 **プロダクト方針（ブレ禁止）**
 
 1. **管理者コード** — 正しければ **研修コード入力画面（ゲート）** に進む。シーン・カード・回答タブはまだ出さない。
 2. **研修コード** — 入力・決定すると、その room 専用の管理画面（基本 / シーン・カード / 回答）に入る。
 3. **1 研修コード = 1 管理画面（room）** — コードが違えばシーン・カード・回答もすべて別。
-4. **受講者研修コード** — 管理者が「基本」タブで保存したコード。受講者入力が room の `accessCode` と一致した回答だけ、その room の管理画面に表示される。
+4. **受講者研修コード** — room の `accessCode`（シート／設定）。②で入力したコードが room を確定する。③の基本タブからは **変更・保存しない**。
 
 **受け入れ条件**
 
@@ -1040,8 +1044,8 @@ flowchart TD
   - 第 2 画面に管理者コード欄を **出さない**。
   - 「管理者コード入力に戻る」で第 1 画面へ。ゲート・room セッションをクリア。
   - 入室後の初期タブは **基本**。
-- 管理者コード変更 UI・3DVista ツアー URL 編集 UI は **出さない**（従来どおり）。
-- 「基本」タブの **研修コードを保存** は残す（受講者向けコードの設定）。
+- 管理者コード変更 UI・3DVista ツアー URL 編集 UIは **出さない**（従来どおり）。
+- ③の基本タブに **研修コード入力・保存 UI は出さない**（研修回の表示のみ）。
 - `adminRoomScope` 未指定 / `'adminCode'` は **1 段階入室**（ISOLATE-1〜2）を維持。
 
 **成功条件**
@@ -1101,4 +1105,4 @@ flowchart TD
 
 ## 5. 次に着手するなら
 
-**ADMIN-2STEP-1 実装中。** 次は PDF 目視・実 GAS への `adminTokenHash` 列追加（手動）・本番 hardening など [§5 旧メモ](#5-次に着手するなら) を参照。
+**ADMIN-2STEP-1 / 3 画面ゲート** — 実装済み（[SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md)）。次は PDF 目視・実 GAS への `adminTokenHash` 列追加（手動）・本番 hardening など [§5 旧メモ](#5-次に着手するなら) を参照。

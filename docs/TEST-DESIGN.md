@@ -121,7 +121,7 @@
 - **対象**: `shared/src`（最優先）→ `participant-web` / `admin-web`
 - **関連仕様**: [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md) §3.2.3・§3.2.4（iframe レイアウト）、§4（F3〜F8）、§5（永続化）
 - **永続化仕様**: [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)
-- **現状**: **Vitest 導入済み**（ルート `npm test` は 14 files / 89 tests Green）。Phase 0 / 1 / 2 は Green。Sheet API は GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線、管理画面からの研修コード変更まで最小実装済み。入室 UI（研修コード・管理者コード）は **local / sheet** 対応。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口、PDF ダウンロード UI 代表テスト、開ける最小 PDF 構造、日本語対応、`pdf.html` の主要デザイン要素反映、目視フィードバック反映、長文折り返し・可変高さ、コンテンツ量に応じた複数ページ化まで Green（実 PDF 目視・OJT UI は未）。名前・所属・一言メモの文字数上限も Green
+- **現状**: **Vitest 導入済み**（ルート `npm test` Green）。Phase 0 / 1 / 2 は Green。Sheet API は GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線、GAS API による研修コード変更（`rooms/access-code`）まで最小実装済み。**デモ配布の管理画面③では研修コード保存 UI を出さない**（[SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md)）。入室 UI（3 画面ゲート・研修コード・管理者コード）は **local / sheet** 対応。Phase 3 は PDF 系まで Green（実 PDF 目視・OJT UI は未）。名前・所属・一言メモの文字数上限も Green
 
 ### 1.1 改訂履歴
 
@@ -163,7 +163,9 @@
 
 **2.0**（2026-05-25）— Phase 2 の `storage` / `seed` テスト追加と、Phase 2.5 の Sheet API 契約入口・`storage/sheet.ts` 最小実装を反映
 
-**2.1**（2026-05-26）— Sheet API 契約 TC-005〜013、`rooms/access-code`、管理画面の研修コード変更 UI テスト、PDF ダウンロード UI 代表テスト、開ける最小 PDF 構造・日本語対応・`pdf.html` デザイン参照テスト・目視フィードバック反映テスト・長文折り返しテスト、14 files / 86 tests Green を反映
+**2.1**（2026-05-26）— Sheet API 契約 TC-005〜013、`rooms/access-code`、PDF ダウンロード UI 代表テスト、開ける最小 PDF 構造・日本語対応・`pdf.html` デザイン参照テスト・目視フィードバック反映テスト・長文折り返しテスト、14 files / 86 tests Green を反映
+
+**2.2**（2026-06-08）— [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md) に合わせ、管理画面③の研修コード保存 UI テストを廃止。③に UI が無いことを `AdminPage.test.tsx` / E2E で固定。API 層（`changeTrainingCodeAsync`）の Vitest は維持
 
 **2.2**（2026-05-26）— 名前・所属 10 文字、一言メモ 30 文字の上限制御と `validateStep.test.ts` 境界値テスト、14 files / 88 tests Green を反映
 
@@ -626,15 +628,15 @@
 
 #### 管理画面 UI からの研修コード変更
 
-**目的** — Sheet backend 利用時も、管理者が管理画面の「研修コードを保存」から既存 room の研修コードを変更できるようにする。
+**状態** — **廃止**（2026-06-08）。[SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md) に従い、デモ配布（`adminRoomScope: trainingCode`）の管理画面③では研修コード入力・保存 UI を **出さない**。研修コードは②のゲートでのみ入力する。
 
-**受け入れ条件** — 管理者ログイン済みで、保存対象は `primaryTrainingRoom(settings).roomId`。入力値は前後空白を除いて `nextAccessCode` として送る。空文字は送信せず「研修コードを入力してください」を表示する。Sheet backend では現行の管理者 token を使って `changeTrainingCodeAsync` を呼ぶ。local backend では従来どおり `settings.rooms[].accessCode` を更新する。
+**残すテスト** — GAS 契約のため API 層のみ維持:
 
-**成功条件** — Sheet backend で保存に成功したら `refresh()` を呼び、成功メッセージ「研修コードを保存しました。受講者に新しいコードを案内してください。」を表示する。失敗時は成功扱いにせず、ユーザーに保存失敗を伝える。未実装 alert は残さない。
+- `storage.test.ts` / `sheetApi.test.ts` — `changeTrainingCodeAsync` / `changeTrainingCodeViaApi` が Sheet backend 時に正しい API を呼ぶこと
+- `AdminPage.test.tsx` — ③の `textContent` に `研修コードを保存` が **ない**こと（SPEC §9）
+- E2E — ③で `研修コードを保存` ボタン・`placeholder="研修コード"` 入力が **0 件**であること
 
-**どのようにテストするか** — まず `storage.test.ts` で `changeTrainingCodeAsync` が Sheet backend 時に env の API 設定・管理者 token・`roomId`・`nextAccessCode` で API を呼び、保存後に storage event を発火することを Red → Green で固定する。次に `AdminPage.test.tsx` で Sheet backend の管理者ログイン済み状態を作り、入力変更 → 「研修コードを保存」で `changeTrainingCodeAsync` が呼ばれ、`refresh()` と成功メッセージに進むことを Red → Green で固定する。
-
-**コード上の期待値** — `changeTrainingCodeAsync({ adminToken, roomId, nextAccessCode })` を `@shared/storage` から export する。`AdminPage` は Sheet backend の場合、未実装 alert ではなくこの関数を await し、成功時のみ `refresh()` する。
+**コード上の期待値** — `changeTrainingCodeAsync` は `@shared/storage` に残す（GAS 用）。`AdminPage` からは **呼ばない**。
 
 #### **管理者コードの変更**
 
@@ -1355,7 +1357,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 #### storage/sheet.ts（新規）
 
 - **テスト**: `sheetApi.test.ts`
-- **状態**: 契約 Green（TC-001〜013 と `rooms/access-code`）。GAS、`storage.ts` async 統合、`VITE_STORAGE_BACKEND=sheet`、管理画面からの研修コード変更は最小実装済み。Sheet API mock 経由の Playwright は Green。実環境分離確認は未
+- **状態**: 契約 Green（TC-001〜013 と `rooms/access-code`）。GAS、`storage.ts` async 統合、`VITE_STORAGE_BACKEND=sheet`。API 層の研修コード変更は実装済み。管理画面③の保存 UI は [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md) に従い **無し**。Sheet API mock 経由の Playwright は Green。実環境分離確認は未
 - **重要度**: **B**（TC-008〜009 は **A**）
 - **関連機能**: F7（本番永続化）
 - **備考**: `fetch` で GAS Web App。`clientId` は URL クエリから

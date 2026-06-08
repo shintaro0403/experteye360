@@ -174,7 +174,7 @@ npm run test:watch
 **入室**
 
 - **誤りやすい** — INVENTORY「§2.1c 未実装」
-- **正しい現状** — **local と Sheet API の最小実装済み**。管理画面からの研修コード変更も API / GAS / UI 配線は実装・Vitest Green。Sheet API mock 経由の Playwright も Green。**別端末（GitHub Pages）での受講者→管理者疎通は 2026-06-05 確認済み**（[MOCK-TO-PRODUCTION.md §6.1](./MOCK-TO-PRODUCTION.md#61-フェーズ-2-実施記録2026-06-05)）。未なのは **複数 `client` / 複数 `room` の実環境分離（デモのためステイ）、本番運用 hardening**（Phase 2.5 継続）
+- **正しい現状** — **local と Sheet API の最小実装済み**。GAS API による研修コード変更（`rooms/access-code`）は Vitest Green。デモ配布の管理画面③では研修コード保存 UI を出さない（[SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md)）。3 画面ゲートの Vitest / E2E も Green。Sheet API mock 経由の Playwright も Green。**別端末（GitHub Pages）での受講者→管理者疎通は 2026-06-05 確認済み**（[MOCK-TO-PRODUCTION.md §6.1](./MOCK-TO-PRODUCTION.md#61-フェーズ-2-実施記録2026-06-05)）。未なのは **複数 `client` / 複数 `room` の実環境分離（デモのためステイ）、本番運用 hardening**（Phase 2.5 継続）
 
 **Phase 0**
 

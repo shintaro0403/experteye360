@@ -13,7 +13,7 @@
 
 **関連**: [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md)、[SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)、[README.md](../README.md)
 
-**現状**: **Vitest 導入済み**（ルート `npm test` は 14 files / 89 tests Green）。Phase 0 / 1 / 2 は Green。Phase 2.5 は Sheet API 契約、GAS、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線、管理画面からの研修コード変更、Sheet API mock 経由の Playwright まで最小実装済み。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口、PDF ダウンロード UI 代表テスト、開ける最小 PDF 構造、日本語対応、`pdf.html` の主要デザイン要素反映、目視フィードバック反映、長文折り返し・可変高さ、コンテンツ量に応じた複数ページ化まで Green（実 PDF 目視・OJT UI は未）。名前・所属・一言メモの文字数上限も Green
+**現状**: **Vitest 導入済み**（ルート `npm test` Green）。Phase 0 / 1 / 2 は Green。Phase 2.5 は Sheet API 契約、GAS、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線（3 画面ゲートは [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md)）、GAS API による研修コード変更、Sheet API mock 経由の Playwright まで最小実装済み。Phase 3 は PDF 系まで Green（実 PDF 目視・OJT UI は未）。名前・所属・一言メモの文字数上限も Green
 
 ## 目次
 
@@ -399,7 +399,7 @@
 
 ### 2.2 Sheet API → スプレッドシート 【実装済み・入口】
 
-**現状** — `sheetApi.test.ts` と `storage/sheet.ts` で TC-001〜013、`rooms/access-code` 契約、client / room / token / `rooms/verify` / `admin/token` は Green。GAS、`VITE_STORAGE_BACKEND=sheet`、`storage.ts` async 統合、画面配線、管理画面からの研修コード変更、Sheet API mock 経由の Playwright は最小実装済み。実環境分離確認は未実施。
+**現状** — `sheetApi.test.ts` と `storage/sheet.ts` で TC-001〜013、`rooms/access-code` 契約、client / room / token / `rooms/verify` / `admin/token` は Green。GAS、`VITE_STORAGE_BACKEND=sheet`、`storage.ts` async 統合、画面配線、API 層の研修コード変更、3 画面ゲート（管理画面③に保存 UI なし）、Sheet API mock 経由の Playwright は最小実装済み。実環境分離確認は未実施。
 
 **SH-01** — `?client={clientId}` を全 API に付与（入口 Green）
 

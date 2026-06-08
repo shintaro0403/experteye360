@@ -39,7 +39,7 @@
 
 **OJT 整理ロジック** — **最小実装済み**（`shared/src/ojtExport.ts` / `ojtExport.test.ts` は Green。UI・ファイル出力は未）
 
-**本番 Sheet API** — **最小実装済み**（GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、画面配線、管理画面からの研修コード変更・管理者コード変更・**全回答削除**（`POST responses/clear`）、回答取得時の `roomId` は Sheet 上の研修回を使用（local の seed と混同しない）。管理者 `token` は **POST ボディ送信**、回答取得は **`POST responses/query`**（[SECURITY.md](docs/SECURITY.md) SEC-SECRET-01）。`Code.gs` 更新は「デプロイを管理 → 既存デプロイを編集 → 新バージョン」で反映し、**URL は変えない**（[gas/README.md](gas/README.md)・[gas/APPSCRIPT-COPY.md](gas/APPSCRIPT-COPY.md)）
+**本番 Sheet API** — **最小実装済み**（GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、画面配線、GAS API による研修コード変更（`rooms/access-code`）・**全回答削除**（`POST responses/clear`）、回答取得時の `roomId` は Sheet 上の研修回を使用（local の seed と混同しない）。**デモ配布の管理画面③では研修コード保存 UI を出さない**（[docs/SPEC-ADMIN-THREE-GATE-2026.md](docs/SPEC-ADMIN-THREE-GATE-2026.md)）。管理者 `token` は **POST ボディ送信**、回答取得は **`POST responses/query`**（[SECURITY.md](docs/SECURITY.md) SEC-SECRET-01）。`Code.gs` 更新は「デプロイを管理 → 既存デプロイを編集 → 新バージョン」で反映し、**URL は変えない**（[gas/README.md](gas/README.md)・[gas/APPSCRIPT-COPY.md](gas/APPSCRIPT-COPY.md)）
 
 **セキュリティ** — 管理者 token の **ボディ送信**（SEC-SECRET-01）、**HTTPS 必須**（SEC-NET-01。開発・E2E のみ `localhost`/`127.0.0.1` を許可）、**数式インジェクション対策**（SEC-INPUT-01）を実装済み。ハッシュは現状 **単純 SHA-256**（SEC-SECRET-02 は本番開始時に再導入予定）。要件一覧・テスト対応は [docs/SECURITY.md](docs/SECURITY.md)
 
@@ -531,15 +531,15 @@ ExpertEye360は、360°現場を見た受講者の**判断を記録・可視化*
 3. 一致しなければ **「正しい研修コードを入力してください」** と表示し、名前・所属には進めない。
 4. 通過後、回答の保存・送信では `client`（URL の `?client=`）と検証済みの研修回（`room`）を API に付与する。URL に研修コードや `room` を載せない。
 
-#### 管理者（2 段階入室 — デモ配布 `adminRoomScope: trainingCode`）
+#### 管理者（3 画面ゲート — デモ配布 `adminRoomScope: trainingCode`）
 
-正本: [docs/REMAINING-IMPLEMENTATION.md §6.7](docs/REMAINING-IMPLEMENTATION.md#67-admin-2step-1--管理者-2-段階入室研修コードゲート)
+正本: [docs/SPEC-ADMIN-THREE-GATE-2026.md](docs/SPEC-ADMIN-THREE-GATE-2026.md)（実装チケットの経緯は [docs/REMAINING-IMPLEMENTATION.md §6.7](docs/REMAINING-IMPLEMENTATION.md#67-admin-2step-1--管理者-2-段階入室研修コードゲート)）
 
-1. **第 1 画面 — 管理者コード** — 共有の管理者コード（例: `admin-demo-2026`）を入力。「続ける」で次へ。**シーン・回答タブはまだ出ない**。
-2. **第 2 画面 — 研修コード** — 操作したい研修回の研修コードを入力。「入室する」で **その room 専用** の管理画面へ。
-3. **1 研修コード = 1 管理画面** — コードが違えばシーン・カード・回答もすべて別。
-4. **受講者向け研修コード** — 管理画面「基本」タブで管理者が保存。受講者が同じコードで入室した回答だけ、その room に表示される。
-5. **管理者コード変更 UI は無し**（全員共通コードのため）。
+1. **① 管理者コード画面** — 共有の管理者コード（例: `admin-demo-2026`）を入力。「続ける」で②へ。**研修コード欄・管理タブは出ない**。
+2. **② 研修コード画面（ゲート）** — 操作したい研修回の研修コードのみ。「入室する」で③へ。**管理タブは出ない**。
+3. **③ 管理画面** — 基本 / シーン・カード / 回答。初期タブは基本。**基本タブは研修回の表示のみ**（研修コード入力・保存 UI は出さない）。
+4. **1 研修コード = 1 管理画面（room）** — コードが違えばシーン・カード・回答もすべて別。受講者は room の `accessCode` で入室し、一致した回答だけ③の回答タブに表示される。
+5. **管理者コード変更 UI・ツアー URL 編集 UI は無し**（デモ配布方針）。
 
 #### 管理者（契約運用 `adminRoomScope: adminCode` または未指定）
 
@@ -579,7 +579,7 @@ ExpertEye360は、360°現場を見た受講者の**判断を記録・可視化*
 3. **クライアント用ブック** — `settings` / `rooms` / `responses` / `audit_logs`
 4. **`?client=`** — 埋め込み URL で組織を特定する。
 5. **受講者** — **研修コード**で研修回を確定（名前・所属の前）。コードは API で照合し、**平文はシートに保存しない**（`accessCodeHash` のみ。[docs/SPREADSHEET-DATA.md](docs/SPREADSHEET-DATA.md)）。
-6. **管理者（デモ）** — **2 段階**: 管理者コード → 研修コードゲート → room 確定後に API 操作。詳細は [入室とマルチテナント](#入室とマルチテナント) §6.7。
+6. **管理者（デモ）** — **3 画面ゲート**: 管理者コード → 研修コードゲート → room 確定後の管理画面。詳細は [入室とマルチテナント](#入室とマルチテナント) および [docs/SPEC-ADMIN-THREE-GATE-2026.md](docs/SPEC-ADMIN-THREE-GATE-2026.md)。
 
 詳細は [入室とマルチテナント](#入室とマルチテナント)、[docs/SPREADSHEET-DATA.md §2.3](docs/SPREADSHEET-DATA.md#23-研修回ルームroomid)。
 

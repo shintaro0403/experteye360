@@ -171,7 +171,8 @@ test.describe("ISOLATE-4 / DEMO-SCOPE-1: コードによるクロス閲覧拒否
   test("管理者画面に管理者コード変更・ツアー URL 編集 UI は出ない", async ({ page }) => {
     await resetSheetMock();
     await loginAdmin(page, "admin-demo", "DEMO-2026");
-    await expect(page.getByRole("button", { name: "研修コードを保存" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "研修コードを保存" })).toHaveCount(0);
+    await expect(page.getByPlaceholder("研修コード")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "管理者コードを変更" })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "3DVista ツアー URL" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "基本" })).toBeVisible();
