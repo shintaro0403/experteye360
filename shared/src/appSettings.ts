@@ -51,7 +51,12 @@ export function normalizeAppSettings(
         }))
       : [...DEFAULT_TRAINING_ROOMS];
 
-  const adminAccessCode = base.adminAccessCode?.trim() || DEFAULT_ADMIN_ACCESS_CODE;
+  const trimmedAdminAccessCode = base.adminAccessCode?.trim() || "";
+  // Sheet デモ client は hash 照合のため settings の平文 admin-demo を使わない（API と不一致になりうる）
+  const adminAccessCode =
+    options.clientId?.trim() === SHEET_DEMO_CLIENT_ID
+      ? ""
+      : trimmedAdminAccessCode || DEFAULT_ADMIN_ACCESS_CODE;
 
   return {
     ...base,

@@ -53,6 +53,7 @@ describe("DEMO-SCOPE-1: adminScopedLogin", () => {
     const legacy = makeSettings({ adminAccessCode: "admin-demo" });
     const normalized = normalizeAppSettings(legacy, { clientId: SHEET_DEMO_CLIENT_ID });
     expect(isTrainingCodeScopedAdmin(normalized)).toBe(true);
+    expect(normalized.adminAccessCode).toBe("");
   });
 
   it("共有管理者コードが settings.adminAccessCode と一致するときだけ true", () => {

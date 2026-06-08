@@ -581,9 +581,15 @@ function loadSettings_(clientBook, clientId) {
 /** GET settings 応答: デモ client は adminRoomScope 未設定時に trainingCode を付与（SPEC-ADMIN-THREE-GATE-2026） */
 function normalizeDemoDistributionSettings_(settings, clientId) {
   if (clientId !== DEMO_CONFIG.clientId) return settings;
-  if (settings.adminRoomScope === "adminCode") return settings;
-  if (settings.adminRoomScope === "trainingCode") return settings;
-  return Object.assign({}, settings, { adminRoomScope: "trainingCode" });
+  var normalized = settings;
+  if (settings.adminRoomScope !== "adminCode" && settings.adminRoomScope !== "trainingCode") {
+    normalized = Object.assign({}, normalized, { adminRoomScope: "trainingCode" });
+  }
+  // 平文の管理者コードは返さない（古い admin-demo が残ると ① と API hash が不一致）
+  if (normalized.adminAccessCode) {
+    normalized = Object.assign({}, normalized, { adminAccessCode: "" });
+  }
+  return normalized;
 }
 
 function findSceneName_(clientBook, sceneId) {

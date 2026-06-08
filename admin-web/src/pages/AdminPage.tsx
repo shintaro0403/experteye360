@@ -292,6 +292,19 @@ export function AdminPage() {
           setAdminLoginError("管理者コードが正しくありません");
           return;
         }
+        if (isSheetStorageBackend()) {
+          const probeRoomId = settings.rooms.find((room) => room.enabled !== false)?.roomId;
+          if (!probeRoomId) {
+            setAdminLoginError("研修回の設定がありません。管理者にお問い合わせください。");
+            return;
+          }
+          try {
+            await verifyAdminTokenAsync(token, probeRoomId);
+          } catch {
+            setAdminLoginError("管理者コードが正しくありません");
+            return;
+          }
+        }
         enterAdminTrainingGate(token);
         setAdminTokenState(token);
         setAdminGateActiveState(true);
