@@ -244,7 +244,7 @@ export function AdminPage() {
   const [nextAccessCodeInput, setNextAccessCodeInput] = useState("");
   const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
   const trainingCodeScopedAdmin = isTrainingCodeScopedAdmin(settings);
-  const [tab, setTab] = useState<"base" | "scenes" | "responses">("responses");
+  const [tab, setTab] = useState<"base" | "scenes" | "responses">("base");
   const [activeSceneId, setActiveSceneId] = useState(settings.scenes[0]?.id ?? "");
   const [draft, setDraft] = useState<SceneEditorDraft | null>(null);
   const [expandedQuestion, setExpandedQuestion] = useState(0);
@@ -304,6 +304,7 @@ export function AdminPage() {
             setAdminLoginError(null);
             setAdminCodeInput("");
             setTrainingCodeLoginInput("");
+            setTab("base");
           } catch {
             setAdminLoginError("管理者コードが正しくありません");
           }
@@ -315,6 +316,7 @@ export function AdminPage() {
         setAdminLoginError(null);
         setAdminCodeInput("");
         setTrainingCodeLoginInput("");
+        setTab("base");
         return;
       }
 
@@ -338,6 +340,7 @@ export function AdminPage() {
           setAdminAuthed(true);
           setAdminLoginError(null);
           setAdminCodeInput("");
+          setTab("base");
         } catch {
           setAdminLoginError("管理者コードが正しくありません");
         }
@@ -351,6 +354,7 @@ export function AdminPage() {
         setAdminAuthed(true);
         setAdminLoginError(null);
         setAdminCodeInput("");
+        setTab("base");
         return;
       }
       setAdminLoginError("管理者コードが正しくありません");
@@ -625,32 +629,30 @@ export function AdminPage() {
               操作対象: <strong>{resolveAdminScopeRoom(settings).displayName}</strong>
               {trainingCodeScopedAdmin && "（入室時の研修コードでスコープ済み）"}
             </p>
-            <div className="a-entry-section" style={{ marginTop: "1rem" }}>
+            <div style={{ marginTop: "1rem", maxWidth: "22rem" }}>
               <h3 style={{ margin: 0 }}>受講者向け研修コード</h3>
               <p className="a-hint" style={{ marginTop: "0.25rem" }}>
                 受講者に案内する次の研修コードを入力して保存します。
               </p>
+              <AdminLabel label="次の研修コード">
+                <ImeInput
+                  className="a-input"
+                  value={nextAccessCodeInput}
+                  onChange={setNextAccessCodeInput}
+                  placeholder="研修コード"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void saveTrainingCode();
+                  }}
+                />
+              </AdminLabel>
               <div className="a-actions">
-                <AdminLabel label="次の研修コード">
-                  <ImeInput
-                    className="a-input"
-                    value={nextAccessCodeInput}
-                    onChange={setNextAccessCodeInput}
-                    placeholder="研修コード"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") void saveTrainingCode();
-                    }}
-                  />
-                </AdminLabel>
-                <div className="a-actions" style={{ marginTop: "0.75rem" }}>
-                  <ActionButton
-                    className="a-btn a-btn--primary"
-                    busy={isPending(ADMIN_ACTION.saveTrainingCode)}
-                    onClick={() => void saveTrainingCode()}
-                  >
-                    研修コードを保存
-                  </ActionButton>
-                </div>
+                <ActionButton
+                  className="a-btn a-btn--primary"
+                  busy={isPending(ADMIN_ACTION.saveTrainingCode)}
+                  onClick={() => void saveTrainingCode()}
+                >
+                  研修コードを保存
+                </ActionButton>
               </div>
             </div>
           </section>

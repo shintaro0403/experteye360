@@ -84,9 +84,9 @@ describe("AdminPage", () => {
     sessionStorage.clear();
   });
 
-  it("入室後はコード変更・ツアー URL 編集 UI を常に出さない", async () => {
+  it("入室後は管理者コード変更・ツアー URL 編集 UI を出さない（研修コード保存は表示）", async () => {
     await render();
-    expect(container.textContent).not.toContain("研修コードを保存");
+    expect(container.textContent).toContain("研修コードを保存");
     expect(container.textContent).not.toContain("管理者コードを変更");
     expect(container.textContent).not.toContain("3DVista ツアー URL");
     expect(container.querySelector('input[placeholder="https://..."]')).toBeNull();
