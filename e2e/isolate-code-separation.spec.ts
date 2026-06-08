@@ -85,7 +85,7 @@ async function loginAdmin(page: Page, adminCode: string, trainingCode: string) {
 }
 
 async function openResponsesTab(page: Page) {
-  await page.getByRole("button", { name: "回答" }).click();
+  await page.getByRole("button", { name: "回答", exact: true }).click();
 }
 
 async function appendResponseViaApi(roomId: string, submission: { id: string; participantName: string }) {

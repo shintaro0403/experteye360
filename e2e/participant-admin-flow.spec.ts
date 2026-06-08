@@ -116,7 +116,7 @@ test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
 
     const admin = await browser.newPage();
     await loginAdmin(admin);
-    await admin.getByRole("button", { name: "回答" }).click();
+    await admin.getByRole("button", { name: "回答", exact: true }).click();
 
     await expect(admin.getByRole("heading", { name: "回答一覧（1）" })).toBeVisible();
     await expect(admin.getByText("Phase4確認")).toBeVisible();
