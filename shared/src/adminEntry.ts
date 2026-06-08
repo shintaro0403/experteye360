@@ -85,8 +85,26 @@ export function setAdminTrainingGateActive(active: boolean): void {
   }
 }
 
+/** workspace セッションのみクリア（ゲート用 token は残す） */
+export function clearAdminWorkspaceSession(): void {
+  try {
+    sessionStorage.removeItem(SESSION_ADMIN_AUTH_KEY);
+    sessionStorage.removeItem(SESSION_ADMIN_ROOM_KEY);
+  } catch {
+    /* private mode 等 */
+  }
+}
+
+/** 管理者コード通過 → 研修コードゲート（第 2 画面）。旧 workspace は必ず消す。 */
+export function enterAdminTrainingGate(adminToken: string): void {
+  clearAdminWorkspaceSession();
+  setAdminSessionToken(adminToken);
+  setAdminTrainingGateActive(true);
+}
+
 /** 研修コード確定済みの管理画面（room スコープ付き入室） */
 export function isAdminWorkspaceActive(): boolean {
+  if (isAdminTrainingGateActive()) return false;
   return isAdminSessionActive() && Boolean(getAdminSessionRoomId()?.trim());
 }
 

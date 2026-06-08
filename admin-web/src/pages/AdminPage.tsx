@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  enterAdminTrainingGate,
   getAdminSessionToken,
   getAdminSessionRoomId,
   isAdminTrainingGateActive,
@@ -296,10 +297,10 @@ export function AdminPage() {
           setAdminLoginError("管理者コードが正しくありません");
           return;
         }
-        setAdminSessionToken(token);
+        enterAdminTrainingGate(token);
         setAdminTokenState(token);
-        setAdminTrainingGateActive(true);
         setAdminGateActiveState(true);
+        setAdminWorkspaceActiveState(false);
         setAdminLoginError(null);
         setAdminCodeInput("");
         return;
@@ -521,7 +522,7 @@ export function AdminPage() {
 
   if (!adminGateActive && !adminWorkspaceActive) {
     return (
-      <div className="a-shell">
+      <div className="a-shell" data-admin-phase="admin-code">
         <div className="a-page a-entry-gate">
           <div className="a-entry-card">
             <h1>管理者コード</h1>
@@ -577,7 +578,7 @@ export function AdminPage() {
 
   if (adminGateActive && !adminWorkspaceActive) {
     return (
-      <div className="a-shell">
+      <div className="a-shell" data-admin-phase="training-gate">
         <div className="a-page a-entry-gate">
           <div className="a-entry-card">
             <h1>研修コード</h1>
@@ -617,7 +618,7 @@ export function AdminPage() {
   }
 
   return (
-    <div className="a-shell">
+    <div className="a-shell" data-admin-phase="workspace">
       <div className="a-page">
       <header className="a-topbar">
         <div className="a-topbar__inner">

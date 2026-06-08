@@ -134,6 +134,67 @@ describe("AdminPage", () => {
     expect(sessionStorage.getItem(SESSION_ADMIN_ROOM_KEY)).toBe("demo-room-001");
   });
 
+  it("ADMIN-2STEP-1: ゲート中は auth+room が残っていても管理タブを出さない", async () => {
+    sessionStorage.clear();
+    sessionStorage.setItem(SESSION_ADMIN_AUTH_KEY, "1");
+    sessionStorage.setItem(SESSION_ADMIN_ROOM_KEY, "room-0403");
+    sessionStorage.setItem(SESSION_ADMIN_GATE_KEY, "1");
+    sessionStorage.setItem(SESSION_ADMIN_TOKEN_KEY, "admin-demo");
+    mockUseAppData({
+      settings: makeSettings({
+        adminRoomScope: "trainingCode",
+        adminAccessCode: "admin-demo",
+      }),
+    });
+    await render();
+    expect(container.querySelector('[data-admin-phase="training-gate"]')).not.toBeNull();
+    expect(container.querySelector('[data-admin-phase="workspace"]')).toBeNull();
+    expect(container.querySelector(".a-tabs")).toBeNull();
+  });
+
+  it("ADMIN-2STEP-1: 入室済みセッションがあっても管理者コード通過後はゲート単独画面", async () => {
+    sessionStorage.clear();
+    sessionStorage.setItem(SESSION_ADMIN_AUTH_KEY, "1");
+    sessionStorage.setItem(SESSION_ADMIN_ROOM_KEY, "room-0403");
+    sessionStorage.setItem(SESSION_ADMIN_TOKEN_KEY, "admin-demo");
+    const demoScopedSettings = makeSettings({
+      adminRoomScope: "trainingCode",
+      adminAccessCode: "admin-demo",
+      rooms: [
+        {
+          roomId: "room-0403",
+          displayName: "4月3日研修",
+          accessCode: "0403",
+          enabled: true,
+        },
+        {
+          roomId: "room-2001",
+          displayName: "2001研修",
+          accessCode: "2001",
+          enabled: true,
+        },
+      ],
+    });
+    mockUseAppData({ settings: demoScopedSettings });
+    await render();
+    await act(async () => {
+      getButton("管理者コード入力に戻る").click();
+    });
+    const adminInput = container.querySelector<HTMLInputElement>('input[placeholder="管理者コード"]');
+    if (!adminInput) throw new Error("admin login input not found");
+    await act(async () => {
+      setInputValue(adminInput, "admin-demo");
+      getButton("続ける").click();
+      await Promise.resolve();
+    });
+    expect(container.querySelector('[data-admin-phase="training-gate"]')).not.toBeNull();
+    expect(container.querySelector('[data-admin-phase="workspace"]')).toBeNull();
+    expect(container.querySelector(".a-tabs")).toBeNull();
+    expect(container.textContent).not.toContain("シーン・カード");
+    expect(container.textContent).not.toContain("回答一覧");
+    expect(sessionStorage.getItem(SESSION_ADMIN_ROOM_KEY)).toBeNull();
+  });
+
   it("ADMIN-2STEP-1: 管理者コードのみで研修コードゲートへ（タブは出ない）", async () => {
     sessionStorage.clear();
     const demoScopedSettings = makeSettings({
@@ -160,6 +221,8 @@ describe("AdminPage", () => {
       getButton("続ける").click();
       await Promise.resolve();
     });
+    expect(container.querySelector('[data-admin-phase="training-gate"]')).not.toBeNull();
+    expect(container.querySelector(".a-tabs")).toBeNull();
     expect(container.textContent).toContain("研修コード");
     expect(container.querySelector('input[placeholder="研修コード"]')).not.toBeNull();
     expect(container.textContent).not.toContain("シーン・カード");
@@ -205,6 +268,7 @@ describe("AdminPage", () => {
     });
     expect(verifyAdminTokenAsync).toHaveBeenCalledWith("admin-demo", "room-other");
     expect(sessionStorage.getItem(SESSION_ADMIN_ROOM_KEY)).toBe("room-other");
+    expect(container.querySelector('[data-admin-phase="workspace"]')).not.toBeNull();
     expect(container.textContent).toContain("基本");
     expect(container.textContent).toContain("研修コードを保存");
   });

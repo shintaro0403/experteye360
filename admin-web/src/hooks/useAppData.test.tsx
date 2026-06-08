@@ -77,6 +77,22 @@ describe("useAppData", () => {
     expect(text("count")).toBe("1");
   });
 
+  it("ISOLATE-LOCAL-1: adminToken が無いとき responses を空にする", async () => {
+    await renderProbe({ adminToken: "admin-demo-2026" });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(text("count")).toBe("1");
+
+    await act(async () => {
+      root?.render(createElement(Probe, { adminToken: null }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(text("count")).toBe("0");
+    expect(loadResponsesAsync).toHaveBeenCalledTimes(1);
+  });
+
   it("ISOLATE-2: adminRoomId を loadResponsesAsync に渡す", async () => {
     const multiRoomSettings = makeSettings({
       rooms: [

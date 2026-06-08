@@ -1057,12 +1057,45 @@ flowchart TD
 
 **コード上の期待値**
 
-- `shared/src/adminEntry.ts` — `SESSION_ADMIN_GATE_KEY`, `isAdminTrainingGateActive()`, `setAdminTrainingGateActive()`, `isAdminWorkspaceActive()`（`adminAuth && roomId`）
-- `AdminPage.tsx` — 3 状態: `!gate && !workspace` / `gate && !workspace` / `workspace`
+- `shared/src/adminEntry.ts` — `SESSION_ADMIN_GATE_KEY`, `enterAdminTrainingGate()`, `isAdminTrainingGateActive()`, `isAdminWorkspaceActive()`（**ゲート中は常に false**、`adminAuth && roomId`）
+- `AdminPage.tsx` — 3 **画面**（タブではない）: `data-admin-phase="admin-code"` / `"training-gate"` / `"workspace"`
+- ゲート入室時は `enterAdminTrainingGate` で **必ず** `adminAuth` と `roomId` をクリア
 - 第 1 ボタン文言: `続ける`、第 2 ボタン文言: `入室する`
 - 第 2 画面見出し: `研修コード`
+- ゲート画面に `.a-tabs`（基本 / シーン・カード / 回答）は **存在しない**
 
-**状態** — 実装中（TDD）
+**状態** — TDD 実装済み（Vitest + E2E Green）
+
+---
+
+### 6.8 ISOLATE-LOCAL-1 — localStorage 回答の room 分離
+
+**目的** — Sheet API 以外（localStorage / E2E 共有 cookie）でも、管理者は **入室した room の回答だけ** 見える。研修コード `2001` の回答が `0403` の管理画面に漏れない。
+
+**受け入れ条件**
+
+- `loadResponsesAsync({ roomId })`（local）は `submission.roomId` が一致する行だけ返す。
+- `saveResponsesAsync([], { roomId })`（local）はその room だけ削除し、他 room は残す。
+- `useAppData` は `adminToken` が無いとき `responses` を空にする。
+- 受講者送信時は `roomId` を付与（既存 `ParticipantPage`）。
+
+**成功条件**
+
+- `responseScope.test.ts` / `storage.test.ts` / `useAppData.test.tsx` が Green。
+- §6.7 のゲート単独画面テストが Green。
+
+**どのようにテストするか**
+
+- fixture: `room-2001` と `room-0403` に別名の回答を保存 → room ごとに load で 1 件のみ。
+- room-0403 全削除後、room-2001 の回答が残ることを assert。
+
+**コード上の期待値**
+
+- `shared/src/responseScope.ts` — `filterResponsesByRoomId`, `omitResponsesForRoomId`
+- `storage.ts` — local 分岐で上記を使用
+- `useAppData.ts` — `adminToken` 無しで `setResponsesState([])`
+
+**状態** — TDD 実装済み
 
 ---
 

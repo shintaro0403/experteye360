@@ -160,9 +160,12 @@ test.describe("ISOLATE-4 / DEMO-SCOPE-1: コードによるクロス閲覧拒否
     await page.goto(ADMIN_URL);
     await page.getByPlaceholder("管理者コード").fill("admin-demo");
     await page.getByRole("button", { name: "続ける" }).click();
+    await expect(page.locator('[data-admin-phase="training-gate"]')).toBeVisible();
+    await expect(page.locator('[data-admin-phase="workspace"]')).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "研修コード" })).toBeVisible();
     await expect(page.getByRole("button", { name: "基本" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "シーン・カード" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "回答", exact: true })).toHaveCount(0);
   });
 
   test("管理者画面に管理者コード変更・ツアー URL 編集 UI は出ない", async ({ page }) => {

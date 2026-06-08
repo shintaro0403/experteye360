@@ -1,4 +1,5 @@
 import { normalizeAppSettings } from "./appSettings";
+import { dedupeResponsesById, filterResponsesByRoomId, omitResponsesForRoomId } from "./responseScope";
 import { resolveClientId } from "./clientId";
 import { TRAINING_CODE_MISMATCH_MESSAGE, type VerifyTrainingCodeResult, verifyTrainingCode } from "./roomEntry";
 import { DEFAULT_SETTINGS } from "./seed";
@@ -183,8 +184,9 @@ export function loadResponses(): ParticipantSubmission[] {
   try {
     const raw = requestE2eResponses("GET") ?? localStorage.getItem(KEY_RESPONSES) ?? readSharedResponses();
     if (!raw) return [];
-    localStorage.setItem(KEY_RESPONSES, raw);
-    return JSON.parse(raw) as ParticipantSubmission[];
+    const parsed = dedupeResponsesById(JSON.parse(raw) as ParticipantSubmission[]);
+    localStorage.setItem(KEY_RESPONSES, JSON.stringify(parsed));
+    return parsed;
   } catch {
     return [];
   }
@@ -239,7 +241,12 @@ export async function saveSettingsAsync(
 export async function loadResponsesAsync(
   input: LoadResponsesAsyncInput = {},
 ): Promise<ParticipantSubmission[]> {
-  if (!isSheetStorageBackend()) return loadResponses();
+  if (!isSheetStorageBackend()) {
+    const all = loadResponses();
+    const roomId = input.roomId?.trim();
+    if (!roomId) return all;
+    return filterResponsesByRoomId(all, roomId);
+  }
   const roomId = input.roomId?.trim();
   const adminToken = input.adminToken?.trim();
   if (!roomId || !adminToken) return [];
@@ -270,6 +277,12 @@ export async function saveResponsesAsync(
   input: SaveResponsesAsyncInput = {},
 ): Promise<void> {
   if (!isSheetStorageBackend()) {
+    const roomId = input.roomId?.trim();
+    if (roomId && list.length === 0) {
+      saveResponses(omitResponsesForRoomId(loadResponses(), roomId));
+      window.dispatchEvent(new Event("expertEye360-storage"));
+      return;
+    }
     saveResponses(list);
     return;
   }

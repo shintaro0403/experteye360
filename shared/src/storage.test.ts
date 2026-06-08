@@ -3,6 +3,7 @@ import {
   appendResponse,
   changeTrainingCodeAsync,
   loadResponses,
+  loadResponsesAsync,
   loadSettings,
   resetDemoData,
   saveResponses,
@@ -96,6 +97,30 @@ describe("storage（local）", () => {
     localStorage.setItem("expertEye360:responses", "{broken json");
 
     expect(loadResponses()).toEqual([]);
+  });
+
+  it("ISOLATE-LOCAL-1: loadResponsesAsync は roomId でフィルタする", async () => {
+    saveResponses([
+      makeSubmission({ id: "a", participantName: "2001太郎", roomId: "room-2001" }),
+      makeSubmission({ id: "b", participantName: "0403花子", roomId: "room-0403" }),
+    ]);
+
+    const for0403 = await loadResponsesAsync({ roomId: "room-0403", adminToken: "admin-demo" });
+    expect(for0403.map((r) => r.participantName)).toEqual(["0403花子"]);
+
+    const for2001 = await loadResponsesAsync({ roomId: "room-2001", adminToken: "admin-demo" });
+    expect(for2001.map((r) => r.participantName)).toEqual(["2001太郎"]);
+  });
+
+  it("ISOLATE-LOCAL-1: saveResponsesAsync([]) は指定 room だけ削除する", async () => {
+    saveResponses([
+      makeSubmission({ id: "a", participantName: "2001太郎", roomId: "room-2001" }),
+      makeSubmission({ id: "b", participantName: "0403花子", roomId: "room-0403" }),
+    ]);
+
+    await saveResponsesAsync([], { roomId: "room-0403", adminToken: "admin-demo" });
+
+    expect(loadResponses().map((r) => r.participantName)).toEqual(["2001太郎"]);
   });
 
   it("appendResponse 後、loadResponses の先頭が最新になる", () => {

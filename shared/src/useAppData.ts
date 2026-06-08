@@ -30,10 +30,12 @@ export function useAppData(options: UseAppDataOptions = {}) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasLoadedOnceRef = useRef(false);
+  const refreshGenerationRef = useRef(0);
   const optionsRef = useRef(options);
   optionsRef.current = options;
 
   const refresh = useCallback(async (input?: { scope?: RefreshScope }) => {
+    const generation = ++refreshGenerationRef.current;
     const mode = resolveRefreshMode(hasLoadedOnceRef.current);
     const scope = input?.scope ?? "all";
     const { adminToken, adminRoomId } = optionsRef.current;
@@ -45,6 +47,7 @@ export function useAppData(options: UseAppDataOptions = {}) {
       setError(null);
 
       const nextSettings = await loadSettingsAsync();
+      if (generation !== refreshGenerationRef.current) return;
       setSettingsState(nextSettings);
       if (scope === "all" && adminToken?.trim()) {
         const roomId = resolveResponsesRoomId(nextSettings, adminRoomId);
@@ -52,12 +55,19 @@ export function useAppData(options: UseAppDataOptions = {}) {
           roomId,
           adminToken,
         });
+        if (generation !== refreshGenerationRef.current) return;
         setResponsesState(nextResponses);
+      } else if (scope === "all") {
+        if (generation !== refreshGenerationRef.current) return;
+        setResponsesState([]);
       }
+      if (generation !== refreshGenerationRef.current) return;
       hasLoadedOnceRef.current = true;
     } catch (err) {
+      if (generation !== refreshGenerationRef.current) return;
       setError(err instanceof Error ? err.message : "データの読み込みに失敗しました");
     } finally {
+      if (generation !== refreshGenerationRef.current) return;
       setRefreshing(false);
       if (shouldShowBlockingLoader(mode)) {
         setLoading(false);

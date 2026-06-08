@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   changeAdminAccessCode,
+  enterAdminTrainingGate,
   getAdminSessionToken,
   isAdminSessionActive,
   isAdminTrainingGateActive,
@@ -152,6 +153,28 @@ describe("ADMIN-2STEP-1: admin training gate session", () => {
     setAdminSessionRoomId("room-demo-1");
     setAdminSessionActive(false);
     expect(sessionStorage.getItem(SESSION_ADMIN_GATE_KEY)).toBeNull();
+    expect(isAdminWorkspaceActive()).toBe(false);
+  });
+
+  it("enterAdminTrainingGate は workspace を消しゲートのみにする", () => {
+    setAdminSessionActive(true);
+    setAdminSessionRoomId("room-0403");
+    setAdminSessionToken("old-token");
+
+    enterAdminTrainingGate("admin-demo");
+
+    expect(isAdminTrainingGateActive()).toBe(true);
+    expect(isAdminWorkspaceActive()).toBe(false);
+    expect(getAdminSessionToken()).toBe("admin-demo");
+    expect(sessionStorage.getItem(SESSION_ADMIN_ROOM_KEY)).toBeNull();
+    expect(sessionStorage.getItem(SESSION_ADMIN_AUTH_KEY)).toBeNull();
+  });
+
+  it("ゲート中は auth+room が残っていても workspace とみなさない", () => {
+    setAdminSessionActive(true);
+    setAdminSessionRoomId("room-0403");
+    setAdminTrainingGateActive(true);
+
     expect(isAdminWorkspaceActive()).toBe(false);
   });
 });
