@@ -24,12 +24,14 @@ const initialSettings = {
       roomId: "room-demo-1",
       displayName: "デモ研修（午前）",
       accessCode: "DEMO-2026",
+      adminAccessCode: "admin-demo",
       enabled: true,
     },
     {
       roomId: "room-other",
       displayName: "デモ研修（別 room）",
       accessCode: "OTHER-2026",
+      adminAccessCode: "admin-other",
       enabled: true,
     },
   ],
@@ -121,10 +123,33 @@ function settingsForClient(client) {
 }
 
 // SEC-SECRET-01: token はボディ優先・クエリはフォールバック
-function isAuthorized(url, body) {
-  const fromBody = body && typeof body.token === "string" ? body.token : "";
-  const fromQuery = url.searchParams.get("token") ?? "";
-  return (fromBody || fromQuery) === state.adminToken;
+function tokenFromRequest(url, body) {
+  const fromBody = body && typeof body.token === "string" ? body.token.trim() : "";
+  const fromQuery = url.searchParams.get("token")?.trim() ?? "";
+  return fromBody || fromQuery;
+}
+
+function roomForId(settings, roomId) {
+  return settings.rooms.find((room) => room.roomId === roomId && room.enabled !== false) ?? null;
+}
+
+/** ISOLATE-3: room に adminAccessCode があれば room 単位で照合。無ければ client 全体 token。 */
+function isAuthorizedForRoom(settings, roomId, url, body) {
+  const token = tokenFromRequest(url, body);
+  if (!token) return false;
+  const room = roomForId(settings, roomId);
+  const roomToken = room?.adminAccessCode?.trim();
+  if (roomToken) return token === roomToken;
+  return token === state.adminToken;
+}
+
+function isAuthorizedForSettings(settings, url, body) {
+  const token = tokenFromRequest(url, body);
+  if (!token) return false;
+  if (token === state.adminToken) return true;
+  return settings.rooms.some(
+    (room) => room.enabled !== false && room.adminAccessCode?.trim() === token,
+  );
 }
 
 async function handleSheetApi(req, res, url) {
@@ -156,7 +181,7 @@ async function handleSheetApi(req, res, url) {
   }
 
   if (req.method === "POST" && path === "settings") {
-    if (!isAuthorized(url, body)) {
+    if (!isAuthorizedForSettings(settings, url, body)) {
       sendJson(res, 403, { ok: false, error: "invalid_admin_token" });
       return;
     }
@@ -177,7 +202,8 @@ async function handleSheetApi(req, res, url) {
   }
 
   if (req.method === "POST" && path === "rooms/access-code") {
-    if (!isAuthorized(url, body)) {
+    const roomId = typeof body.roomId === "string" ? body.roomId.trim() : "";
+    if (!isAuthorizedForRoom(settings, roomId, url, body)) {
       sendJson(res, 403, { ok: false, error: "invalid_admin_token" });
       return;
     }
@@ -193,7 +219,7 @@ async function handleSheetApi(req, res, url) {
   }
 
   if (req.method === "POST" && path === "admin/token") {
-    if (!isAuthorized(url, body)) {
+    if (!isAuthorizedForSettings(settings, url, body)) {
       sendJson(res, 403, { ok: false, error: "invalid_admin_token" });
       return;
     }
@@ -202,8 +228,20 @@ async function handleSheetApi(req, res, url) {
       sendJson(res, 400, { ok: false, error: "invalid_next_admin_token" });
       return;
     }
-    state.adminToken = nextAdminToken;
-    settings.adminAccessCode = nextAdminToken;
+    const currentToken = tokenFromRequest(url, body);
+    const roomId = typeof body.roomId === "string" ? body.roomId.trim() : "";
+    if (roomId) {
+      const room = settings.rooms.find((item) => item.roomId === roomId);
+      if (room) room.adminAccessCode = nextAdminToken;
+    } else {
+      state.adminToken = nextAdminToken;
+      settings.adminAccessCode = nextAdminToken;
+      for (const room of settings.rooms) {
+        if (!room.adminAccessCode?.trim() || room.adminAccessCode.trim() === currentToken) {
+          room.adminAccessCode = nextAdminToken;
+        }
+      }
+    }
     sendJson(res, 200, { ok: true });
     return;
   }
@@ -215,7 +253,7 @@ async function handleSheetApi(req, res, url) {
       return;
     }
     if (req.method === "POST") {
-      if (!isAuthorized(url, body)) {
+      if (!isAuthorizedForRoom(settings, room, url, body)) {
         sendJson(res, 403, { ok: false, error: "invalid_admin_token" });
         return;
       }
@@ -232,7 +270,7 @@ async function handleSheetApi(req, res, url) {
       sendJson(res, 400, { ok: false, error: "room_required" });
       return;
     }
-    if (!isAuthorized(url, body)) {
+    if (!isAuthorizedForRoom(settings, room, url, body)) {
       sendJson(res, 403, { ok: false, error: "invalid_admin_token" });
       return;
     }
@@ -247,7 +285,7 @@ async function handleSheetApi(req, res, url) {
       return;
     }
     if (req.method === "GET") {
-      if (!isAuthorized(url, body)) {
+      if (!isAuthorizedForRoom(settings, room, url, body)) {
         sendJson(res, 403, { ok: false, error: "invalid_admin_token" });
         return;
       }

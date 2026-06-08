@@ -1,4 +1,5 @@
 import { normalizeAppSettings } from "./appSettings";
+import { resolveClientId } from "./clientId";
 import { TRAINING_CODE_MISMATCH_MESSAGE, type VerifyTrainingCodeResult, verifyTrainingCode } from "./roomEntry";
 import { DEFAULT_SETTINGS } from "./seed";
 import {
@@ -77,7 +78,7 @@ export function isSheetStorageBackend(): boolean {
 function sheetApiConfig(): { apiBaseUrl: string; clientId: string } {
   const env = getStorageEnv();
   const apiBaseUrl = env.VITE_SHEET_API_BASE?.trim();
-  const clientId = env.VITE_CLIENT_ID?.trim();
+  const clientId = resolveClientId({ envClientId: env.VITE_CLIENT_ID });
   if (!apiBaseUrl || !clientId) {
     throw new Error("Sheet API config is missing");
   }

@@ -405,9 +405,9 @@
 
 **SH-02** — `GET settings` → `AppSettings`（`settings` シート）（入口 Green）
 
-**SH-03** — `POST settings` → 管理者保存がシートに反映（GAS と画面配線は最小実装済み）
+**SH-03** — `POST settings`（body `{ token, settings }`）→ 管理者保存がシートに反映（GAS と画面配線は最小実装済み）
 
-**SH-04** — `GET responses` → 一覧（新しい順）（フロント取得契約は入口 Green。ソート保証は未）
+**SH-04** — `POST responses/query`（body `{ token }`）→ 一覧（新しい順）（フロント取得契約は入口 Green。ソート保証は未。旧 `GET responses` は後方互換）
 
 **SH-05** — `POST responses` → 受講者 1 送信 = 1 行追加（GAS 追記と画面配線は最小実装済み）
 
@@ -417,7 +417,7 @@
 
 **SH-08** — 全 API に `room` クエリ（または初回コード入力後に付与）
 
-**SH-09** — `GET responses` は当該 `room` の行のみ
+**SH-09** — `POST responses/query` は当該 `room` の行のみ
 
 **SH-10** — 別 `room` への POST が他 room 一覧に混ざらない
 
@@ -428,6 +428,18 @@
 **SH-13** — 管理者操作で **管理者コード**（`adminTokenHash`）照合。管理者の入室に研修コードは不要
 
 **SH-14** — 管理者コード変更は現行コード必須（`sheetApi` TC-013）
+
+#### 2.1d コードベース分離（URL 固定）【ISOLATE 進行中】
+
+正本: [REMAINING-IMPLEMENTATION.md §6](./REMAINING-IMPLEMENTATION.md#6-コードベース分離url-固定方針)
+
+**ISOLATE-01** — 管理者コードから room を特定（`adminRoom.test.ts`）【実装済み】
+
+**ISOLATE-02** — 管理者 UI が確定 room だけ表示【実装済み】
+
+**ISOLATE-03** — GAS `rooms.adminTokenHash` + room 単位 token 照合【実装済み】
+
+**ISOLATE-04** — E2E クロス閲覧拒否【実装済み】
 
 #### 2.1c 入室ゲート（shared + UI）【実装済み（local / Sheet API）】
 
@@ -601,8 +613,11 @@
 **X-03** — 複数クライアント: `clientId` ごとにスプレッドシート分離  
 テスト化: [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md) §2
 
-**X-04** — Sheet API `token`（管理者書込）  
-テスト化: 要決定・E2E
+**X-04** — Sheet API `token`（管理者書込）。token は **POST ボディ**送信（SEC-SECRET-01）  
+テスト化: `sheetApi.test.ts`（token がクエリに出ない・ボディに含む）・E2E
+
+**X-05** — セキュリティ実装（[SECURITY.md](./SECURITY.md)）: 管理者 token のボディ送信（SEC-SECRET-01）、HTTPS 必須（SEC-NET-01）、数式インジェクション対策（SEC-INPUT-01）。ハッシュは単純 SHA-256（SEC-SECRET-02 は本番開始時に再導入予定）  
+テスト化: `sheetApi.test.ts`・`security/sanitizeCell.test.ts`
 
 ---
 

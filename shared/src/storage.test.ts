@@ -27,6 +27,7 @@ describe("storage（local）", () => {
   });
 
   afterEach(() => {
+    window.history.pushState({}, "", "/");
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   });
@@ -164,6 +165,22 @@ describe("storage（local）", () => {
         roomId: "room-a",
       }),
     ).rejects.toThrow("Replacing all responses is not supported for sheet backend");
+  });
+
+  it("Sheet backend は URL の ?client= を環境値より優先して API に付与する", async () => {
+    vi.stubEnv("VITE_STORAGE_BACKEND", "sheet");
+    vi.stubEnv("VITE_SHEET_API_BASE", "https://script.google.com/macros/s/dev/exec");
+    vi.stubEnv("VITE_CLIENT_ID", "client-a");
+    window.history.pushState({}, "", "/?client=client-b");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse({ ok: true })));
+
+    await saveResponsesAsync([], {
+      adminToken: "admin-token",
+      roomId: "room-a",
+    });
+
+    const [url] = vi.mocked(fetch).mock.calls[0];
+    expect(new URL(String(url)).searchParams.get("client")).toBe("client-b");
   });
 
   it("Sheet backend の研修コード変更は API に委譲し、保存イベントを発火する", async () => {

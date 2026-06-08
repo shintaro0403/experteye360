@@ -1,14 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { primaryTrainingRoom } from "@shared/appSettings";
 import {
   changeAdminAccessCode,
   getAdminSessionToken,
+  getAdminSessionRoomId,
   isAdminSessionActive,
   setAdminSessionActive,
+  setAdminSessionRoomId,
   setAdminSessionToken,
   validateSheetAdminCodeChange,
   verifyAdminCode,
 } from "@shared/adminEntry";
+import { resolveAdminRoomByCode, resolveAdminScopeRoom } from "@shared/adminRoom";
 import { getConfidenceLabel } from "@shared/confidence";
 import { getSubmissionRounds, JUDGMENT_ROUND_COUNT } from "@shared/judgmentFlow";
 import { generateParticipantPdf } from "@shared/pdfExport";
@@ -250,7 +252,10 @@ export function AdminPage() {
     loading,
     refreshing,
     error,
-  } = useAppData({ adminToken: adminAuthed ? adminToken : null });
+  } = useAppData({
+    adminToken: adminAuthed ? adminToken : null,
+    adminRoomId: adminAuthed ? getAdminSessionRoomId() : null,
+  });
   const [adminCodeInput, setAdminCodeInput] = useState("");
   const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
   const [trainingCodeDraft, setTrainingCodeDraft] = useState("");
@@ -282,8 +287,8 @@ export function AdminPage() {
       setTrainingCodeDraft("");
       return;
     }
-    setTrainingCodeDraft(primaryTrainingRoom(settings).accessCode);
-  }, [settings.rooms, settings]);
+    setTrainingCodeDraft(resolveAdminScopeRoom(settings).accessCode);
+  }, [settings.rooms, settings, adminAuthed]);
 
   const returnToAdminCodeEntry = () => {
     setAdminSessionActive(false);
@@ -300,10 +305,16 @@ export function AdminPage() {
           setAdminLoginError("管理者コードが正しくありません");
           return;
         }
+        const room = resolveAdminRoomByCode(settings, token);
+        if (!room) {
+          setAdminLoginError("管理者コードが正しくありません");
+          return;
+        }
         try {
-          await verifyAdminTokenAsync(token, primaryTrainingRoom(settings).roomId);
+          await verifyAdminTokenAsync(token, room.roomId);
           setAdminSessionActive(true);
           setAdminSessionToken(token);
+          setAdminSessionRoomId(room.roomId);
           setAdminTokenState(token);
           setAdminAuthed(true);
           setAdminLoginError(null);
@@ -314,8 +325,10 @@ export function AdminPage() {
         return;
       }
 
-      if (verifyAdminCode(adminCodeInput, settings.adminAccessCode)) {
+      const room = resolveAdminRoomByCode(settings, adminCodeInput);
+      if (room) {
         setAdminSessionActive(true);
+        setAdminSessionRoomId(room.roomId);
         setAdminAuthed(true);
         setAdminLoginError(null);
         setAdminCodeInput("");
@@ -331,7 +344,7 @@ export function AdminPage() {
         alert("研修コードを入力してください");
         return;
       }
-      const room = primaryTrainingRoom(settings);
+      const room = resolveAdminScopeRoom(settings);
       if (isSheetStorageBackend()) {
         try {
           await changeTrainingCodeAsync({
@@ -388,17 +401,27 @@ export function AdminPage() {
         return;
       }
 
+      const scopeRoom = resolveAdminScopeRoom(settings);
+      const expectedAdminCode =
+        scopeRoom.adminAccessCode?.trim() || settings.adminAccessCode;
       const result = changeAdminAccessCode(
         adminCurrentForChange,
         adminNewCode,
-        settings.adminAccessCode,
+        expectedAdminCode,
       );
       if (!result.ok) {
         setAdminChangeMsg(result.error);
         return;
       }
       const next = adminNewCode.trim();
-      await setSettings({ ...settings, adminAccessCode: next });
+      const nextRooms = settings.rooms.map((r) =>
+        r.roomId === scopeRoom.roomId ? { ...r, adminAccessCode: next } : r,
+      );
+      await setSettings({
+        ...settings,
+        rooms: nextRooms.length > 0 ? nextRooms : settings.rooms,
+        adminAccessCode: settings.rooms.length <= 1 ? next : settings.adminAccessCode,
+      });
       setAdminCurrentForChange("");
       setAdminNewCode("");
       setAdminChangeMsg("管理者コードを変更しました。次回から新しいコードで入室してください。");
@@ -625,7 +648,7 @@ export function AdminPage() {
                 </>
               )}
             </p>
-            <AdminLabel label={`研修コード（${primaryTrainingRoom(settings).displayName}）`}>
+            <AdminLabel label={`研修コード（${resolveAdminScopeRoom(settings).displayName}）`}>
               <ImeInput
                 className="a-input"
                 value={trainingCodeDraft}

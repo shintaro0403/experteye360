@@ -4,7 +4,9 @@ import {
   getAdminSessionToken,
   isAdminSessionActive,
   SESSION_ADMIN_AUTH_KEY,
+  SESSION_ADMIN_ROOM_KEY,
   SESSION_ADMIN_TOKEN_KEY,
+  setAdminSessionRoomId,
   setAdminSessionActive,
   setAdminSessionToken,
   validateSheetAdminCodeChange,
@@ -102,5 +104,13 @@ describe("admin session storage", () => {
     expect(getAdminSessionToken()).toBeNull();
     expect(sessionStorage.getItem(SESSION_ADMIN_AUTH_KEY)).toBeNull();
     expect(sessionStorage.getItem(SESSION_ADMIN_TOKEN_KEY)).toBeNull();
+    expect(sessionStorage.getItem(SESSION_ADMIN_ROOM_KEY)).toBeNull();
+  });
+
+  it("admin roomId を保存・削除できる", () => {
+    setAdminSessionRoomId("room-0505");
+    expect(sessionStorage.getItem(SESSION_ADMIN_ROOM_KEY)).toBe("room-0505");
+    setAdminSessionActive(false);
+    expect(sessionStorage.getItem(SESSION_ADMIN_ROOM_KEY)).toBeNull();
   });
 });

@@ -4,7 +4,7 @@
 
 > 360°工場研修で現場を見ながら、受講者が気づき・判断・共有の選択を記録し、講師が回答結果を確認・可視化するパッケージ。
 
-技術仕様の整理は [docs/TECHNICAL-SPEC.md](docs/TECHNICAL-SPEC.md) を参照。本番データの保存先は [docs/SPREADSHEET-DATA.md](docs/SPREADSHEET-DATA.md)（Google スプレッドシート）。**いま何が動いているか**は [実装状況（一覧）](#実装状況一覧) および [docs/DOC-ALIGNMENT.md](docs/DOC-ALIGNMENT.md) §2。mock から実 GAS への移行手順は [docs/MOCK-TO-PRODUCTION.md](docs/MOCK-TO-PRODUCTION.md)。機能の TDD 用洗い出しは [docs/TDD-FEATURE-INVENTORY.md](docs/TDD-FEATURE-INVENTORY.md)、テストのスコープ・Phase は [docs/TEST-DESIGN.md](docs/TEST-DESIGN.md)（**§1.2** が計画の正本）、テストの進め方は [6 ステップ](docs/TEST-DESIGN.md#204-機能ごとの実装フロー6-ステップ)、テストの書き方は [docs/TEST-TEMPLATES.md](docs/TEST-TEMPLATES.md) を参照。
+技術仕様の整理は [docs/TECHNICAL-SPEC.md](docs/TECHNICAL-SPEC.md) を参照。本番データの保存先は [docs/SPREADSHEET-DATA.md](docs/SPREADSHEET-DATA.md)（Google スプレッドシート）。セキュリティ要件・実装状況は [docs/SECURITY.md](docs/SECURITY.md)。**いま何が動いているか**は [実装状況（一覧）](#実装状況一覧) および [docs/DOC-ALIGNMENT.md](docs/DOC-ALIGNMENT.md) §2。mock から実 GAS への移行手順は [docs/MOCK-TO-PRODUCTION.md](docs/MOCK-TO-PRODUCTION.md)。機能の TDD 用洗い出しは [docs/TDD-FEATURE-INVENTORY.md](docs/TDD-FEATURE-INVENTORY.md)、テストのスコープ・Phase は [docs/TEST-DESIGN.md](docs/TEST-DESIGN.md)（**§1.2** が計画の正本）、テストの進め方は [6 ステップ](docs/TEST-DESIGN.md#204-機能ごとの実装フロー6-ステップ)、テストの書き方は [docs/TEST-TEMPLATES.md](docs/TEST-TEMPLATES.md) を参照。
 
 ## 目次
 
@@ -39,11 +39,13 @@
 
 **OJT 整理ロジック** — **最小実装済み**（`shared/src/ojtExport.ts` / `ojtExport.test.ts` は Green。UI・ファイル出力は未）
 
-**本番 Sheet API** — **最小実装済み**（GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、画面配線、管理画面からの研修コード変更・管理者コード変更・**全回答削除**（`POST responses/clear`）、回答取得時の `roomId` は Sheet 上の研修回を使用（local の seed と混同しない）。GAS 更新時は [gas/APPSCRIPT-COPY.md](gas/APPSCRIPT-COPY.md) の手順で **新しいデプロイ** が必要（エディタ実行だけでは URL の API は変わらない）
+**本番 Sheet API** — **最小実装済み**（GAS、`storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、画面配線、管理画面からの研修コード変更・管理者コード変更・**全回答削除**（`POST responses/clear`）、回答取得時の `roomId` は Sheet 上の研修回を使用（local の seed と混同しない）。管理者 `token` は **POST ボディ送信**、回答取得は **`POST responses/query`**（[SECURITY.md](docs/SECURITY.md) SEC-SECRET-01）。`Code.gs` 更新は「デプロイを管理 → 既存デプロイを編集 → 新バージョン」で反映し、**URL は変えない**（[gas/README.md](gas/README.md)・[gas/APPSCRIPT-COPY.md](gas/APPSCRIPT-COPY.md)）
+
+**セキュリティ** — 管理者 token の **ボディ送信**（SEC-SECRET-01）、**HTTPS 必須**（SEC-NET-01。開発・E2E のみ `localhost`/`127.0.0.1` を許可）、**数式インジェクション対策**（SEC-INPUT-01）を実装済み。ハッシュは現状 **単純 SHA-256**（SEC-SECRET-02 は本番開始時に再導入予定）。要件一覧・テスト対応は [docs/SECURITY.md](docs/SECURITY.md)
 
 **管理者画面 UI** — 初回読込のみブロッキング loader、再読込・回答一覧はスピナー。入室・保存・削除など **主要ボタンは押下後にボタン内スピナー**（`ActionButton`）。入室後は「管理者コード入力に戻る」でログアウト可能
 
-**自動テスト** — 詳細は [自動テストと CI](#自動テストと-ci)。Vitest **18 files / 127 tests** Green。実 GAS 到達性は `npm run smoke:phase1-sheet`（`settings` / `responses/clear` / `rooms/access-code` 等）
+**自動テスト** — 詳細は [自動テストと CI](#自動テストと-ci)。Vitest **19 files / 135 tests** Green。mock E2E（Playwright）は `workers: 1` で直列実行。実 GAS 到達性は `npm run smoke:phase1-sheet`（`settings` / `responses/clear` / `rooms/access-code` 等）
 
 **未完了（本番寄せ）** — 複数 `client` / 複数 `room` の実環境分離確認（手動 A・**デモのためステイ**）、OJT 管理者 UI、実 PDF 目視、フェーズ 2 チェック 4〜6 の未記録項目
 
@@ -116,7 +118,7 @@ http://localhost:5174/admin/embed-preview.html
 - **`admin-web`** — `AdminPage` の代表 UI、`useAppData` の結合
 - **`participant-web`** — `ParticipantPage` の研修コードと名前欄
 
-現状 **18 files / 127 tests** Green。
+現状 **19 files / 135 tests** Green。
 
 ```bash
 npm run install:all   # 初回・CI と同様（ルート + 両 Web）
@@ -132,24 +134,25 @@ npm run test:e2e:real-sheet  # 実 GAS（opt-in・5 本・preflight 含む。.en
 
 #### GitHub Actions（最小 CI・実装済み）
 
-ワークフロー: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)（`main` で Vitest・型チェック・ビルドまで Green 確認済み）
+ワークフロー: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)（`main` で env 混入チェック・Vitest・型チェック・ビルド・mock E2E まで Green 確認済み）
 
 **いつ動くか** — `main` への push と、`main` 向け pull request。
 
 **何をするか**（秘密情報不要）
 
-1. `npm run install:all` — ルートだけ `npm install` では足りない（後述）
-2. `npm test`
-3. 両アプリの `typecheck`
-4. `npm run build:all`
+1. `npm run check:no-env` — `.env.*` がトラッキングされていないか確認
+2. `npm run install:all` — ルートだけ `npm install` では足りない（後述）
+3. `npm test`
+4. 両アプリの `typecheck`
+5. `npm run build:all`
+6. Playwright（chromium）導入 → `npm run test:e2e`（Sheet API mock。実 GAS は env 未設定で自動 skip）
 
-**結果の見方** — GitHub リポジトリの **Actions** タブ。緑ならマージしてよい状態（Vitest + 型 + ビルド）。
+**結果の見方** — GitHub リポジトリの **Actions** タブ。緑ならマージしてよい状態（env チェック + Vitest + 型 + ビルド + mock E2E）。
 
 **おすすめの次の一手（リポジトリ設定）** — Settings → Branches → `main` にブランチ保護を付け、「Required status checks」で上記 CI ワークフローを必須にする。PR が赤のままマージされるのを防げる。
 
 **まだ CI に入れていないもの**
 
-- `npm run test:e2e` — Playwright + Sheet API モック（数分かかる。第 2 段階で別ワークフロー化を想定）
 - `npm run test:e2e:real-sheet` — 実 GAS / 実シート（`.env` や GitHub Secrets が必要。PR 毎は非推奨）
 - 手動のみの確認 — 実 PDF 目視、本番 iframe、複数 client/room の実環境確認
 
@@ -518,6 +521,8 @@ ExpertEye360は、360°現場を見た受講者の**判断を記録・可視化*
 ## 入室とマルチテナント
 
 契約組織ごとにデータを分離する（**`clientId`**）。同一組織内では研修回ごとに回答を分離する（**`roomId`**）。受講者と管理者で使うコードは **別物** である。
+
+**配布 URL** — 受講者・管理者とも **全員同じ URL** を使う（会社ごとに URL を変えない）。データの分離は **研修コード** と **管理者コード** で行う。詳細フェーズは [docs/REMAINING-IMPLEMENTATION.md §6](docs/REMAINING-IMPLEMENTATION.md#6-コードベース分離url-固定方針)。
 
 #### 受講者（研修コード）
 

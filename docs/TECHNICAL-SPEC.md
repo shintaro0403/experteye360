@@ -845,20 +845,20 @@ sequenceDiagram
   T->>A: 管理者 iframe を開く<br/>?client= → 管理者コード入力
   A->>A: 管理者コード検証（adminTokenHash）
   A->>S: loadSettings()
-  S->>API: GET /settings?client=&token=
+  S->>API: GET /settings?client=
   API->>SS: settings シート（settings_json）
   API-->>S: AppSettings
   S-->>A: カード設定・回答表示
 
   T->>A: カード内容を編集して保存
   A->>S: saveSettings(settings)
-  S->>API: POST /settings?client=&token=
+  S->>API: POST /settings?client=（body: token+settings）
   API->>SS: settings 上書き + audit_logs 追記
   API-->>S: 200 OK
 
   T->>A: ダッシュボードで回答一覧
   A->>S: loadResponses()
-  S->>API: GET /responses?client=&room=&token=
+  S->>API: POST /responses/query?client=&room=（body: token）
   API->>SS: responses を room_id で絞り込み
   API-->>S: ParticipantSubmission[]
   S-->>A: 一覧・個別表示（5 問 rounds）
@@ -912,7 +912,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-  REQ["HTTPS リクエスト<br/>?client=acme-factory&room=...&token=..."]
+  REQ["HTTPS リクエスト<br/>?client=acme-factory&room=...（管理者 token は POST ボディ）"]
   REQ --> LOOKUP["マスターブック clients シート"]
   LOOKUP -->|clientId 不明| E400["400 Bad Request"]
   LOOKUP -->|enabled = false| E403["403 Forbidden"]
@@ -920,7 +920,7 @@ flowchart TD
   OPEN --> BR{"操作種別"}
   BR -->|GET/POST settings| SH["settings シート"]
   BR -->|GET/POST rooms| RM["rooms シート"]
-  BR -->|GET/POST responses| RS["responses シート<br/>（room_id で絞り込み）"]
+  BR -->|POST responses / responses/query| RS["responses シート<br/>（room_id で絞り込み）"]
   BR -->|管理者変更| AL["audit_logs 追記"]
 ```
 
@@ -1019,6 +1019,7 @@ flowchart LR
 #### API
 
 **方針** — Sheet API は `client` + `token`（書込）。認可はロールベース（**要決定**）。受講者は回答 POST のみ、管理者は settings / responses 読書
+**実装済み** — 管理者 `token` は **POST ボディ送信**（URL クエリに載せない／SEC-SECRET-01）。回答取得は `POST responses/query`。通信は **HTTPS 必須**（開発・E2E のみ `localhost`/`127.0.0.1` の http 許可／SEC-NET-01）。シート書き込みは **数式インジェクション対策**済み（SEC-INPUT-01）。`adminTokenHash` / `accessCodeHash` は現状 **単純 SHA-256**（SEC-SECRET-02 は本番開始時に再導入予定）。詳細・優先度・テスト対応は [SECURITY.md](./SECURITY.md)
 
 #### スプレッドシート
 
@@ -1040,6 +1041,11 @@ flowchart LR
 ---
 
 ## 9. 改訂履歴
+
+#### 1.3
+
+**日付** — 2026-06-05
+**内容** — セキュリティ実装を反映。§5.1.3 シーケンスと §5.1.5 図を新 API 契約（管理者 `token` は POST ボディ、回答取得は `POST responses/query`）に更新。§7 API にHTTPS 必須・数式インジェクション対策・ハッシュ方針を追記し [SECURITY.md](./SECURITY.md) を参照
 
 #### 1.2
 

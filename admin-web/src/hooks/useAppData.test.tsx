@@ -77,6 +77,36 @@ describe("useAppData", () => {
     expect(text("count")).toBe("1");
   });
 
+  it("ISOLATE-2: adminRoomId を loadResponsesAsync に渡す", async () => {
+    const multiRoomSettings = makeSettings({
+      rooms: [
+        {
+          roomId: "room-0403",
+          displayName: "4月3日",
+          accessCode: "0403",
+          adminAccessCode: "2001",
+          enabled: true,
+        },
+        {
+          roomId: "room-0505",
+          displayName: "5月5日",
+          accessCode: "0505",
+          adminAccessCode: "3001",
+          enabled: true,
+        },
+      ],
+    });
+    loadSettingsAsync.mockResolvedValueOnce(multiRoomSettings);
+    await renderProbe({ adminToken: "3001", adminRoomId: "room-0505" });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(loadResponsesAsync).toHaveBeenCalledWith({
+      roomId: "room-0505",
+      adminToken: "3001",
+    });
+  });
+
   it("初回読込後の手動 refresh で settings を再取得する（blocking loader は appDataLoad で検証）", async () => {
     await renderProbe({ adminToken: "admin-demo-2026" });
     await act(async () => {

@@ -21,6 +21,7 @@ export function normalizeAppSettings(settings: AppSettings): AppSettings {
           roomId: r.roomId?.trim() || "room-1",
           displayName: r.displayName?.trim() || "研修回",
           accessCode: r.accessCode?.trim() || "",
+          adminAccessCode: r.adminAccessCode?.trim() || "",
           enabled: r.enabled !== false,
         }))
       : [...DEFAULT_TRAINING_ROOMS];

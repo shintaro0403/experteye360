@@ -238,7 +238,8 @@ describe("storage（local）", () => {
 export type ApiQuery = {
   client: string;       // clientId（必須）
   room?: string;        // roomId（受講者 POST responses 等で必須）
-  token?: string;       // 管理者コード（管理者 GET/POST で必須）
+  // token は URL クエリに載せず POST ボディで送る（SEC-SECRET-01）。
+  // 旧クライアント互換のため GAS 側はクエリの token もフォールバックで読む。
 };
 ```
 
@@ -260,10 +261,15 @@ export type ApiErrorBody = {
 
 **POST `settings`**
 
-- **リクエスト body**: `AppSettings`
+- **リクエスト body**: `{ token, settings }`（管理者 token はボディ／SEC-SECRET-01。旧 `AppSettings` 直送りも後方互換）
 - **成功時レスポンス body**: 空、または `{ ok: true }`（実装時に 1 つに固定）
 
-**GET `responses`**
+**POST `responses/query`**（回答取得・推奨）
+
+- **リクエスト body**: `{ token }`（管理者 token はボディ／SEC-SECRET-01）
+- **成功時レスポンス body**: `ParticipantSubmission[]`
+
+**GET `responses`**（後方互換・非推奨。token をクエリに載せるため新規利用は `responses/query`）
 
 - **リクエスト body**: なし
 - **成功時レスポンス body**: `ParticipantSubmission[]`

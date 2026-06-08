@@ -8,7 +8,6 @@ import {
   resolveResponsesRoomId,
   shouldShowBlockingLoader,
 } from "./appDataLoad";
-import { makeSettings } from "./test/fixtures";
 import { makeSettings, makeSubmission } from "./test/fixtures";
 
 describe("appDataLoad（UI 応答性）", () => {
@@ -29,6 +28,29 @@ describe("appDataLoad（UI 応答性）", () => {
       ],
     });
     expect(resolveResponsesRoomId(sheetSettings)).toBe("demo-room-001");
+  });
+
+  it("ISOLATE-2: adminRoomId があれば primaryTrainingRoom より優先する", () => {
+    const settings = makeSettings({
+      rooms: [
+        {
+          roomId: "room-0403",
+          displayName: "4月3日",
+          accessCode: "0403",
+          adminAccessCode: "2001",
+          enabled: true,
+        },
+        {
+          roomId: "room-0505",
+          displayName: "5月5日",
+          accessCode: "0505",
+          adminAccessCode: "3001",
+          enabled: true,
+        },
+      ],
+    });
+    expect(resolveResponsesRoomId(settings, "room-0505")).toBe("room-0505");
+    expect(resolveResponsesRoomId(settings)).toBe("room-0403");
   });
 
   it("2回目以降の refresh は background モードになる", () => {

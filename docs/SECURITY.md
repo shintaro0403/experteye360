@@ -103,7 +103,7 @@
 
 **経路** — GAS 実行トランスクリプト（`e.parameter`）、ブラウザ履歴、プロキシ・アクセスログ、`Referer` ヘッダ。
 
-**現状** — `token` を **URL クエリで送信**（`storage/sheet.ts` の `buildUrl`、`Code.gs` の `requiredParam_(e, "token")`）。**該当する。**
+**現状** — **解消済み（SEC-SECRET-01・2026-06-05）**。`token` は **POST ボディ**で送信し（`storage/sheet.ts`）、回答取得は `POST responses/query` に変更。GAS は `tokenFromRequest_` でボディ優先・クエリはフォールバック（旧クライアント互換）。後方互換で旧 `GET responses?token=` を残す間は、その経路のみ T-01 が残存。
 
 #### T-02 — 秘密コードの総当たり・推測
 
@@ -127,7 +127,7 @@
 
 **脅威** — `participant_name` 等に `=IMPORTDATA(...)` / `=HYPERLINK(...)` を入れ、シートを開いた管理者の環境で式実行・情報送出。
 
-**現状** — 入力値を **そのままセルに書き込み**（`appendObject_`）。サニタイズなし。**該当する。**
+**現状** — **解消済み（SEC-INPUT-01・2026-06-05）**。`=` `+` `-` `@` `タブ` `CR` `LF` 始まりの文字列は書き込み時に `'` を前置（`sanitizeSpreadsheetCell` / GAS `sanitizeCell_`、`appendObject_` / `updateRow_` で適用）。
 
 #### T-06 — テナント越境
 
@@ -162,19 +162,22 @@
 #### 実装済み（良い点）
 
 1. **秘密はハッシュのみ保存** — `adminTokenHash` / `accessCodeHash`。平文の研修コード・管理者コードはシートに無い（`Code.gs`・[gas/README.md](../gas/README.md)）。
-2. **テナント・研修回分離** — `resolveClient_`（不明 client は 400、`enabled=false` は 403）、`verifyRoomId_`、`GET responses` は `room_id` 一致のみ返す。
-3. **管理者操作の認可** — `verifyAdminToken_` を `POST settings` / `GET responses` / `responses/clear` / `rooms/access-code` / `admin/token` に適用。
+2. **テナント・研修回分離** — `resolveClient_`（不明 client は 400、`enabled=false` は 403）、`verifyRoomId_`、`POST responses/query`（旧 `GET responses`）は `room_id` 一致のみ返す。
+3. **管理者操作の認可** — `verifyAdminToken_` を `POST settings` / `POST responses/query`（旧 `GET responses`）/ `responses/clear` / `rooms/access-code` / `admin/token` に適用。
 4. **コード変更は現行 token 必須** — `handleChangeAdminToken_` / `handleChangeRoomAccessCode_` は現行 token 照合後のみ更新。
 5. **監査ログ** — 設定保存・回答削除・コード変更を `audit_logs` に追記（`appendAuditLog_`）。
 6. **エラーで内部を晒しすぎない** — 例外は `{ ok:false, status, error }` に集約（`handleRequest_`）。
+7. **token はボディ送信（SEC-SECRET-01）** — URL クエリに秘密を載せない（`storage/sheet.ts`・`tokenFromRequest_`）。
+8. **HTTPS 必須（SEC-NET-01）** — `storage/sheet.ts` が `https://` 以外を送信前に拒否（`localhost`/`127.0.0.1` の http のみ許可）。
+9. **式インジェクション対策（SEC-INPUT-01）** — `sanitizeSpreadsheetCell` / `sanitizeCell_`。
 
 #### 設計上の弱点（要改善・§4 で要件化）
 
-1. **token を URL クエリで送信**（T-01）。
-2. **ソルトなし単純 SHA-256**（T-03）。
+1. ~~**token を URL クエリで送信**（T-01）~~ → **解消（SEC-SECRET-01）**。旧 `GET responses?token=` を残す間のみ残存。
+2. **ソルトなし単純 SHA-256**（T-03。SEC-SECRET-02 は本番開始時に再導入予定）。
 3. **`POST responses` が無認証**（研修コードは入室時のみ照合。送信自体は `client` + `room` だけで通る。T-04）。
 4. **CORS / オリジン制限なし**（T-04）。
-5. **式インジェクション未対策**（T-05）。
+5. ~~**式インジェクション未対策**（T-05）~~ → **解消（SEC-INPUT-01）**。
 6. **レート制限なし**（T-02）。
 7. **PII 平文・保持期間未定**（T-08）。
 8. **`Logger.log` にデモ秘密が出る**（`resetDemoTrainingCode` 等。デモ用途のみだが本番では避ける）。

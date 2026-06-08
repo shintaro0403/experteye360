@@ -51,6 +51,8 @@ export type TrainingRoom = {
   displayName: string;
   /** 受講者が入力する平文コード（本番は API 側でハッシュ照合） */
   accessCode: string;
+  /** 管理者が入力する平文コード（本番は rooms.adminTokenHash で照合予定） */
+  adminAccessCode?: string;
   enabled: boolean;
 };
 

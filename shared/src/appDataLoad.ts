@@ -19,8 +19,16 @@ export function resolveRefreshMode(hasLoadedOnce: boolean): RefreshMode {
   return hasLoadedOnce ? "background" : "initial";
 }
 
-/** Sheet API の GET responses に渡す roomId。Sheet から読んだ settings を正とする。 */
-export function resolveResponsesRoomId(settings: AppSettings): string {
+/** Sheet API の GET responses に渡す roomId。adminRoomId があればそれを優先。 */
+export function resolveResponsesRoomId(
+  settings: AppSettings,
+  adminRoomId?: string | null,
+): string {
+  const scoped = adminRoomId?.trim();
+  if (scoped) {
+    const match = settings.rooms.find((room) => room.roomId === scoped && room.enabled !== false);
+    if (match) return match.roomId;
+  }
   return primaryTrainingRoom(settings).roomId;
 }
 

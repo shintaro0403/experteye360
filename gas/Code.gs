@@ -17,7 +17,7 @@ const DEMO_CONFIG = {
 const SHEET_HEADERS = {
   clients: ["clientId", "spreadsheetId", "displayName", "enabled", "adminTokenHash"],
   settings: ["key", "settings_json", "updated_at"],
-  rooms: ["roomId", "displayName", "enabled", "accessCodeHash", "startsAt", "endsAt"],
+  rooms: ["roomId", "displayName", "enabled", "accessCodeHash", "adminTokenHash", "startsAt", "endsAt"],
   responses: [
     "id",
     "created_at",
@@ -80,11 +80,16 @@ function runLinkMyMaster() {
   linkMasterSpreadsheet(LINK_MASTER_SPREADSHEET_ID);
 }
 
-/** 管理者コードを admin-demo-2026 に戻す（マスター clients の hash を更新） */
+/** 管理者コードを admin-demo-2026 に戻す（マスター clients と rooms の hash を更新） */
 function resetDemoAdminToken() {
+  const hash = hashSecret_(DEMO_CONFIG.adminToken);
   const clientsSheet = getMasterClientsSheet_();
   updateRowByKey_(clientsSheet, "clientId", DEMO_CONFIG.clientId, {
-    adminTokenHash: hashSecret_(DEMO_CONFIG.adminToken),
+    adminTokenHash: hash,
+  });
+  const context = resolveClient_(DEMO_CONFIG.clientId);
+  updateRowByKey_(getSheet_(context.clientBook, "rooms"), "roomId", DEMO_CONFIG.roomId, {
+    adminTokenHash: hash,
   });
   Logger.log(`管理者コードを ${DEMO_CONFIG.adminToken} に戻しました`);
 }
@@ -143,7 +148,7 @@ function handleGetSettings_(e) {
 function handlePostSettings_(e) {
   const context = resolveClient_(requiredParam_(e, "client"));
   const body = readJsonBody_(e);
-  verifyAdminToken_(context.clientRecord, tokenFromRequest_(e, body));
+  verifyAdminTokenForSettings_(context.clientRecord, context.clientBook, tokenFromRequest_(e, body));
 
   // SEC-SECRET-01: 新契約は {token, settings}、旧契約は settings 直送りの両方を許容
   const settings = body && body.settings !== undefined ? body.settings : body;
@@ -165,18 +170,16 @@ function handlePostSettings_(e) {
 function handleQueryResponses_(e) {
   const context = resolveClient_(requiredParam_(e, "client"));
   const body = readJsonBody_(e);
-  verifyAdminToken_(context.clientRecord, tokenFromRequest_(e, body));
   const roomId = requiredParam_(e, "room");
-  verifyRoomId_(context.clientBook, roomId);
+  verifyAdminTokenForRoom_(context.clientRecord, context.clientBook, roomId, tokenFromRequest_(e, body));
   return queryResponses_(context.clientBook, roomId);
 }
 
 // 旧経路（token をクエリで受ける GET）。後方互換のため残す
 function handleGetResponses_(e) {
   const context = resolveClient_(requiredParam_(e, "client"));
-  verifyAdminToken_(context.clientRecord, requiredParam_(e, "token"));
   const roomId = requiredParam_(e, "room");
-  verifyRoomId_(context.clientBook, roomId);
+  verifyAdminTokenForRoom_(context.clientRecord, context.clientBook, roomId, requiredParam_(e, "token"));
   return queryResponses_(context.clientBook, roomId);
 }
 
@@ -190,9 +193,8 @@ function queryResponses_(clientBook, roomId) {
 function handleClearResponses_(e) {
   const context = resolveClient_(requiredParam_(e, "client"));
   const body = readJsonBody_(e);
-  verifyAdminToken_(context.clientRecord, tokenFromRequest_(e, body));
   const roomId = requiredParam_(e, "room");
-  verifyRoomId_(context.clientBook, roomId);
+  verifyAdminTokenForRoom_(context.clientRecord, context.clientBook, roomId, tokenFromRequest_(e, body));
 
   const responsesSheet = getSheet_(context.clientBook, "responses");
   const deletedCount = deleteRowsWhere_(responsesSheet, "room_id", roomId);
@@ -247,14 +249,12 @@ function handleVerifyRoom_(e) {
 function handleChangeRoomAccessCode_(e) {
   const context = resolveClient_(requiredParam_(e, "client"));
   const body = readJsonBody_(e);
-  verifyAdminToken_(context.clientRecord, tokenFromRequest_(e, body));
-
   const roomId = normalizeSecret_(body.roomId);
   const nextAccessCode = normalizeSecret_(body.nextAccessCode);
   if (!roomId) throw apiError_(400, "roomId is required");
   if (!nextAccessCode) throw apiError_(400, "nextAccessCode is required");
 
-  verifyRoomId_(context.clientBook, roomId);
+  verifyAdminTokenForRoom_(context.clientRecord, context.clientBook, roomId, tokenFromRequest_(e, body));
   updateRowByKey_(getSheet_(context.clientBook, "rooms"), "roomId", roomId, {
     accessCodeHash: hashSecret_(nextAccessCode),
   });
@@ -269,15 +269,39 @@ function handleChangeAdminToken_(e) {
   const clientId = requiredParam_(e, "client");
   const context = resolveClient_(clientId);
   const body = readJsonBody_(e);
-  verifyAdminToken_(context.clientRecord, tokenFromRequest_(e, body));
-
+  const token = tokenFromRequest_(e, body);
   const nextAdminToken = normalizeSecret_(body.nextAdminToken);
   if (!nextAdminToken) throw apiError_(400, "nextAdminToken is required");
 
+  const roomId = normalizeSecret_(body.roomId);
+  const nextHash = hashSecret_(nextAdminToken);
+  if (roomId) {
+    verifyAdminTokenForRoom_(context.clientRecord, context.clientBook, roomId, token);
+    updateRowByKey_(getSheet_(context.clientBook, "rooms"), "roomId", roomId, {
+      adminTokenHash: nextHash,
+    });
+    appendAuditLog_(context.clientBook, "admin", "room.adminToken.change", `room:${roomId}`, {
+      changedAt: nowIso_(),
+    });
+    return { ok: true };
+  }
+
+  verifyAdminToken_(context.clientRecord, token);
+
   const clientsSheet = getMasterClientsSheet_();
   updateRowByKey_(clientsSheet, "clientId", clientId, {
-    adminTokenHash: hashSecret_(nextAdminToken),
+    adminTokenHash: nextHash,
   });
+
+  const oldHash = hashSecret_(token);
+  const roomsSheet = getSheet_(context.clientBook, "rooms");
+  readObjects_(roomsSheet).forEach(function (row) {
+    const roomHash = normalizeSecret_(row.adminTokenHash);
+    if (!roomHash || roomHash === oldHash) {
+      updateRowByKey_(roomsSheet, "roomId", row.roomId, { adminTokenHash: nextHash });
+    }
+  });
+
   appendAuditLog_(context.clientBook, "admin", "admin.token.change", `client:${clientId}`, {
     changedAt: nowIso_(),
   });
@@ -314,6 +338,7 @@ function setupClientBook_(clientBook) {
     displayName: DEMO_CONFIG.roomDisplayName,
     enabled: true,
     accessCodeHash: hashSecret_(DEMO_CONFIG.trainingCode),
+    adminTokenHash: hashSecret_(DEMO_CONFIG.adminToken),
     startsAt: "",
     endsAt: "",
   });
@@ -425,6 +450,31 @@ function verifyAdminToken_(clientRecord, token) {
   if (clientRecord.adminTokenHash !== hashSecret_(token)) {
     throw apiError_(401, "Invalid admin token");
   }
+}
+
+function verifyAdminTokenForRoom_(clientRecord, clientBook, roomId, token) {
+  const room = verifyRoomId_(clientBook, roomId);
+  const roomHash = normalizeSecret_(room.adminTokenHash);
+  if (roomHash) {
+    if (hashSecret_(token) !== roomHash) throw apiError_(401, "Invalid admin token");
+    return room;
+  }
+  verifyAdminToken_(clientRecord, token);
+  return room;
+}
+
+function verifyAdminTokenForSettings_(clientRecord, clientBook, token) {
+  if (isAdminTokenValidForClientOrAnyRoom_(clientRecord, clientBook, token)) return;
+  throw apiError_(401, "Invalid admin token");
+}
+
+function isAdminTokenValidForClientOrAnyRoom_(clientRecord, clientBook, token) {
+  const normalized = hashSecret_(token);
+  if (clientRecord.adminTokenHash === normalized) return true;
+  const rooms = readObjects_(getSheet_(clientBook, "rooms"));
+  return rooms.some(function (room) {
+    return asBoolean_(room.enabled) && normalizeSecret_(room.adminTokenHash) === normalized;
+  });
 }
 
 function verifyRoomId_(clientBook, roomId) {

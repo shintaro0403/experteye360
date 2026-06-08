@@ -112,7 +112,7 @@
 
 **どのようにテストするか** — client A / room A に回答を送る。別 client または別 room の管理画面を開き、その回答が表示されないことを確認する。正しい client + room では表示されることも確認する
 
-**コード上の期待値** — `GET responses?client=client-a&room=room-a` は room A の回答だけを返す。`room-b` への GET には room A の `submission.id` が含まれない。不正 `client` / `room` はエラー結果を返す
+**コード上の期待値** — `POST responses/query?client=client-a&room=room-a`（管理者 token はボディ）は room A の回答だけを返す。`room-b` への取得には room A の `submission.id` が含まれない。不正 `client` / `room` はエラー結果を返す
 
 **成功条件** — 同一 `client` + 同一 `room` の回答だけが見える。不正な `client` / `room` はエラーになり、画面が壊れない
 

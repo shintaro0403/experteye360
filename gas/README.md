@@ -52,9 +52,11 @@ room表示名: デモ研修 001
 **シート**:
 
 - `settings`
-- `rooms`
+- `rooms`（列: `roomId`, `displayName`, `enabled`, `accessCodeHash`, **`adminTokenHash`**, `startsAt`, `endsAt`）
 - `responses`
 - `audit_logs`
+
+**既存ブックへの移行（ISOLATE-3）** — `rooms` シートの 1 行目に **`adminTokenHash`** 列を `accessCodeHash` の右に追加する。空のままなら `clients.adminTokenHash` にフォールバック。デモ復元は `resetDemoAdminToken()`（client + demo room の hash を更新）。
 
 ## GAS の作成手順
 
@@ -76,7 +78,11 @@ room表示名: デモ研修 001
 
 Web App URL はフロントの `VITE_SHEET_API_BASE` に設定します。
 
-**重要** — `Code.gs` を更新しただけでは公開 URL の挙動は変わりません。研修コード変更（`rooms/access-code`）や管理者コード変更（`admin/token`）を使う場合は、必ず **「新しいデプロイ」** を作成し、表示された URL を `VITE_SHEET_API_BASE` に反映してください。古いデプロイのままだと管理画面で「Unknown route: POST rooms/access-code」となり、研修コードの保存に失敗します。
+**重要** — `Code.gs` を貼り替えて保存しただけでは公開 URL の挙動は変わりません。反映するには「デプロイ」→「**デプロイを管理**」→ 既存デプロイの**編集（鉛筆）**→ バージョン「**新バージョン**」→「デプロイ」まで実行します。
+
+- **URL を変えたくないとき（推奨）** — 上記のように **既存デプロイを編集**する。デプロイ ID は不変なので `VITE_SHEET_API_BASE` の URL は変わりません。
+- 「**新しいデプロイ**」を選ぶと**別の URL が発行される**ため、`VITE_SHEET_API_BASE` の貼り替えが必要になります。意図しない限り選ばないでください。
+- 反映前の古いデプロイのままだと、新ルート（`POST responses/query` など）で「Unknown route」となり、回答取得や研修コード保存に失敗します。
 
 確認: `npm run smoke:phase1-sheet` が `POST rooms/access-code ルートあり` まで Green であること。
 
@@ -87,6 +93,12 @@ Web App URL はフロントの `VITE_SHEET_API_BASE` に設定します。
 POST 系 API はすべて、ブラウザの CORS preflight を避けるため JSON 文字列を `Content-Type: text/plain;charset=utf-8` で送ります。GAS 側は `e.postData.contents` を `JSON.parse` します。
 
 Apps Script Web App は `/exec/settings` のようなパス形式だと POST で失敗することがあるため、フロントからは `?path=settings` のように `path` クエリで API 種別を渡します。
+
+**管理者 token の送り方（SEC-SECRET-01）** — 管理者 `token` は **URL クエリに載せず POST ボディ**で送ります（ブラウザ履歴・GAS 実行ログ・Referer への漏えい防止）。GAS は `tokenFromRequest_(e, body)` で **ボディの `token` を優先**し、無ければ旧クライアント互換でクエリの `token` をフォールバック参照します。読み取り（回答一覧）は `GET responses` をやめ **`POST responses/query`**（token はボディ）を使います。旧 `GET responses`（token クエリ）も後方互換で残してあります。
+
+**HTTPS 必須（SEC-NET-01）** — フロント（`storage/sheet.ts`）は `VITE_SHEET_API_BASE` が `https://` 以外だとリクエスト前に例外を投げます（開発・E2E 用に `localhost` / `127.0.0.1` の http のみ許可）。
+
+**数式インジェクション対策（SEC-INPUT-01）** — シート書き込み時に `sanitizeCell_` が `=` `+` `-` `@` `タブ` `CR` `LF` 始まりの文字列へ `'` を前置します。
 
 ### GET settings
 
@@ -99,20 +111,30 @@ GET {VITE_SHEET_API_BASE}?path=settings&client=lipronext-demo
 ### POST settings
 
 ```text
-POST {VITE_SHEET_API_BASE}?path=settings&client=lipronext-demo&token=admin-demo-2026
+POST {VITE_SHEET_API_BASE}?path=settings&client=lipronext-demo
 ```
 
-**body** — `AppSettings`
+**body** — `{ "token": "admin-demo-2026", "settings": <AppSettings> }`（旧形式の `AppSettings` 直送り + token クエリも後方互換で受理）
 
 **成功** — `{ "ok": true }`
 
-### GET responses
+### POST responses/query（回答取得・推奨）
+
+```text
+POST {VITE_SHEET_API_BASE}?path=responses/query&client=lipronext-demo&room=demo-room-001
+```
+
+**body** — `{ "token": "admin-demo-2026" }`
+
+**成功** — `ParticipantSubmission[]` を返す
+
+### GET responses（後方互換・非推奨）
 
 ```text
 GET {VITE_SHEET_API_BASE}?path=responses&client=lipronext-demo&room=demo-room-001&token=admin-demo-2026
 ```
 
-**成功** — `ParticipantSubmission[]` を返す
+**成功** — `ParticipantSubmission[]` を返す（token をクエリに載せるため新規利用は `responses/query` を使う）
 
 ### POST responses
 
@@ -145,13 +167,13 @@ POST {VITE_SHEET_API_BASE}?path=rooms/verify&client=lipronext-demo
 ### POST rooms/access-code
 
 ```text
-POST {VITE_SHEET_API_BASE}?path=rooms/access-code&client=lipronext-demo&token=admin-demo-2026
+POST {VITE_SHEET_API_BASE}?path=rooms/access-code&client=lipronext-demo
 ```
 
 **body**:
 
 ```json
-{ "roomId": "demo-room-001", "nextAccessCode": "demo-2027" }
+{ "token": "admin-demo-2026", "roomId": "demo-room-001", "nextAccessCode": "demo-2027" }
 ```
 
 **成功** — `{ "ok": true }`
@@ -161,13 +183,13 @@ POST {VITE_SHEET_API_BASE}?path=rooms/access-code&client=lipronext-demo&token=ad
 ### POST admin/token
 
 ```text
-POST {VITE_SHEET_API_BASE}?path=admin/token&client=lipronext-demo&token=admin-demo-2026
+POST {VITE_SHEET_API_BASE}?path=admin/token&client=lipronext-demo
 ```
 
 **body**:
 
 ```json
-{ "nextAdminToken": "new-admin-code" }
+{ "token": "admin-demo-2026", "nextAdminToken": "new-admin-code" }
 ```
 
 **成功** — `{ "ok": true }`

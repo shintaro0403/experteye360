@@ -20,6 +20,7 @@ import {
 
 export type UseAppDataOptions = {
   adminToken?: string | null;
+  adminRoomId?: string | null;
 };
 
 export function useAppData(options: UseAppDataOptions = {}) {
@@ -35,7 +36,7 @@ export function useAppData(options: UseAppDataOptions = {}) {
   const refresh = useCallback(async (input?: { scope?: RefreshScope }) => {
     const mode = resolveRefreshMode(hasLoadedOnceRef.current);
     const scope = input?.scope ?? "all";
-    const { adminToken } = optionsRef.current;
+    const { adminToken, adminRoomId } = optionsRef.current;
     setRefreshing(true);
     try {
       if (shouldShowBlockingLoader(mode)) {
@@ -46,7 +47,7 @@ export function useAppData(options: UseAppDataOptions = {}) {
       const nextSettings = await loadSettingsAsync();
       setSettingsState(nextSettings);
       if (scope === "all" && adminToken?.trim()) {
-        const roomId = resolveResponsesRoomId(nextSettings);
+        const roomId = resolveResponsesRoomId(nextSettings, adminRoomId);
         const nextResponses = await loadResponsesAsync({
           roomId,
           adminToken,
@@ -67,7 +68,7 @@ export function useAppData(options: UseAppDataOptions = {}) {
   useEffect(() => {
     hasLoadedOnceRef.current = false;
     void refresh();
-  }, [options.adminToken, refresh]);
+  }, [options.adminToken, options.adminRoomId, refresh]);
 
   useEffect(() => {
     const debounced = createDebounced(() => {
@@ -101,10 +102,10 @@ export function useAppData(options: UseAppDataOptions = {}) {
 
   const replaceResponses = useCallback(
     async (list: ParticipantSubmission[]) => {
-      const { adminToken } = optionsRef.current;
+      const { adminToken, adminRoomId } = optionsRef.current;
       await saveResponsesAsync(list, {
         adminToken,
-        roomId: resolveResponsesRoomId(settings),
+        roomId: resolveResponsesRoomId(settings, adminRoomId),
       });
       setResponsesState(list);
     },

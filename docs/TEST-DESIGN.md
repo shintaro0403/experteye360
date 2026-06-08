@@ -562,7 +562,7 @@
 
 **誰が使う** — **管理者のみ**
 **役割** — 管理者 API・管理画面への入室。研修コードとは **別物**
-**永続化（本番）** — `clients.adminTokenHash`（API では `token` クエリ等）
+**永続化（本番）** — `clients.adminTokenHash`（API では `token` を **POST ボディ**で送る／SEC-SECRET-01）
 
 #### **`roomId`**
 
@@ -620,7 +620,7 @@
 
 **成功条件** — 正しい `token` では API が成功し、以降 `rooms/verify` は新コードだけを受け付ける。不正 `token` では 401 相当のエラーになり、既存コードは変更されない。存在しない `roomId` では 403 または 404 相当のエラーになる。
 
-**どのようにテストするか** — まず `sheetApi.test.ts` で fetch mock を使い、`POST ?path=rooms/access-code&client=...&token=...`、body `{ roomId, nextAccessCode }`、不正 token のエラー処理を Red → Green で固定する。その後 GAS 側を同じ契約に合わせる。画面 UI は API 契約が Green になってから別テストで扱う。
+**どのようにテストするか** — まず `sheetApi.test.ts` で fetch mock を使い、`POST ?path=rooms/access-code&client=...`、body `{ token, roomId, nextAccessCode }`（token はクエリに出さない／SEC-SECRET-01）、不正 token のエラー処理を Red → Green で固定する。その後 GAS 側を同じ契約に合わせる。画面 UI は API 契約が Green になってから別テストで扱う。
 
 **コード上の期待値** — `changeTrainingCodeViaApi({ apiBaseUrl, clientId, adminToken, roomId, nextAccessCode })` が `text/plain;charset=utf-8` で JSON body を POST する。呼び出し側は HTTP エラーと GAS の `{ ok: false, status }` JSON エラーを例外として扱う。
 
@@ -798,7 +798,7 @@
 **ID** — D-21
 **論点** — 管理者の回答一覧と `room`
 **候補（要約）** — 全 room 一覧 / UI で room 選択のみ（研修コード再入力なし）
-**影響** — `AdminPage`、`GET responses`
+**影響** — `AdminPage`、`POST responses/query`
 **決定** — —
 
 #### D-09
@@ -1572,6 +1572,8 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 
 契約は [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md) §4。`fetch` を mock し、**リクエストとパース結果**を検証する。
 
+**セキュリティ契約（実装済み・[SECURITY.md](./SECURITY.md)）** — 管理者操作は `token` を **URL クエリに出さず POST ボディ**で送る（SEC-SECRET-01）。回答取得は `GET responses` ではなく **`POST responses/query`**（token はボディ）。`VITE_SHEET_API_BASE` が `https://` 以外なら送信前に例外（SEC-NET-01。`localhost`/`127.0.0.1` の http のみ許可）。これらは `sheetApi.test.ts` で固定。シート書き込みの数式インジェクション対策（SEC-INPUT-01）は `shared/src/security/sanitizeCell.test.ts` で固定。
+
 #### TC-001
 
 - **重要度**: B
@@ -1587,7 +1589,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 #### TC-003
 
 - **重要度**: B
-- **内容**: `GET responses?client=acme`
+- **内容**: `POST responses/query?client=acme`（管理者 token はボディ）
 - **期待**: 配列・`created_at` 降順（または API がソート済みであること）
 
 #### TC-004
@@ -1617,7 +1619,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 #### TC-008
 
 - **重要度**: **A**
-- **内容**: `GET responses?client=acme&room=room-a` と `room-b` で一覧が分離
+- **内容**: `POST responses/query?client=acme&room=room-a` と `room-b` で一覧が分離
 - **期待**: room-a の POST が room-b 一覧に含まれない（S-03）
 
 #### TC-009
@@ -2020,7 +2022,10 @@ shared/src/
 │   ├── sheet.ts               # 新規（本番）
 │   └── index.ts
 ├── storage.test.ts            # local
-├── sheetApi.test.ts           # 新規
+├── sheetApi.test.ts           # API 契約（token ボディ・responses/query・HTTPS 強制）
+├── security/
+│   ├── sanitizeCell.ts        # 数式インジェクション対策（SEC-INPUT-01）
+│   └── sanitizeCell.test.ts
 ├── cardSlots.ts
 ├── cardSlots.test.ts
 ├── selection.ts

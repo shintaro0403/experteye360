@@ -2,7 +2,7 @@
 
 README・各 `docs/*.md`・コードの食い違いをなくすための **参照順** と **現状の一言** をまとめる。更新したら本ファイルの **最終確認日** も直す。
 
-**最終確認日**: 2026-06-05（フェーズ 3 real-sheet E2E 5 本。18 files / 127 tests Green）
+**最終確認日**: 2026-06-08（ISOLATE-1: コードベース分離方針を [REMAINING-IMPLEMENTATION.md §6](./REMAINING-IMPLEMENTATION.md#6-コードベース分離url-固定方針) に正本化。`adminRoom.test.ts` Green）
 
 ---
 
@@ -51,6 +51,10 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 **3 — [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)**
 
 - **役割**: **本番 DB・API 契約**（未実装の API もここが設計の正）
+
+**3b — [SECURITY.md](./SECURITY.md)**
+
+- **役割**: **セキュリティ要件・実装状況**（脅威モデル・優先度・テスト対応）の正
 
 **4 — [TEST-DESIGN.md](./TEST-DESIGN.md) §1.2**
 
@@ -133,14 +137,23 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 - **自動テスト** — `ojtExport.test` あり
 - **備考** — UI・ファイル出力は未
 
+**コードベース分離（URL 固定）**
+
+- **方針** — 受講者・管理者 URL は全員共通。分離は **研修コード**（受講者）と **管理者コード**（管理者）で行う。正本: [REMAINING-IMPLEMENTATION.md §6](./REMAINING-IMPLEMENTATION.md#6-コードベース分離url-固定方針)
+- **ISOLATE-1** — `resolveAdminRoomByCode`（`adminRoom.test.ts`）Green
+- **ISOLATE-3** — GAS `rooms.adminTokenHash` + `adminTokenVerify.test.ts` Green
+- **ISOLATE-4** — E2E クロス閲覧（`isolate-code-separation.spec.ts`）Green
+
 ```bash
-npm test          # ルート Vitest（shared + admin-web + participant-web）。現状 18 files / 127 tests Green
+npm test          # ルート Vitest（shared + admin-web + participant-web）。現状 21 files / 147 tests Green
 npm run test:watch
 ```
 
 **ローカル永続化** — `localStorage`。5173 / 5174 は **別オリジンで非共有**（README・SPEC と一致）。
 
-**本番永続化** — 研修コード・管理者コードは **ハッシュのみ**シート保存（SPREADSHEET-DATA）。local は平文照合。
+**本番永続化** — 研修コード・管理者コードは **ハッシュのみ**シート保存（現状 **単純 SHA-256**。SPREADSHEET-DATA・SECURITY）。local は平文照合。
+
+**API 契約（セキュリティ）** — 管理者 `token` は **POST ボディ**送信（URL クエリに出さない）、回答取得は **`POST responses/query`**、通信は **HTTPS 必須**、シート書き込みは **数式インジェクション対策**済み。詳細は [SECURITY.md](./SECURITY.md)。
 
 ---
 
@@ -209,3 +222,5 @@ npm run test:watch
 **0.3**（2026-05-21）— 横並び表を廃止し縦ブロックに統一。§0 記載ルールを追加
 
 **0.4**（2026-06-05）— フェーズ 2 別端末疎通記録。テスト件数 127 に更新
+
+**0.5**（2026-06-05）— セキュリティ実装（[SECURITY.md](./SECURITY.md)）を反映。管理者 token のボディ送信（SEC-SECRET-01）・`responses/query`・HTTPS 必須（SEC-NET-01）・数式インジェクション対策（SEC-INPUT-01）。ハッシュは単純 SHA-256 を維持（SEC-SECRET-02 見送り）。テスト件数 19 files / 135 tests に更新。mock E2E を `workers: 1`（直列）化

@@ -20,6 +20,7 @@
   - [G. OJT](#g-ojt)
   - [H. UI / Hook テスト](#h-ui--hook-テスト)
 - [4. 再設計方針](#4-再設計方針)
+- [6. コードベース分離（URL 固定方針）](#6-コードベース分離url-固定方針)
 - [5. 次に着手するなら](#5-次に着手するなら)
 
 ---
@@ -165,10 +166,10 @@
 **コード上の期待値**
 
 - `GET settings?client=client-a` は `AppSettings` を返す。
-- `POST settings?client=client-a&token=...` は `AppSettings` を保存し、必要に応じて `audit_logs` に追記する。
+- `POST settings?client=client-a`（body `{ token, settings }`）は `AppSettings` を保存し、必要に応じて `audit_logs` に追記する。
 - `POST rooms/verify?client=client-a` は `{ accessCode }` を受け取り、成功時 `{ roomId }` を返す。
 - `POST responses?client=client-a&room=room-a` は `ParticipantSubmission` を 1 行として保存する。
-- `GET responses?client=client-a&room=room-a&token=...` は `room-a` の `ParticipantSubmission[]` だけを返す。
+- `POST responses/query?client=client-a&room=room-a`（body `{ token }`）は `room-a` の `ParticipantSubmission[]` だけを返す（旧 `GET responses?token=` も後方互換で残る）。
 - `client` 不正は 400、`token` 不正は 401、無効 `client` / `room` は 403 相当のエラーになる。
 
 ---
@@ -245,7 +246,7 @@
 
 - すべての API 呼び出しで `client` が URL クエリに含まれる。
 - 回答系 API では `room` が URL クエリに含まれる。
-- 管理者操作では `token` が URL クエリまたはヘッダに含まれる。
+- 管理者操作では `token` が **POST ボディ**に含まれる（URL クエリには出さない／SEC-SECRET-01）。
 - API エラーは `throw` または Result 型のいずれかに統一して扱う。
 - room 分離のテストは、別 room の回答が配列に含まれないことまで検証する。
 
@@ -265,8 +266,8 @@
 **コード上の期待値**
 
 - `loadSheetSettings(clientId, token?)` は `GET settings?client=...` を呼ぶ。
-- `saveSheetSettings(clientId, token, settings)` は `POST settings?client=...&token=...` を呼ぶ。
-- `loadSheetResponses(clientId, roomId, token)` は `GET responses?client=...&room=...&token=...` を呼ぶ。
+- `saveSheetSettings(clientId, token, settings)` は `POST settings?client=...` を呼び、body に `{ token, settings }` を送る。
+- `loadSheetResponses(clientId, roomId, token)` は `POST responses/query?client=...&room=...` を呼び、body に `{ token }` を送る。
 - `appendSheetResponse(clientId, roomId, submission)` は `POST responses?client=...&room=...` を呼び、body に `ParticipantSubmission` を送る。
 - `verifyTrainingCodeViaApi(clientId, accessCode)` は `POST rooms/verify?client=...` を呼び、成功時 `{ roomId }` を返す。
 
@@ -347,13 +348,13 @@
 
 **目的** — 既存の E2E 用共有ストレージではなく、Sheet API と同じ URL / JSON 契約を持つ mock 経由で、受講者送信から管理者確認までの代表経路を固定する。
 
-**受け入れ条件** — `npm run test:e2e` が `VITE_STORAGE_BACKEND=sheet` 相当で起動し、`POST rooms/verify`、`POST responses`、`GET responses` が Sheet API mock に届く。受講者の回答は同一 `client` + `room` の管理者一覧に表示され、別 `room` の一覧には混ざらない。
+**受け入れ条件** — `npm run test:e2e` が `VITE_STORAGE_BACKEND=sheet` 相当で起動し、`POST rooms/verify`、`POST responses`、`POST responses/query`（管理者 token はボディ）が Sheet API mock に届く。受講者の回答は同一 `client` + `room` の管理者一覧に表示され、別 `room` の一覧には混ざらない。
 
 **成功条件** — E2E 用共有ストレージサーバー（`scripts/e2e-storage-server.mjs` / `127.0.0.1:5199`）なしで Playwright が Green になる。不正 room / token は mock 側でエラーにでき、失敗時はどの API 契約が壊れたか分かる。
 
 **どのようにテストするか** — Playwright の `webServer` で participant / admin / Sheet API mock を起動する。テスト開始時に mock を reset し、受講者で 5 問送信後、管理者が管理者コードで入室して回答一覧を確認する。さらに mock の管理用 endpoint で別 room の responses が空であることを確認する。
 
-**コード上の期待値** — Vite dev server は `VITE_STORAGE_BACKEND=sheet`、`VITE_SHEET_API_BASE=http://127.0.0.1:5198/exec`、`VITE_CLIENT_ID=client-demo` で起動する。Sheet API mock は `?path=settings|rooms/verify|responses` と `client` / `room` / `token` を本番 GAS と同じ形で受ける。
+**コード上の期待値** — Vite dev server は `VITE_STORAGE_BACKEND=sheet`、`VITE_SHEET_API_BASE=http://127.0.0.1:5198/exec`（`127.0.0.1` は HTTPS 必須の例外）、`VITE_CLIENT_ID=client-demo` で起動する。Sheet API mock は `?path=settings|rooms/verify|responses|responses/query` と `client` / `room` を本番 GAS と同じ形で受け、管理者 `token` はボディ優先で読む。
 
 #### 次の TDD スライス
 
@@ -379,7 +380,7 @@
 
 **どのようにテストするか** — Playwright で管理者コード入室後、研修コード欄を変更して保存する。別ページの受講者画面を開き、旧コードで警告が出ること、新コードで名前入力欄が表示されることを assert する。
 
-**コード上の期待値** — Sheet API mock は `POST rooms/access-code?client=...&token=...` を受け取り、`roomId` と `nextAccessCode` で該当 room の `accessCode` を更新する。`POST rooms/verify` は更新後の room 設定で照合する。
+**コード上の期待値** — Sheet API mock は `POST rooms/access-code?client=...`（body `{ token, roomId, nextAccessCode }`）を受け取り、該当 room の `accessCode` を更新する。`POST rooms/verify` は更新後の room 設定で照合する。
 
 **状態** — 完了済み（Sheet API mock / `npm run test:e2e` Green）
 
@@ -393,7 +394,7 @@
 
 **どのようにテストするか** — Playwright で管理者ログイン後、管理者コード変更フォームを操作する。ロックして旧コードで入室失敗を assert し、その後新コードで入室成功を assert する。
 
-**コード上の期待値** — Sheet API mock は `POST admin/token?client=...&token=...` を受け取り、`nextAdminToken` で管理者 token を更新する。`GET responses` や `rooms/access-code` の token 照合は更新後の token を使う。
+**コード上の期待値** — Sheet API mock は `POST admin/token?client=...`（body `{ token, nextAdminToken }`）を受け取り、管理者 token を更新する。`responses/query` や `rooms/access-code` の token 照合は更新後の token を使う。
 
 **状態** — 完了済み（Sheet API mock / `npm run test:e2e` Green）
 
@@ -401,13 +402,13 @@
 
 **目的** — Sheet API mock ではなく、実 GAS / 実 Google スプレッドシートで `client` / `room` 不一致時に回答が返らないことを確認する。
 
-**受け入れ条件** — 実 GAS の `rooms/verify` で研修コードを検証し、得られた `roomId` に一意な E2E 回答を `POST responses` で保存できる。同じ `client` + `room` + 管理者 token ではその回答が取得できる。別 `client` または別 `room` への `GET responses` では、その回答 ID が返らない。
+**受け入れ条件** — 実 GAS の `rooms/verify` で研修コードを検証し、得られた `roomId` に一意な E2E 回答を `POST responses` で保存できる。同じ `client` + `room` + 管理者 token ではその回答が取得できる。別 `client` または別 `room` への `POST responses/query` では、その回答 ID が返らない。
 
 **成功条件** — opt-in の実環境テスト `npm run test:e2e:real-sheet` が Green。通常の `npm run test:e2e` は実データに触れず、mock E2E のまま Green。
 
 **どのようにテストするか** — Playwright の API テストとして実 GAS URL へ直接 fetch する。`.env.development` の `VITE_SHEET_API_BASE` / `VITE_CLIENT_ID` と、実環境用の管理者 token / 研修コードを runner で `E2E_REAL_*` に渡す。テスト用回答 ID は毎回一意にし、別 `client` / 別 `room` のレスポンス本文に含まれないことを assert する。
 
-**コード上の期待値** — 実環境テストは `E2E_REAL_SHEET=1` のときだけ実行する。`storage/sheet.ts` と同じ `?path=...&client=...&room=...&token=...`、`text/plain;charset=utf-8` JSON body を使い、GAS の `{ ok: false, status, error }` はエラー応答として扱う。
+**コード上の期待値** — 実環境テストは `E2E_REAL_SHEET=1` のときだけ実行する。`storage/sheet.ts` と同じ `?path=...&client=...&room=...`（管理者 `token` はボディ。回答取得は `responses/query`）、`text/plain;charset=utf-8` JSON body を使い、GAS の `{ ok: false, status, error }` はエラー応答として扱う。
 
 **状態** — 完了済み（`npm run test:e2e:real-sheet` Green）
 
@@ -744,9 +745,9 @@
 **最小スコープ**
 
 1. `GET settings`
-2. `POST settings`
+2. `POST settings`（body `{ token, settings }`）
 3. `POST rooms/verify`
-4. `GET responses`
+4. `POST responses/query`（body `{ token }`。旧 `GET responses` は後方互換）
 5. `POST responses`
 
 **後続**
@@ -822,12 +823,161 @@ flowchart TD
 
 ---
 
+---
+
+## 6. コードベース分離（URL 固定方針）
+
+**正本**: 本節。プロダクト要件の入口は [README.md §入室とマルチテナント](../README.md#入室とマルチテナント)。API 契約は [SPREADSHEET-DATA.md §2](./SPREADSHEET-DATA.md)。
+
+**最終確認日**: 2026-06-08
+
+### 6.0 プロダクト方針（ブレ禁止）
+
+#### URL
+
+**受講者・管理者の配布 URL はクライアントごとに変えない。** 同一の participant / admin の URL を全員に渡す。
+
+#### 分離の鍵
+
+**研修コード** — 受講者が入力。一致した **研修回（room）** の回答だけに保存される（**実装済み**）。
+
+**管理者コード** — 管理者が入力。一致した **研修回（room）** の回答・設定だけを見せる（**これから実装**）。
+
+#### clientId の位置づけ
+
+**`clientId` はデプロイ設定（`VITE_CLIENT_ID`）で固定**する。エンドユーザー向け URL に `?client=` を付けて配布する運用は **採用しない**。
+
+**補足** — `resolveClientId`（URL `?client=` 優先）は開発・運用の上書き用。**プロダクトの分離モデルではない**。
+
+#### やらないこと（本フェーズ群）
+
+- URL を会社ごとに変える配布
+- `?client=` をユーザー向けマルチテナント入口にする
+- 1 つの管理者コードで全研修回を横断閲覧（最終形）
+
+### 6.1 フェーズ一覧
+
+#### ISOLATE-1 — shared: 管理者コード → room 特定
+
+**状態** — 実装済み（`adminRoom.test.ts` Green）
+
+#### ISOLATE-2 — 管理者 UI: room スコープ
+
+**状態** — 実装済み（Vitest Green）
+
+#### ISOLATE-3 — GAS: room 単位 adminTokenHash
+
+**状態** — 実装済み（Vitest + mock E2E Green）
+
+#### ISOLATE-4 — E2E: コード分離の代表確認
+
+**状態** — 実装済み（`e2e/isolate-code-separation.spec.ts` Green）
+
+各フェーズは [TEST-DESIGN.md §2.0.4](./TEST-DESIGN.md#204-機能ごとの実装フロー6-ステップ) の 6 ステップ（受け入れ条件 → テスト → Red → 最小実装 → Green）で進める。
+
+---
+
+### 6.2 ISOLATE-1 — 管理者コードから room を特定（shared）
+
+**目的** — URL を変えず、管理者コード入力だけで「どの研修回の管理者か」を決める共有ロジックを固定する。
+
+**受け入れ条件**
+
+- 各 room に `adminAccessCode` があるとき、入力コードが一致する room だけ返す。
+- room A の管理者コードでは room B に一致しない。
+- 不一致・空入力は `null`。
+- 後方互換: room が 1 つだけで `settings.adminAccessCode` のみのときも動く。
+
+**成功条件**
+
+- `adminRoom.test.ts` が Green。
+- 既存 Vitest を壊さない。
+
+**どのようにテストするか**
+
+- `shared/src/adminRoom.test.ts` で 2 room 設定（0403/2001、0505/3001）を fixture 化し、一致・不一致・後方互換を assert する。
+
+**コード上の期待値**
+
+- `TrainingRoom.adminAccessCode?: string`
+- `resolveAdminRoomByCode(settings, adminCode): TrainingRoom | null`
+- テストファイル: `shared/src/adminRoom.test.ts`
+
+**状態** — TDD 実装済み（Vitest Green）
+
+---
+
+### 6.3 ISOLATE-2 — 管理者 UI で room をスコープ（実装済み）
+
+**目的** — 管理者入室後、回答一覧・研修コード設定・全削除が **確定した room だけ** になる。
+
+**受け入れ条件**
+
+- 管理者コード `2001` で入室 → `room-0403` の操作対象。
+- 管理者コード `3001` では `room-0505` が対象（`room-0403` ではない）。
+- `primaryTrainingRoom(settings)` 固定依存をやめる。
+
+**成功条件** — `AdminPage.test.tsx` / `useAppData.test.tsx` / `appDataLoad.test.ts` Green。既存 Vitest を壊さない。
+
+**どのようにテストするか** — 2 room fixture で入室・研修コード保存・`loadResponsesAsync` の roomId を assert。
+
+**コード上の期待値**
+
+- `SESSION_ADMIN_ROOM_KEY` / `getAdminSessionRoomId` / `setAdminSessionRoomId`
+- `resolveAdminScopeRoom(settings)` — セッション room 優先
+- `resolveResponsesRoomId(settings, adminRoomId?)`
+- `useAppData({ adminToken, adminRoomId })`
+- `AdminPage` ログインが `resolveAdminRoomByCode` → セッション room 保存
+
+**状態** — TDD 実装済み（Vitest Green）
+
+---
+
+### 6.4 ISOLATE-3 — GAS room 単位の管理者 token（実装済み）
+
+**目的** — API 層でも、room A の管理者 token で room B の回答を取れないようにする。
+
+**受け入れ条件**
+
+- `rooms` シートに `adminTokenHash` 列を追加。
+- `POST responses/query` / `responses/clear` / `rooms/access-code` で token が **当該 room** の hash と一致しないと 401。
+- `room.adminTokenHash` が空の room は `clients.adminTokenHash` にフォールバック（既存デモ互換）。
+- `POST settings` は client token または **いずれかの room token** で許可（シーン設定は client 共有のため）。
+
+**成功条件** — `adminTokenVerify.test.ts` Green。`e2e-sheet-api-server.mjs` と GAS が同型の照合。
+
+**コード上の期待値**
+
+- `shared/src/adminTokenVerify.ts` — 照合ロジックの正本（Vitest）
+- `gas/Code.gs` — `verifyAdminTokenForRoom_` / `verifyAdminTokenForSettings_`
+- `rooms` ヘッダに `adminTokenHash`。`setupDemo` / `resetDemoAdminToken` で room にも hash を設定
+- 既存シート: `adminTokenHash` 列が無い room は client hash フォールバック
+
+**状態** — TDD 実装済み（Vitest + mock E2E Green）
+
+---
+
+### 6.5 ISOLATE-4 — E2E 分離の代表確認（実装済み）
+
+**目的** — デモ配布前に、コードだけで漏洩しないことを自動確認する。
+
+**受け入れ条件**
+
+- 同一 URL で room A（DEMO-2026 / admin-demo）と room B（OTHER-2026 / admin-other）に回答を送る。
+- admin-demo 入室 → RoomA のみ表示、RoomB は非表示。
+- admin-other 入室 → RoomB のみ表示、RoomA は非表示。
+- mock API: admin-other で room-demo-1 の `responses/query` は 403。
+
+**成功条件** — `npm run test:e2e` Green（`e2e/isolate-code-separation.spec.ts`）。
+
+**どのようにテストするか** — Playwright で受講者 2 回送信 → 管理者 2 パターンで回答タブを assert。API 直叩きで token 不一致 403 を assert。
+
+**コード上の期待値** — テストファイル: `e2e/isolate-code-separation.spec.ts`
+
+**状態** — TDD 実装済み（E2E Green）
+
+---
+
 ## 5. 次に着手するなら
 
-**最初の作業** — PDF の実ファイル目視確認、または実在する複数 `client` / 複数 `room` を用意した手動確認を行う。
-
-**理由** — Sheet API mock と実 GAS / 実シートの代表分離確認は Green。次はユーザー向け出力機能か、実在データを複数用意する運用寄りの確認に進む。
-
-**その次** — OJT 出力 UI または専用 `adminEntry.test.ts` を追加する。
-
-**推奨** — PDF / OJT UI は、Sheet backend の本番近似確認後に進める。
+**ISOLATE-1〜4 完了。** 次は PDF 目視・実 GAS への `adminTokenHash` 列追加（手動）・本番 hardening など [§5 旧メモ](#5-次に着手するなら) を参照。

@@ -211,7 +211,7 @@ flowchart TD
   subgraph read["読取（管理者）"]
     DASH["ダッシュボード"]
     LOAD["loadResponses()"]
-    GET["GET /responses<br/>?client & room & token"]
+    GET["POST /responses/query<br/>?client & room（token はボディ）"]
     FILT["room_id で絞り込み<br/>created_at 降順"]
     DASH --> LOAD --> GET --> FILT
     FILT --> ROW
@@ -385,7 +385,7 @@ https://{host}/admin/?client=client-a
 **API**
 
 - 回答系リクエストは `client` + `room` 必須
-- `GET responses` は **当該 `room_id` の行のみ**
+- 回答取得は `POST responses/query`（管理者 `token` はボディ）で **当該 `room_id` の行のみ**返す（旧 `GET responses?token=` も後方互換で残す）
 
 ---
 
@@ -483,6 +483,11 @@ https://{host}/admin/?client=client-a
 
 - **型**: 文字列
 - **内容**: 研修入室コードのハッシュ（平文コードはシートに置かない）
+
+#### `adminTokenHash`
+
+- **型**: 文字列
+- **内容**: 当該 room の管理者コードのハッシュ（ISOLATE-3）。空のときは `clients.adminTokenHash` にフォールバック
 
 #### `startsAt` / `endsAt`（任意）
 
@@ -588,10 +593,15 @@ https://{host}/admin/?client=client-a
 
 - `client` — 必須（`clientId`）
 - `room` — 必須（`roomId`）。受講者は **研修コード検証成功後**に付与された ID を送る。欠落・不一致は **400**
-- `token` — 管理者操作で必須（`clients.adminTokenHash` と照合。**要決定**: ヘッダ `Authorization: Bearer` に移行可）
+- `token` — 管理者操作で必須（`clients.adminTokenHash` と照合）。**SEC-SECRET-01 実装済み**: URL クエリではなく **POST ボディ** `{ token, ... }` で送る。GAS は `tokenFromRequest_(e, body)` で **ボディ優先・クエリはフォールバック**（旧クライアント互換）
 - 受講者 — `token` なし。`room` は `rooms` シートで存在・`enabled`・`accessCodeHash`（コード入力時）を検証
 
-POST ボディは JSON。GAS はマスター `clients` で `spreadsheetId` を解決し、当該クライアント用ブックを操作する。
+POST ボディは JSON（`Content-Type: text/plain;charset=utf-8`）。GAS はマスター `clients` で `spreadsheetId` を解決し、当該クライアント用ブックを操作する。
+
+**通信・入力（実装済み）**
+
+- **HTTPS 必須（SEC-NET-01）** — フロントは `VITE_SHEET_API_BASE` が `https://` 以外なら送信前に例外。開発・E2E 用に `localhost` / `127.0.0.1` の http のみ許可
+- **数式インジェクション対策（SEC-INPUT-01）** — シート書き込み時、`=` `+` `-` `@` `タブ` `CR` `LF` 始まりの文字列に `'` を前置（`sanitizeSpreadsheetCell` / GAS `sanitizeCell_`）
 
 ### 4.1 エンドポイント（案）
 
@@ -602,13 +612,20 @@ POST ボディは JSON。GAS はマスター `clients` で `spreadsheetId` を�
 
 #### POST `settings`
 
-- **用途**: 設定保存
+- **用途**: 設定保存（管理者）
+- **ボディ**: `{ token, settings }`（旧 `AppSettings` 直送り + token クエリも後方互換で受理）
 - **対応 storage**: `saveSettings`
 
-#### GET `responses`
+#### POST `responses/query`（回答一覧・推奨）
 
-- **用途**: 回答一覧
+- **用途**: 回答一覧（管理者）。`token` はボディで送る
+- **ボディ**: `{ token }`
 - **対応 storage**: `loadResponses`
+
+#### GET `responses`（後方互換・非推奨）
+
+- **用途**: 回答一覧（旧契約。`token` をクエリに載せるため新規利用は `responses/query`）
+- **対応 storage**: なし（旧クライアント互換のため GAS にのみ残す）
 
 #### POST `responses`
 
@@ -638,9 +655,16 @@ POST ボディは JSON。GAS はマスター `clients` で `spreadsheetId` を�
 #### POST `rooms/access-code`
 
 - **用途**: 管理者による既存 room の研修コード変更
-- **認証**: `client` + 管理者 `token`
-- **ボディ**: `roomId`, `nextAccessCode`
+- **認証**: `client` + 管理者 `token`（token はボディ）
+- **ボディ**: `{ token, roomId, nextAccessCode }`
 - **副作用**: `rooms.accessCodeHash` のみ更新し、`audit_logs` に記録する。平文の研修コードは保存しない
+
+#### POST `admin/token`
+
+- **用途**: 管理者による管理者コード（token）変更
+- **認証**: `client` + 現行の管理者 `token`（token はボディ）
+- **ボディ**: `{ token, nextAdminToken }`
+- **副作用**: `clients.adminTokenHash` を更新し、`audit_logs` に記録する
 
 #### POST `reset`
 
@@ -721,9 +745,12 @@ POST ボディは JSON。GAS はマスター `clients` で `spreadsheetId` を�
 
 - スプレッドシートの共有範囲は **サービスアカウント / 実行 GAS アカウント + 運用者** に限定
 - 受講者 iframe からの **設定書込**は原則禁止（読取のみ、または token なしで settings GET のみ）
-- 管理者 API は **`clients.adminTokenHash`** と照合（マスターブックのみ保持）
+- 管理者 API は **`clients.adminTokenHash`** と照合（マスターブックのみ保持）。token は **POST ボディ**で送る（SEC-SECRET-01）
 - 研修入室コードは **`rooms.accessCodeHash`**（クライアント用ブック）。平文は API 経由のみ一時的に受け取り、保存しない
+- ハッシュは現状 **ソルト・ストレッチなしの単純 SHA-256**（デモ前提。SEC-SECRET-02 は本番運用開始時に再導入予定）
+- 通信は **HTTPS 必須**（SEC-NET-01。開発・E2E のみ `localhost`/`127.0.0.1` の http を許可）。シート書き込みは **数式インジェクション対策**済み（SEC-INPUT-01）
 - 個人情報（氏名・所属）の保持期間・削除手順はクライアント契約に従う（**要決定**）
+- セキュリティ要件の一覧・優先度・テスト対応は [SECURITY.md](./SECURITY.md)
 
 ---
 
@@ -782,3 +809,5 @@ POST ボディは JSON。GAS はマスター `clients` で `spreadsheetId` を�
 **0.7**（2026-05-20）— 入室を **研修コード必須**（URL に `room` を載せない方針）に統一。API 共通クエリの `room` を **必須**化。§1.1.4 シーケンス図の整理
 
 **0.8**（2026-05-21）— 受講者: 研修コードは名前前・失敗時の固定文言。管理者: **管理者コード**必須・研修コード不要・コード変更は現行コード必須。ローカル本番近似
+
+**0.9**（2026-06-05）— セキュリティ要件を反映。管理者 `token` を **POST ボディ**送信（SEC-SECRET-01）、回答取得を **`POST responses/query`** に変更（旧 `GET responses` は後方互換）。`admin/token` エンドポイントを §4.1 に追記。HTTPS 必須（SEC-NET-01）・数式インジェクション対策（SEC-INPUT-01）・ハッシュ方針（単純 SHA-256）を §6 に明記。詳細は [SECURITY.md](./SECURITY.md)

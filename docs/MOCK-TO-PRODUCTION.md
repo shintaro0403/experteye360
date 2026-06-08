@@ -139,7 +139,7 @@ flowchart TB
 
 **方針** — **移行しない**
 
-**理由** — `sheetApi.test.ts` は GAS の内部実装に依存せず、URL・クエリ・JSON 契約だけを固定する。実 GAS を叩くと遅く・不安定・シートを汚す。
+**理由** — `sheetApi.test.ts` は GAS の内部実装に依存せず、URL・パス・JSON ボディ契約（管理者 `token` はクエリに出さずボディで送る／回答取得は `POST responses/query`）だけを固定する。実 GAS を叩くと遅く・不安定・シートを汚す。
 
 **正本** — [TEST-TEMPLATES.md](./TEST-TEMPLATES.md) T3
 
@@ -504,8 +504,8 @@ npm run test:e2e:real-sheet
 
 **「速い回帰」が残っている**
 
-- `npm test`（127 tests 相当）Green
-- `npm run test:e2e`（mock）Green
+- `npm test`（19 files / 135 tests）Green
+- `npm run test:e2e`（mock。`playwright.config.ts` は `workers: 1` で直列実行）Green
 
 **完了していなくてもよいもの（別タスク）**
 
@@ -593,3 +593,5 @@ npm run test:e2e:real-sheet
 **0.4**（2026-06-05）— フェーズ 3: `real-sheet-api.spec.ts` を 5 本に拡張（preflight・コード変更・clear・GAS エラー envelope 対応）
 
 **0.5**（2026-06-05）— フェーズ 4: `ci.yml` に mock E2E（Playwright/chromium）を搭載し GitHub Actions で Green を確認。`participant-admin-flow.spec.ts` を現 UI に追従（名前・所属 10 文字制限、研修コード欄プレースホルダー、「管理者コード入力に戻る」へのリネーム）
+
+**0.6**（2026-06-05）— セキュリティ実装（[SECURITY.md](./SECURITY.md)）を反映。新 API 契約（管理者 `token` は POST ボディ、回答取得は `POST responses/query`）に合わせて mock サーバー・E2E を更新。CI の flaky 解消のため `playwright.config.ts` を `workers: 1`（直列実行）に。Vitest を 19 files / 135 tests に更新。なお `preflight:real-sheet` は後方互換の旧 `GET responses`（token クエリ）を到達確認に使用

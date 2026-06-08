@@ -1,5 +1,6 @@
 export const SESSION_ADMIN_AUTH_KEY = "expertEye360:adminAuth";
 export const SESSION_ADMIN_TOKEN_KEY = "expertEye360:adminToken";
+export const SESSION_ADMIN_ROOM_KEY = "expertEye360:adminRoomId";
 
 export function verifyAdminCode(input: string, expectedAccessCode: string): boolean {
   const a = input.trim();
@@ -22,6 +23,7 @@ export function setAdminSessionActive(active: boolean): void {
     else {
       sessionStorage.removeItem(SESSION_ADMIN_AUTH_KEY);
       sessionStorage.removeItem(SESSION_ADMIN_TOKEN_KEY);
+      sessionStorage.removeItem(SESSION_ADMIN_ROOM_KEY);
     }
   } catch {
     /* private mode 等 */
@@ -40,6 +42,23 @@ export function setAdminSessionToken(token: string | null): void {
   try {
     if (token?.trim()) sessionStorage.setItem(SESSION_ADMIN_TOKEN_KEY, token.trim());
     else sessionStorage.removeItem(SESSION_ADMIN_TOKEN_KEY);
+  } catch {
+    /* private mode 等 */
+  }
+}
+
+export function getAdminSessionRoomId(): string | null {
+  try {
+    return sessionStorage.getItem(SESSION_ADMIN_ROOM_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAdminSessionRoomId(roomId: string | null): void {
+  try {
+    if (roomId?.trim()) sessionStorage.setItem(SESSION_ADMIN_ROOM_KEY, roomId.trim());
+    else sessionStorage.removeItem(SESSION_ADMIN_ROOM_KEY);
   } catch {
     /* private mode 等 */
   }
