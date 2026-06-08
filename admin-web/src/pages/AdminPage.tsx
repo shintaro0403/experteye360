@@ -24,6 +24,7 @@ import { generateParticipantPdf } from "@shared/pdfExport";
 import {
   isSheetStorageBackend,
   sheetApiErrorDetail,
+  changeTrainingCodeAsync,
   verifyAdminTokenAsync,
   verifyTrainingCodeAsync,
 } from "@shared/storage";
@@ -48,6 +49,7 @@ const ADMIN_ACTION = {
   promoteScene: "promoteScene",
   removeScene: "removeScene",
   saveScene: "saveScene",
+  saveTrainingCode: "saveTrainingCode",
   clearResponses: "clearResponses",
   downloadPdf: "downloadPdf",
 } as const;
@@ -239,6 +241,7 @@ export function AdminPage() {
   });
   const [adminCodeInput, setAdminCodeInput] = useState("");
   const [trainingCodeLoginInput, setTrainingCodeLoginInput] = useState("");
+  const [nextAccessCodeInput, setNextAccessCodeInput] = useState("");
   const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
   const trainingCodeScopedAdmin = isTrainingCodeScopedAdmin(settings);
   const [tab, setTab] = useState<"base" | "scenes" | "responses">("responses");
@@ -380,6 +383,42 @@ export function AdminPage() {
       const merged = editorDraftToScene(activeScene, draft);
       const nextScenes = settings.scenes.map((s) => (s.id === merged.id ? merged : s));
       await setSettings({ ...settings, scenes: nextScenes });
+    });
+
+  const saveTrainingCode = () =>
+    void runPending(ADMIN_ACTION.saveTrainingCode, async () => {
+      const nextAccessCode = nextAccessCodeInput.trim();
+      if (!nextAccessCode) {
+        alert("研修コードを入力してください");
+        return;
+      }
+      const roomId = resolveAdminScopeRoom(settings).roomId;
+      if (!adminToken.trim() || !roomId) {
+        alert("研修コードの保存に失敗しました（管理者または研修回が無効です）。");
+        return;
+      }
+
+      try {
+        if (isSheetStorageBackend()) {
+          await changeTrainingCodeAsync({
+            adminToken,
+            roomId,
+            nextAccessCode,
+          });
+        } else {
+          // localStorage backend: 該当 room の accessCode を更新
+          const nextRooms = settings.rooms.map((r) =>
+            r.roomId === roomId ? { ...r, accessCode: nextAccessCode } : r,
+          );
+          await setSettings({ ...settings, rooms: nextRooms });
+        }
+
+        setNextAccessCodeInput("");
+        await refresh();
+        alert("研修コードを保存しました。受講者に新しいコードを案内してください。");
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "研修コードの保存に失敗しました。");
+      }
     });
 
   const addScene = () =>
@@ -586,6 +625,34 @@ export function AdminPage() {
               操作対象: <strong>{resolveAdminScopeRoom(settings).displayName}</strong>
               {trainingCodeScopedAdmin && "（入室時の研修コードでスコープ済み）"}
             </p>
+            <div className="a-entry-section" style={{ marginTop: "1rem" }}>
+              <h3 style={{ margin: 0 }}>受講者向け研修コード</h3>
+              <p className="a-hint" style={{ marginTop: "0.25rem" }}>
+                受講者に案内する次の研修コードを入力して保存します。
+              </p>
+              <div className="a-actions">
+                <AdminLabel label="次の研修コード">
+                  <ImeInput
+                    className="a-input"
+                    value={nextAccessCodeInput}
+                    onChange={setNextAccessCodeInput}
+                    placeholder="研修コード"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void saveTrainingCode();
+                    }}
+                  />
+                </AdminLabel>
+                <div className="a-actions" style={{ marginTop: "0.75rem" }}>
+                  <ActionButton
+                    className="a-btn a-btn--primary"
+                    busy={isPending(ADMIN_ACTION.saveTrainingCode)}
+                    onClick={() => void saveTrainingCode()}
+                  >
+                    研修コードを保存
+                  </ActionButton>
+                </div>
+              </div>
+            </div>
           </section>
         )}
 
