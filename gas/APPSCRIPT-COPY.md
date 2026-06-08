@@ -37,10 +37,16 @@ Apps Script → **デプロイ** → **新しいデプロイ** → 歯車 → **
 
 ---
 
-## いま貼る用（研修コード保存・管理者コード変更 API 込み）
+## いま貼る用（管理者ゲート② provision 込み）
 
 ```text
-ExpertEye360 Web API v5（lipronext-demo）。resetDemoTrainingCode/resetDemoCredentials 込み。settings/responses/responses/clear/rooms/verify/rooms/access-code/admin/token。VITE_SHEET_API_BASE をこの URL に更新。2026-06-05 15:56 デプロイ。
+ExpertEye360 Web API v7（lipronext-demo）。rooms/provision 追加。resetDemoTrainingCode/resetDemoCredentials 込み。settings/responses/responses/clear/rooms/verify/rooms/access-code/rooms/provision/admin/token。VITE_SHEET_API_BASE と GitHub Actions 変数 VITE_SHEET_API_BASE をこの URL に更新。2026-06-08 デプロイ。
+```
+
+**現行 Web App URL（2026-06-08）**
+
+```text
+https://script.google.com/macros/s/AKfycbwHqknDlVLOOr1_OrBuqwRRlotUqj884tfXHyXaObMQCWulMVQyjM9KvX0NtDLc8rIa/exec
 ```
 
 ---
