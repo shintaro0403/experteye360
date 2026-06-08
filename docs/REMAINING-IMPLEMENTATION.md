@@ -841,7 +841,9 @@ flowchart TD
 
 **研修コード** — 受講者が入力。一致した **研修回（room）** の回答だけに保存される（**実装済み**）。
 
-**管理者コード** — 管理者が入力。一致した **研修回（room）** の回答・設定だけを見せる（**これから実装**）。
+**管理者コード** — 管理者が入力。`adminRoomScope` に応じて room を特定（**実装済み**）。
+- `adminCode`（既定）: 管理者コードが room を特定（ISOLATE-1）
+- `trainingCode`（デモ配布）: **共有管理者コード + 研修コード** で room を特定（DEMO-SCOPE-1）
 
 #### clientId の位置づけ
 
@@ -853,7 +855,7 @@ flowchart TD
 
 - URL を会社ごとに変える配布
 - `?client=` をユーザー向けマルチテナント入口にする
-- 1 つの管理者コードで全研修回を横断閲覧（最終形）
+- 1 つの管理者コードで全研修回を横断閲覧（研修コードなし）
 
 ### 6.1 フェーズ一覧
 
@@ -978,6 +980,40 @@ flowchart TD
 
 ---
 
+### 6.6 DEMO-SCOPE-1 — 共有管理者コード + 研修コードで room 確定（デモ配布）
+
+**目的** — 多数クライアントが同一 URL で体験できる一方、他社の回答を見せない。デモではコード変更による体験不能を防ぐ。
+
+**受け入れ条件**
+
+- `settings.adminRoomScope === 'trainingCode'` のとき、管理者入室は **共有管理者コード + 研修コード** の 2 入力。
+- 共有管理者コードが正しく、研修コードが room A に一致 → room A だけが操作対象。
+- 同じ共有管理者コードでも、研修コード B → room B のみ（room A の回答は見えない）。
+- デモスコープ時は **研修コード変更・管理者コード変更 UI を非表示**（変更不可）。
+- `adminRoomScope` 未指定または `'adminCode'` のときは ISOLATE-1〜2 の既存挙動を維持。
+
+**成功条件**
+
+- `adminScopedLogin.test.ts` / `AdminPage.test.tsx` / `e2e/isolate-code-separation.spec.ts` が Green。
+- 既存 Vitest・mock E2E を壊さない。
+
+**どのようにテストするか**
+
+- shared: 2 room fixture で共有 admin + 研修コード照合・不一致・スコープ判定を assert。
+- AdminPage: デモスコープ設定で 2 入力ログイン、コード変更 UI 非表示を assert。
+- E2E: 同一 `admin-demo` + 異なる研修コードで回答タブのクロス閲覧拒否を assert。
+
+**コード上の期待値**
+
+- `AppSettings.adminRoomScope?: 'adminCode' | 'trainingCode'`
+- `isTrainingCodeScopedAdmin(settings)` / `verifySharedAdminAccessCode` / `resolveAdminRoomByTrainingCode` / `canChangeAccessCodes`
+- `AdminPage`: 入室フォームに研修コード欄、base タブで変更 UI を条件非表示
+- E2E mock: `adminRoomScope: 'trainingCode'`、room ごとの `adminAccessCode` を外す
+
+**状態** — TDD 実装済み（Vitest + mock E2E Green）
+
+---
+
 ## 5. 次に着手するなら
 
-**ISOLATE-1〜4 完了。** 次は PDF 目視・実 GAS への `adminTokenHash` 列追加（手動）・本番 hardening など [§5 旧メモ](#5-次に着手するなら) を参照。
+**ISOLATE-1〜4 完了。DEMO-SCOPE-1 実装中。** 次は PDF 目視・実 GAS への `adminTokenHash` 列追加（手動）・本番 hardening など [§5 旧メモ](#5-次に着手するなら) を参照。

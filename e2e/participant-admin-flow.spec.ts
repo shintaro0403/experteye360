@@ -95,9 +95,22 @@ async function verifyTrainingCodeOnParticipant(page: Page, trainingCode: string)
   await clickNext(page);
 }
 
-async function loginAdmin(page: Page) {
+async function setMockAdminScope(mode: "trainingCode" | "adminCode") {
+  const response = await fetch(`${SHEET_MOCK_ADMIN_URL}/scope-mode`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mode }),
+  });
+  expect(response.ok).toBeTruthy();
+}
+
+async function loginAdmin(page: Page, input?: { trainingCode?: string; adminCode?: string }) {
   await clearBrowserStorage(page, ADMIN_URL);
-  await page.getByPlaceholder("管理者コード").fill("admin-demo");
+  await page.getByPlaceholder("管理者コード").fill(input?.adminCode ?? "admin-demo");
+  const trainingInput = page.getByPlaceholder("研修コード");
+  if (await trainingInput.isVisible()) {
+    await trainingInput.fill(input?.trainingCode ?? "DEMO-2026");
+  }
   await page.getByRole("button", { name: "入室する" }).click();
 }
 
@@ -114,9 +127,7 @@ test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
     await participant.close();
 
     const admin = await browser.newPage();
-    await clearBrowserStorage(admin, ADMIN_URL);
-    await admin.getByPlaceholder("管理者コード").fill("admin-demo");
-    await admin.getByRole("button", { name: "入室する" }).click();
+    await loginAdmin(admin);
     await admin.getByRole("button", { name: "回答" }).click();
 
     await expect(admin.getByRole("heading", { name: "回答一覧（1）" })).toBeVisible();
@@ -140,9 +151,10 @@ test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
 
   test("管理者が変更した研修コードだけで受講者が入室できる", async ({ browser }) => {
     await resetSheetMock();
+    await setMockAdminScope("adminCode");
 
     const admin = await browser.newPage();
-    await loginAdmin(admin);
+    await loginAdmin(admin, { adminCode: "admin-demo" });
     await admin.getByPlaceholder("新しい研修コード（変更時のみ入力）").fill("NEXT-2026");
     const saved = admin.waitForEvent("dialog");
     await admin.getByRole("button", { name: "研修コードを保存" }).click();
@@ -165,7 +177,8 @@ test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
 
   test("管理者が変更した管理者コードだけで再入室できる", async ({ page }) => {
     await resetSheetMock();
-    await loginAdmin(page);
+    await setMockAdminScope("adminCode");
+    await loginAdmin(page, { adminCode: "admin-demo" });
 
     await page.getByPlaceholder("現在のコード").fill("admin-demo");
     await page.getByPlaceholder("4文字以上").fill("admin-next");
@@ -178,6 +191,10 @@ test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
     await expect(page.getByRole("alert")).toContainText("管理者コードが正しくありません");
 
     await page.getByPlaceholder("管理者コード").fill("admin-next");
+    const trainingAfterChange = page.getByPlaceholder("研修コード");
+    if (await trainingAfterChange.isVisible()) {
+      await trainingAfterChange.fill("DEMO-2026");
+    }
     await page.getByRole("button", { name: "入室する" }).click();
     await expect(page.getByRole("button", { name: "管理者コード入力に戻る" })).toBeVisible();
   });

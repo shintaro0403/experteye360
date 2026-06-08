@@ -80,6 +80,9 @@ export type ParticipantSubmission = {
   actionsNote?: string;
 };
 
+/** 管理者が room を特定する方式。デモ配布は trainingCode（共有管理者コード + 研修コード）。 */
+export type AdminRoomScope = "adminCode" | "trainingCode";
+
 export type AppSettings = {
   /** 登録した 3DVista ツアー URL */
   tourUrl: string;
@@ -88,4 +91,10 @@ export type AppSettings = {
   rooms: TrainingRoom[];
   /** 管理者入室用コード（開発時は settings に平文保持） */
   adminAccessCode: string;
+  /**
+   * 管理者の room 特定方式。
+   * - adminCode（既定）: 管理者コードが room を特定（ISOLATE-1）
+   * - trainingCode: 共有管理者コード + 研修コードで room を特定（デモ配布）
+   */
+  adminRoomScope?: AdminRoomScope;
 };

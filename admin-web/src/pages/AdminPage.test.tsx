@@ -233,6 +233,63 @@ describe("AdminPage", () => {
     expect(sessionStorage.getItem(SESSION_ADMIN_TOKEN_KEY)).toBeNull();
   });
 
+  it("DEMO-SCOPE-1: デモスコープでは共有管理者コード + 研修コードで room を特定する", async () => {
+    sessionStorage.clear();
+    const demoScopedSettings = makeSettings({
+      adminRoomScope: "trainingCode",
+      adminAccessCode: "admin-demo",
+      rooms: [
+        {
+          roomId: "room-demo-1",
+          displayName: "A社デモ",
+          accessCode: "DEMO-2026",
+          enabled: true,
+        },
+        {
+          roomId: "room-other",
+          displayName: "B社デモ",
+          accessCode: "OTHER-2026",
+          enabled: true,
+        },
+      ],
+    });
+    mockUseAppData({ settings: demoScopedSettings });
+    await render();
+    const adminInput = container.querySelector<HTMLInputElement>('input[placeholder="管理者コード"]');
+    const trainingInput = container.querySelector<HTMLInputElement>('input[placeholder="研修コード"]');
+    if (!adminInput || !trainingInput) throw new Error("demo scoped login inputs not found");
+    await act(async () => {
+      setInputValue(adminInput, "admin-demo");
+      setInputValue(trainingInput, "OTHER-2026");
+    });
+    await act(async () => {
+      getButton("入室する").click();
+      await Promise.resolve();
+    });
+    expect(verifyAdminTokenAsync).toHaveBeenCalledWith("admin-demo", "room-other");
+    expect(sessionStorage.getItem(SESSION_ADMIN_ROOM_KEY)).toBe("room-other");
+  });
+
+  it("DEMO-SCOPE-1: デモスコープでは研修コード・管理者コード変更 UI を出さない", async () => {
+    const demoScopedSettings = makeSettings({
+      adminRoomScope: "trainingCode",
+      adminAccessCode: "admin-demo",
+      rooms: [
+        {
+          roomId: "room-demo-1",
+          displayName: "A社デモ",
+          accessCode: "DEMO-2026",
+          enabled: true,
+        },
+      ],
+    });
+    mockUseAppData({ settings: demoScopedSettings });
+    await render();
+    expect(container.textContent).not.toContain("研修コードを保存");
+    expect(container.textContent).not.toContain("管理者コードを変更");
+    expect(container.textContent).toContain("A社デモ");
+  });
+
   it("ISOLATE-2: 管理者コード 3001 で入室すると room-0505 で token を検証する", async () => {
     sessionStorage.clear();
     const twoRoomSettings = makeSettings({

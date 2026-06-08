@@ -6,14 +6,14 @@ const SHEET_MOCK_URL = "http://127.0.0.1:5198/exec";
 const SHEET_MOCK_ADMIN_URL = "http://127.0.0.1:5198/__admin";
 
 /**
- * ISOLATE-4 — 同一 URL・コードだけでクロス閲覧できない（E2E）
+ * ISOLATE-4 / DEMO-SCOPE-1 — 同一 URL・共有管理者コード + 研修コードでクロス閲覧拒否（E2E）
  *
- * 目的: デモ配布前に、研修コード/管理者コードの組み合わせで回答が漏れないことを自動確認する。
+ * 目的: デモ配布前に、共有管理者コードでも研修コードで回答が漏れないことを自動確認する。
  *
  * 受け入れ条件:
- * - room-demo-1（DEMO-2026 / admin-demo）の回答は admin-demo だけが一覧で見える。
- * - room-other（OTHER-2026 / admin-other）の回答は admin-other だけが一覧で見える。
- * - クロスログインでは相手 room の受講者名が一覧に出ない。
+ * - room-demo-1（DEMO-2026）と room-other（OTHER-2026）に回答を送る。
+ * - 共有 admin-demo + DEMO-2026 → RoomA のみ表示。
+ * - 共有 admin-demo + OTHER-2026 → RoomB のみ表示。
  *
  * 成功条件: npm run test:e2e Green。
  */
@@ -74,9 +74,10 @@ async function submitFiveQuestionResponse(
   await expect(page.getByRole("heading", { name: "送信完了" })).toBeVisible();
 }
 
-async function loginAdmin(page: Page, adminCode: string) {
+async function loginAdmin(page: Page, adminCode: string, trainingCode: string) {
   await clearBrowserStorage(page, ADMIN_URL);
   await page.getByPlaceholder("管理者コード").fill(adminCode);
+  await page.getByPlaceholder("研修コード").fill(trainingCode);
   await page.getByRole("button", { name: "入室する" }).click();
   await expect(page.getByRole("button", { name: "管理者コード入力に戻る" })).toBeVisible();
 }
@@ -120,8 +121,8 @@ async function queryResponsesViaApi(roomId: string, adminToken: string) {
   return { status: response.status, body: await response.json() };
 }
 
-test.describe("ISOLATE-4: コードによるクロス閲覧拒否", () => {
-  test("管理者コード A では room A の回答だけ、B では room B だけ見える", async ({ browser }) => {
+test.describe("ISOLATE-4 / DEMO-SCOPE-1: コードによるクロス閲覧拒否", () => {
+  test("共有管理者コード + 研修コードで room ごとに回答が分離される", async ({ browser }) => {
     await resetSheetMock();
 
     const participant = await browser.newPage();
@@ -136,29 +137,40 @@ test.describe("ISOLATE-4: コードによるクロス閲覧拒否", () => {
     await participant.close();
 
     const adminA = await browser.newPage();
-    await loginAdmin(adminA, "admin-demo");
+    await loginAdmin(adminA, "admin-demo", "DEMO-2026");
     await openResponsesTab(adminA);
     await expect(adminA.getByText("RoomA 太郎")).toBeVisible();
     await expect(adminA.getByText("RoomB 花子")).toBeHidden();
     await adminA.close();
 
     const adminB = await browser.newPage();
-    await loginAdmin(adminB, "admin-other");
+    await loginAdmin(adminB, "admin-demo", "OTHER-2026");
     await openResponsesTab(adminB);
     await expect(adminB.getByText("RoomB 花子")).toBeVisible();
     await expect(adminB.getByText("RoomA 太郎")).toBeHidden();
     await adminB.close();
   });
 
-  test("API: room B の token では room A の responses/query が拒否される", async () => {
+  test("デモスコープでは研修コード・管理者コード変更 UI が表示されない", async ({ page }) => {
+    await resetSheetMock();
+    await loginAdmin(page, "admin-demo", "DEMO-2026");
+    await expect(page.getByRole("button", { name: "研修コードを保存" })).toBeHidden();
+    await expect(page.getByRole("button", { name: "管理者コードを変更" })).toBeHidden();
+  });
+
+  test("API: 共有 token で room ごとに responses が分離される", async () => {
     await resetSheetMock();
     await appendResponseViaApi("room-demo-1", { id: "isolate-4-api-a", participantName: "API-RoomA" });
+    await appendResponseViaApi("room-other", { id: "isolate-4-api-b", participantName: "API-RoomB" });
 
-    const allowed = await queryResponsesViaApi("room-demo-1", "admin-demo");
-    expect(allowed.status).toBe(200);
-    expect(JSON.stringify(allowed.body)).toContain("API-RoomA");
+    const roomA = await queryResponsesViaApi("room-demo-1", "admin-demo");
+    expect(roomA.status).toBe(200);
+    expect(JSON.stringify(roomA.body)).toContain("API-RoomA");
+    expect(JSON.stringify(roomA.body)).not.toContain("API-RoomB");
 
-    const denied = await queryResponsesViaApi("room-demo-1", "admin-other");
-    expect(denied.status).toBe(403);
+    const roomB = await queryResponsesViaApi("room-other", "admin-demo");
+    expect(roomB.status).toBe(200);
+    expect(JSON.stringify(roomB.body)).toContain("API-RoomB");
+    expect(JSON.stringify(roomB.body)).not.toContain("API-RoomA");
   });
 });

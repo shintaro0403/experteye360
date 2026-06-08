@@ -17,8 +17,8 @@ const questionCards = [
   actionCards: ["班長へ相談する", "品質管理へ確認する", "記録に残す", "作業を一旦止める", "後工程担当へ共有する"],
 }));
 
-const initialSettings = {
-  tourUrl: "https://example.com/3dvista-tour-placeholder",
+const legacyAdminCodeSettingsPatch = {
+  adminRoomScope: "adminCode",
   rooms: [
     {
       roomId: "room-demo-1",
@@ -32,6 +32,25 @@ const initialSettings = {
       displayName: "デモ研修（別 room）",
       accessCode: "OTHER-2026",
       adminAccessCode: "admin-other",
+      enabled: true,
+    },
+  ],
+};
+
+const initialSettings = {
+  tourUrl: "https://example.com/3dvista-tour-placeholder",
+  adminRoomScope: "trainingCode",
+  rooms: [
+    {
+      roomId: "room-demo-1",
+      displayName: "デモ研修（午前）",
+      accessCode: "DEMO-2026",
+      enabled: true,
+    },
+    {
+      roomId: "room-other",
+      displayName: "デモ研修（別 room）",
+      accessCode: "OTHER-2026",
       enabled: true,
     },
   ],
@@ -316,6 +335,23 @@ async function handleAdmin(req, res, url) {
   }
   if (req.method === "GET" && url.pathname === "/__admin/requests") {
     sendJson(res, 200, state.requestLog);
+    return;
+  }
+  if (req.method === "POST" && url.pathname === "/__admin/scope-mode") {
+    const body = await readJson(req);
+    const settings = state.settingsByClient[CLIENT_ID];
+    if (!settings) {
+      sendJson(res, 404, { ok: false, error: "settings_not_found" });
+      return;
+    }
+    if (body.mode === "adminCode") {
+      Object.assign(settings, structuredClone(legacyAdminCodeSettingsPatch));
+    } else {
+      const fresh = structuredClone(initialSettings);
+      settings.adminRoomScope = fresh.adminRoomScope;
+      settings.rooms = fresh.rooms;
+    }
+    sendJson(res, 200, { ok: true, adminRoomScope: settings.adminRoomScope });
     return;
   }
   sendJson(res, 404, { ok: false, error: "admin_not_found" });

@@ -33,6 +33,7 @@ export function normalizeAppSettings(settings: AppSettings): AppSettings {
     tourUrl: base.tourUrl ?? "",
     rooms,
     adminAccessCode,
+    adminRoomScope: base.adminRoomScope,
   };
 }
 

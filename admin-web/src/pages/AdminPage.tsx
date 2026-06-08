@@ -10,6 +10,12 @@ import {
   validateSheetAdminCodeChange,
 } from "@shared/adminEntry";
 import { resolveAdminRoomByCode, resolveAdminScopeRoom } from "@shared/adminRoom";
+import {
+  canChangeAccessCodes,
+  isTrainingCodeScopedAdmin,
+  resolveAdminRoomByTrainingCode,
+  verifySharedAdminAccessCode,
+} from "@shared/adminScopedLogin";
 import { getConfidenceLabel } from "@shared/confidence";
 import { getSubmissionRounds, JUDGMENT_ROUND_COUNT } from "@shared/judgmentFlow";
 import { generateParticipantPdf } from "@shared/pdfExport";
@@ -19,7 +25,9 @@ import {
   isSheetStorageBackend,
   sheetApiErrorDetail,
   verifyAdminTokenAsync,
+  verifyTrainingCodeAsync,
 } from "@shared/storage";
+import { TRAINING_CODE_MISMATCH_MESSAGE } from "@shared/roomEntry";
 import type { ParticipantSubmission, Scene } from "@shared/types";
 import { ActionButton } from "../components/ActionButton";
 import { CardSlotsField, cardsToSlots, slotsToCards } from "../components/CardSlotsField";
@@ -256,7 +264,10 @@ export function AdminPage() {
     adminRoomId: adminAuthed ? getAdminSessionRoomId() : null,
   });
   const [adminCodeInput, setAdminCodeInput] = useState("");
+  const [trainingCodeLoginInput, setTrainingCodeLoginInput] = useState("");
   const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
+  const trainingCodeScopedAdmin = isTrainingCodeScopedAdmin(settings);
+  const allowAccessCodeChanges = canChangeAccessCodes(settings);
   const [trainingCodeDraft, setTrainingCodeDraft] = useState("");
   const [adminCurrentForChange, setAdminCurrentForChange] = useState("");
   const [adminNewCode, setAdminNewCode] = useState("");
@@ -298,6 +309,54 @@ export function AdminPage() {
 
   const tryAdminLogin = () =>
     void runPending(ADMIN_ACTION.login, async () => {
+      if (trainingCodeScopedAdmin) {
+        const token = adminCodeInput.trim();
+        const trainingCode = trainingCodeLoginInput.trim();
+        if (!verifySharedAdminAccessCode(token, settings)) {
+          setAdminLoginError("管理者コードが正しくありません");
+          return;
+        }
+        let roomId: string;
+        if (isSheetStorageBackend()) {
+          const verified = await verifyTrainingCodeAsync(trainingCode, settings.rooms);
+          if (!verified.ok) {
+            setAdminLoginError(verified.message);
+            return;
+          }
+          roomId = verified.roomId;
+        } else {
+          const room = resolveAdminRoomByTrainingCode(settings, trainingCode);
+          if (!room) {
+            setAdminLoginError(TRAINING_CODE_MISMATCH_MESSAGE);
+            return;
+          }
+          roomId = room.roomId;
+        }
+        if (isSheetStorageBackend()) {
+          try {
+            await verifyAdminTokenAsync(token, roomId);
+            setAdminSessionActive(true);
+            setAdminSessionToken(token);
+            setAdminSessionRoomId(roomId);
+            setAdminTokenState(token);
+            setAdminAuthed(true);
+            setAdminLoginError(null);
+            setAdminCodeInput("");
+            setTrainingCodeLoginInput("");
+          } catch {
+            setAdminLoginError("管理者コードが正しくありません");
+          }
+          return;
+        }
+        setAdminSessionActive(true);
+        setAdminSessionRoomId(roomId);
+        setAdminAuthed(true);
+        setAdminLoginError(null);
+        setAdminCodeInput("");
+        setTrainingCodeLoginInput("");
+        return;
+      }
+
       if (isSheetStorageBackend()) {
         const token = adminCodeInput.trim();
         if (!token) {
@@ -550,7 +609,9 @@ export function AdminPage() {
           <div className="a-entry-card">
             <h1>管理者コード</h1>
             <p>
-              管理者コードを入力してください。研修コードとは別のコードです。受講者向けの研修コードはログイン後に設定できます。
+              {trainingCodeScopedAdmin
+                ? "共有の管理者コードと、確認したい研修回の研修コードを入力してください。他社の研修回の回答は表示されません。"
+                : "管理者コードを入力してください。研修コードとは別のコードです。受講者向けの研修コードはログイン後に設定できます。"}
             </p>
             {adminLoginError && (
               <p className="a-entry-error" role="alert">
@@ -568,6 +629,19 @@ export function AdminPage() {
                 }}
               />
             </AdminLabel>
+            {trainingCodeScopedAdmin && (
+              <AdminLabel label="研修コード">
+                <ImeInput
+                  className="a-input"
+                  value={trainingCodeLoginInput}
+                  onChange={setTrainingCodeLoginInput}
+                  placeholder="研修コード"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") tryAdminLogin();
+                  }}
+                />
+              </AdminLabel>
+            )}
             <div className="a-actions">
               <ActionButton
                 className="a-btn a-btn--primary"
@@ -578,9 +652,18 @@ export function AdminPage() {
               </ActionButton>
             </div>
             <p className="a-hint" style={{ marginTop: "1rem" }}>
-              初回デモ: 管理者コード <code>{isSheetStorageBackend() ? SHEET_DEMO_ADMIN_TOKEN : LOCAL_DEMO_ADMIN_CODE}</code> /
-              受講者研修コード <code>{isSheetStorageBackend() ? SHEET_DEMO_TRAINING_CODE : LOCAL_DEMO_TRAINING_CODE}</code>
-              （ローカルはアプリごとに storage が分かれるため、管理者で研修コードを変更した場合は受講者側の再読込が必要です）
+              {trainingCodeScopedAdmin ? (
+                <>
+                  デモ: 管理者コードは全員共通 <code>{isSheetStorageBackend() ? SHEET_DEMO_ADMIN_TOKEN : LOCAL_DEMO_ADMIN_CODE}</code>
+                  。研修コードは会社・研修回ごとに異なります（受講者に案内されたコードを入力）。
+                </>
+              ) : (
+                <>
+                  初回デモ: 管理者コード <code>{isSheetStorageBackend() ? SHEET_DEMO_ADMIN_TOKEN : LOCAL_DEMO_ADMIN_CODE}</code> /
+                  受講者研修コード <code>{isSheetStorageBackend() ? SHEET_DEMO_TRAINING_CODE : LOCAL_DEMO_TRAINING_CODE}</code>
+                  （ローカルはアプリごとに storage が分かれるため、管理者で研修コードを変更した場合は受講者側の再読込が必要です）
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -636,78 +719,87 @@ export function AdminPage() {
         {tab === "base" && (
           <section className="a-panel">
             <h2>入室・研修回</h2>
-            <p className="a-hint">
-              受講者には<strong>研修コード</strong>を案内します。管理者の入室には<strong>管理者コード</strong>を使います（別物）。
-              {isSheetStorageBackend() && (
-                <>
-                  {" "}
-                  本番（Sheet）では研修コードの<strong>平文はシートに保存されません</strong>（hash のみ）。
-                  変更時のみ下欄に<strong>新しいコード</strong>を入力して保存してください。初期デモは{" "}
-                  <code>{SHEET_DEMO_TRAINING_CODE}</code>（GAS の <code>resetDemoTrainingCode()</code> で復元）。
-                </>
-              )}
-            </p>
-            <AdminLabel label={`研修コード（${resolveAdminScopeRoom(settings).displayName}）`}>
-              <ImeInput
-                className="a-input"
-                value={trainingCodeDraft}
-                onChange={setTrainingCodeDraft}
-                placeholder={
-                  isSheetStorageBackend()
-                    ? "新しい研修コード（変更時のみ入力）"
-                    : "受講者が入力するコード"
-                }
-              />
-            </AdminLabel>
-            <div className="a-actions">
-              <ActionButton
-                className="a-btn a-btn--primary"
-                busy={isPending(ADMIN_ACTION.saveTrainingCode)}
-                onClick={saveTrainingCode}
-              >
-                研修コードを保存
-              </ActionButton>
-            </div>
+            {allowAccessCodeChanges ? (
+              <>
+                <p className="a-hint">
+                  受講者には<strong>研修コード</strong>を案内します。管理者の入室には<strong>管理者コード</strong>を使います（別物）。
+                  {isSheetStorageBackend() && (
+                    <>
+                      {" "}
+                      本番（Sheet）では研修コードの<strong>平文はシートに保存されません</strong>（hash のみ）。
+                      変更時のみ下欄に<strong>新しいコード</strong>を入力して保存してください。初期デモは{" "}
+                      <code>{SHEET_DEMO_TRAINING_CODE}</code>（GAS の <code>resetDemoTrainingCode()</code> で復元）。
+                    </>
+                  )}
+                </p>
+                <AdminLabel label={`研修コード（${resolveAdminScopeRoom(settings).displayName}）`}>
+                  <ImeInput
+                    className="a-input"
+                    value={trainingCodeDraft}
+                    onChange={setTrainingCodeDraft}
+                    placeholder={
+                      isSheetStorageBackend()
+                        ? "新しい研修コード（変更時のみ入力）"
+                        : "受講者が入力するコード"
+                    }
+                  />
+                </AdminLabel>
+                <div className="a-actions">
+                  <ActionButton
+                    className="a-btn a-btn--primary"
+                    busy={isPending(ADMIN_ACTION.saveTrainingCode)}
+                    onClick={saveTrainingCode}
+                  >
+                    研修コードを保存
+                  </ActionButton>
+                </div>
 
-            <hr className="a-entry-divider" />
+                <hr className="a-entry-divider" />
 
-            <h3>管理者コードの変更</h3>
-            <p className="a-hint">現在の管理者コードを入力した場合のみ、新しいコードに変更できます。</p>
-            {adminChangeMsg && (
-              <p
-                className={adminChangeMsg.includes("変更しました") ? "a-hint" : "a-entry-error"}
-                role="status"
-              >
-                {adminChangeMsg}
+                <h3>管理者コードの変更</h3>
+                <p className="a-hint">現在の管理者コードを入力した場合のみ、新しいコードに変更できます。</p>
+                {adminChangeMsg && (
+                  <p
+                    className={adminChangeMsg.includes("変更しました") ? "a-hint" : "a-entry-error"}
+                    role="status"
+                  >
+                    {adminChangeMsg}
+                  </p>
+                )}
+                <AdminLabel label="現在の管理者コード">
+                  <ImeInput
+                    className="a-input"
+                    value={adminCurrentForChange}
+                    onChange={setAdminCurrentForChange}
+                    placeholder="現在のコード"
+                    autoComplete="off"
+                  />
+                </AdminLabel>
+                <AdminLabel label="新しい管理者コード">
+                  <ImeInput
+                    className="a-input"
+                    value={adminNewCode}
+                    onChange={setAdminNewCode}
+                    placeholder="4文字以上"
+                    autoComplete="off"
+                  />
+                </AdminLabel>
+                <div className="a-actions">
+                  <ActionButton
+                    className="a-btn a-btn--primary"
+                    busy={isPending(ADMIN_ACTION.saveAdminCode)}
+                    onClick={saveAdminCodeChange}
+                  >
+                    管理者コードを変更
+                  </ActionButton>
+                </div>
+              </>
+            ) : (
+              <p className="a-hint">
+                デモ配布モード: 操作対象は <strong>{resolveAdminScopeRoom(settings).displayName}</strong>
+                （研修コードでスコープ済み）。研修コード・管理者コードの変更はできません。
               </p>
             )}
-            <AdminLabel label="現在の管理者コード">
-              <ImeInput
-                className="a-input"
-                value={adminCurrentForChange}
-                onChange={setAdminCurrentForChange}
-                placeholder="現在のコード"
-                autoComplete="off"
-              />
-            </AdminLabel>
-            <AdminLabel label="新しい管理者コード">
-              <ImeInput
-                className="a-input"
-                value={adminNewCode}
-                onChange={setAdminNewCode}
-                placeholder="4文字以上"
-                autoComplete="off"
-              />
-            </AdminLabel>
-            <div className="a-actions">
-              <ActionButton
-                className="a-btn a-btn--primary"
-                busy={isPending(ADMIN_ACTION.saveAdminCode)}
-                onClick={saveAdminCodeChange}
-              >
-                管理者コードを変更
-              </ActionButton>
-            </div>
 
             <hr className="a-entry-divider" />
 
