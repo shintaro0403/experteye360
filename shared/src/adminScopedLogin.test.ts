@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { makeSettings } from "./test/fixtures";
 import {
   canChangeAccessCodes,
+  canEditTourUrl,
   canProceedToSharedAdminApiVerify,
   isTrainingCodeScopedAdmin,
   resolveAdminRoomByTrainingCode,
@@ -42,12 +43,14 @@ describe("DEMO-SCOPE-1: adminScopedLogin", () => {
   it("adminRoomScope=trainingCode のときデモスコープと判定する", () => {
     expect(isTrainingCodeScopedAdmin(demoScopedSettings)).toBe(true);
     expect(canChangeAccessCodes(demoScopedSettings)).toBe(false);
+    expect(canEditTourUrl(demoScopedSettings)).toBe(false);
   });
 
   it("adminRoomScope 未指定は従来スコープ（コード変更可）", () => {
     const legacy = makeSettings({ adminAccessCode: "admin-demo" });
     expect(isTrainingCodeScopedAdmin(legacy)).toBe(false);
     expect(canChangeAccessCodes(legacy)).toBe(true);
+    expect(canEditTourUrl(legacy)).toBe(true);
   });
 
   it("共有管理者コードが settings.adminAccessCode と一致するときだけ true", () => {

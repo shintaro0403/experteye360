@@ -10,6 +10,11 @@ export function canChangeAccessCodes(settings: AppSettings): boolean {
   return !isTrainingCodeScopedAdmin(settings);
 }
 
+/** デモ配布では 3DVista ツアー URL は 3DVista 側で固定のため編集不可 */
+export function canEditTourUrl(settings: AppSettings): boolean {
+  return !isTrainingCodeScopedAdmin(settings);
+}
+
 export function verifySharedAdminAccessCode(adminCode: string, settings: AppSettings): boolean {
   return verifyAdminCode(adminCode, settings.adminAccessCode);
 }

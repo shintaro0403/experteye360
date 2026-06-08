@@ -151,11 +151,13 @@ test.describe("ISOLATE-4 / DEMO-SCOPE-1: コードによるクロス閲覧拒否
     await adminB.close();
   });
 
-  test("デモスコープでは研修コード・管理者コード変更 UI が表示されない", async ({ page }) => {
+  test("デモスコープではコード変更・ツアー URL 編集 UI が表示されない", async ({ page }) => {
     await resetSheetMock();
     await loginAdmin(page, "admin-demo", "DEMO-2026");
     await expect(page.getByRole("button", { name: "研修コードを保存" })).toBeHidden();
     await expect(page.getByRole("button", { name: "管理者コードを変更" })).toBeHidden();
+    await expect(page.getByText("3DVista ツアー URL")).toBeHidden();
+    await expect(page.getByRole("button", { name: "基本" })).toBeVisible();
   });
 
   test("API: 共有 token で room ごとに responses が分離される", async () => {

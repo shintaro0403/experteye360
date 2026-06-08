@@ -315,7 +315,12 @@ describe("AdminPage", () => {
     await render();
     expect(container.textContent).not.toContain("研修コードを保存");
     expect(container.textContent).not.toContain("管理者コードを変更");
+    expect(container.querySelector('input[placeholder="https://..."]')).toBeNull();
     expect(container.textContent).toContain("A社デモ");
+    expect(container.textContent).toContain("基本");
+    expect(
+      Array.from(container.querySelectorAll("button")).some((b) => b.textContent?.trim() === "ツアーURL"),
+    ).toBe(false);
   });
 
   it("ISOLATE-2: 管理者コード 3001 で入室すると room-0505 で token を検証する", async () => {

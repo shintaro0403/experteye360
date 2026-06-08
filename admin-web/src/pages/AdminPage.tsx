@@ -16,6 +16,7 @@ import {
 } from "@shared/adminRoom";
 import {
   canChangeAccessCodes,
+  canEditTourUrl,
   canProceedToSharedAdminApiVerify,
   isTrainingCodeScopedAdmin,
   resolveAdminRoomByTrainingCode,
@@ -273,6 +274,7 @@ export function AdminPage() {
   const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
   const trainingCodeScopedAdmin = isTrainingCodeScopedAdmin(settings);
   const allowAccessCodeChanges = canChangeAccessCodes(settings);
+  const allowTourUrlEdit = canEditTourUrl(settings);
   const [trainingCodeDraft, setTrainingCodeDraft] = useState("");
   const [adminCurrentForChange, setAdminCurrentForChange] = useState("");
   const [adminNewCode, setAdminNewCode] = useState("");
@@ -719,7 +721,13 @@ export function AdminPage() {
               className={`a-tab${tab === t ? " a-tab--on" : ""}`}
               onClick={() => setTab(t)}
             >
-              {t === "base" ? "ツアーURL" : t === "scenes" ? "シーン・カード" : "回答"}
+              {t === "base"
+                ? allowTourUrlEdit
+                  ? "ツアーURL"
+                  : "基本"
+                : t === "scenes"
+                  ? "シーン・カード"
+                  : "回答"}
             </button>
           ))}
         </nav>
@@ -805,29 +813,33 @@ export function AdminPage() {
             ) : (
               <p className="a-hint">
                 デモ配布モード: 操作対象は <strong>{resolveAdminScopeRoom(settings).displayName}</strong>
-                （研修コードでスコープ済み）。研修コード・管理者コードの変更はできません。
+                （研修コードでスコープ済み）。設定の変更はできません（回答の確認のみ）。
               </p>
             )}
 
-            <hr className="a-entry-divider" />
+            {allowTourUrlEdit && (
+              <>
+                <hr className="a-entry-divider" />
 
-            <h2>3DVista ツアー URL</h2>
-            <p className="a-hint">受講者 iframe の 3DVista 埋め込み元 URL を登録します。</p>
-            <div className="a-row" style={{ marginTop: "0.65rem" }}>
-              <ImeInput
-                className="a-input a-grow"
-                value={tourUrl}
-                onChange={setTourUrl}
-                placeholder="https://..."
-              />
-              <ActionButton
-                className="a-btn a-btn--primary"
-                busy={isPending(ADMIN_ACTION.saveTourUrl)}
-                onClick={saveTourUrl}
-              >
-                保存
-              </ActionButton>
-            </div>
+                <h2>3DVista ツアー URL</h2>
+                <p className="a-hint">受講者 iframe の 3DVista 埋め込み元 URL を登録します。</p>
+                <div className="a-row" style={{ marginTop: "0.65rem" }}>
+                  <ImeInput
+                    className="a-input a-grow"
+                    value={tourUrl}
+                    onChange={setTourUrl}
+                    placeholder="https://..."
+                  />
+                  <ActionButton
+                    className="a-btn a-btn--primary"
+                    busy={isPending(ADMIN_ACTION.saveTourUrl)}
+                    onClick={saveTourUrl}
+                  >
+                    保存
+                  </ActionButton>
+                </div>
+              </>
+            )}
           </section>
         )}
 
