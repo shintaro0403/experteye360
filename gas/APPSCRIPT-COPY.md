@@ -24,6 +24,8 @@ Apps Script エディタで **実行**（再デプロイ不要）。
 
 **`resetDemoCredentials()`** — 上記両方
 
+**`syncDemoAdminRoomScope()`** — settings に `adminRoomScope=trainingCode` を保存（3 画面ゲート。既存シートで未設定のとき 1 回）
+
 そのあと `npm run preflight:real-sheet` または `npm run smoke:phase1-sheet` で確認。
 
 ---

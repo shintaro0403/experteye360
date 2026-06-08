@@ -85,6 +85,15 @@ describe("AdminPage", () => {
     sessionStorage.clear();
   });
 
+  it("Sheet backend: settings 読込中は入室画面を出さない", async () => {
+    sessionStorage.clear();
+    mockUseAppData({ loading: true });
+    await render();
+    expect(container.querySelector('[data-admin-phase="loading"]')).not.toBeNull();
+    expect(container.textContent).toContain("設定を読み込み中");
+    expect(container.querySelector('[data-admin-phase="admin-code"]')).toBeNull();
+  });
+
   it("SPEC-ADMIN-THREE-GATE-2026 §7: ③で管理者コード変更・ツアー URL・研修コード保存 UI を出さない", async () => {
     await render();
     expect(container.querySelector('[data-admin-phase="workspace"]')).not.toBeNull();

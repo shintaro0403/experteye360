@@ -112,6 +112,33 @@ function resetDemoCredentials() {
   Logger.log("デモ資格情報を初期値に戻しました");
 }
 
+/**
+ * デモ配布用 settings に adminRoomScope=trainingCode を書き込む（3 画面ゲート）。
+ * 既存シートで settings_json に adminRoomScope が無いときに 1 回実行。
+ */
+function syncDemoAdminRoomScope() {
+  const context = resolveClient_(DEMO_CONFIG.clientId);
+  const settingsSheet = getSheet_(context.clientBook, "settings");
+  const row = readObjects_(settingsSheet).find((item) => item.key === "default");
+  if (!row) throw new Error("Settings row is missing");
+  const settings = JSON.parse(row.settings_json);
+  if (settings.adminRoomScope === "trainingCode") {
+    Logger.log("adminRoomScope は既に trainingCode です");
+    return;
+  }
+  if (settings.adminRoomScope === "adminCode") {
+    Logger.log("adminRoomScope=adminCode のため変更しません");
+    return;
+  }
+  settings.adminRoomScope = "trainingCode";
+  upsertRowByKey_(settingsSheet, "key", "default", {
+    key: "default",
+    settings_json: JSON.stringify(settings),
+    updated_at: nowIso_(),
+  });
+  Logger.log("settings に adminRoomScope=trainingCode を保存しました");
+}
+
 /** キー設定済みか確認（実行ログを見る） */
 function logScriptPropertyStatus() {
   const id = PropertiesService.getScriptProperties().getProperty(SCRIPT_PROP_MASTER_SPREADSHEET_ID);
@@ -141,8 +168,9 @@ function handleRequest_(e, method) {
 }
 
 function handleGetSettings_(e) {
-  const context = resolveClient_(requiredParam_(e, "client"));
-  return loadSettings_(context.clientBook);
+  const clientId = requiredParam_(e, "client");
+  const context = resolveClient_(clientId);
+  return loadSettings_(context.clientBook, clientId);
 }
 
 function handlePostSettings_(e) {
@@ -485,15 +513,24 @@ function verifyRoomId_(clientBook, roomId) {
   return room;
 }
 
-function loadSettings_(clientBook) {
+function loadSettings_(clientBook, clientId) {
   const row = readObjects_(getSheet_(clientBook, "settings")).find((item) => item.key === "default");
   if (!row) throw apiError_(500, "Settings row is missing");
-  return JSON.parse(row.settings_json);
+  const settings = JSON.parse(row.settings_json);
+  return normalizeDemoDistributionSettings_(settings, clientId);
+}
+
+/** GET settings 応答: デモ client は adminRoomScope 未設定時に trainingCode を付与（SPEC-ADMIN-THREE-GATE-2026） */
+function normalizeDemoDistributionSettings_(settings, clientId) {
+  if (clientId !== DEMO_CONFIG.clientId) return settings;
+  if (settings.adminRoomScope === "adminCode") return settings;
+  if (settings.adminRoomScope === "trainingCode") return settings;
+  return Object.assign({}, settings, { adminRoomScope: "trainingCode" });
 }
 
 function findSceneName_(clientBook, sceneId) {
   try {
-    const settings = loadSettings_(clientBook);
+    const settings = loadSettings_(clientBook, null);
     const scene = (settings.scenes || []).find((item) => item.id === sceneId);
     return scene ? scene.displayName : "";
   } catch (error) {

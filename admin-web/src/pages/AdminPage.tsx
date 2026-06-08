@@ -481,6 +481,18 @@ export function AdminPage() {
       URL.revokeObjectURL(url);
     });
 
+  if (isSheetStorageBackend() && loading) {
+    return (
+      <div className="a-shell" data-admin-phase="loading">
+        <div className="a-page a-entry-gate">
+          <div className="a-entry-card">
+            <p>設定を読み込み中…</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!adminGateActive && !adminWorkspaceActive) {
     return (
       <div className="a-shell" data-admin-phase="admin-code">

@@ -217,7 +217,7 @@ export function resetDemoData(): void {
 export async function loadSettingsAsync(): Promise<AppSettings> {
   if (!isSheetStorageBackend()) return loadSettings();
   const config = sheetApiConfig();
-  return normalizeAppSettings(await loadSheetSettings(config));
+  return normalizeAppSettings(await loadSheetSettings(config), { clientId: config.clientId });
 }
 
 export async function saveSettingsAsync(

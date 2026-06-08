@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { normalizeAppSettings } from "./appSettings";
+import { SHEET_DEMO_CLIENT_ID } from "./demoCredentials";
 import { makeSettings } from "./test/fixtures";
 import {
   canProceedToSharedAdminApiVerify,
@@ -45,6 +47,12 @@ describe("DEMO-SCOPE-1: adminScopedLogin", () => {
   it("adminRoomScope 未指定は従来スコープ", () => {
     const legacy = makeSettings({ adminAccessCode: "admin-demo" });
     expect(isTrainingCodeScopedAdmin(legacy)).toBe(false);
+  });
+
+  it("lipronext-demo で adminRoomScope 未指定なら trainingCode に正規化する", () => {
+    const legacy = makeSettings({ adminAccessCode: "admin-demo" });
+    const normalized = normalizeAppSettings(legacy, { clientId: SHEET_DEMO_CLIENT_ID });
+    expect(isTrainingCodeScopedAdmin(normalized)).toBe(true);
   });
 
   it("共有管理者コードが settings.adminAccessCode と一致するときだけ true", () => {
