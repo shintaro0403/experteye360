@@ -1,13 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  changeAdminAccessCode,
   getAdminSessionToken,
   getAdminSessionRoomId,
   isAdminSessionActive,
   setAdminSessionActive,
   setAdminSessionRoomId,
   setAdminSessionToken,
-  validateSheetAdminCodeChange,
 } from "@shared/adminEntry";
 import {
   resolveAdminRoomByCode,
@@ -15,8 +13,6 @@ import {
   resolveAdminScopeRoom,
 } from "@shared/adminRoom";
 import {
-  canChangeAccessCodes,
-  canEditTourUrl,
   canProceedToSharedAdminApiVerify,
   isTrainingCodeScopedAdmin,
   resolveAdminRoomByTrainingCode,
@@ -26,8 +22,6 @@ import { getConfidenceLabel } from "@shared/confidence";
 import { getSubmissionRounds, JUDGMENT_ROUND_COUNT } from "@shared/judgmentFlow";
 import { generateParticipantPdf } from "@shared/pdfExport";
 import {
-  changeAdminTokenAsync,
-  changeTrainingCodeAsync,
   isSheetStorageBackend,
   sheetApiErrorDetail,
   verifyAdminTokenAsync,
@@ -50,9 +44,6 @@ import { usePendingAction } from "../hooks/usePendingAction";
 const ADMIN_ACTION = {
   login: "login",
   reload: "reload",
-  saveTrainingCode: "saveTrainingCode",
-  saveAdminCode: "saveAdminCode",
-  saveTourUrl: "saveTourUrl",
   addScene: "addScene",
   promoteScene: "promoteScene",
   removeScene: "removeScene",
@@ -206,28 +197,6 @@ function ResponseDetail({
   );
 }
 
-function formatTrainingCodeSaveError(err: unknown): string {
-  const detail = sheetApiErrorDetail(err);
-  if (detail.includes("Unknown route") && detail.includes("access-code")) {
-    return [
-      "研修コードの保存に失敗しました。",
-      "",
-      "実 GAS に研修コード変更 API（rooms/access-code）がありません。",
-      "gas/Code.gs を Apps Script に反映し、「新しいデプロイ」したあと .env の VITE_SHEET_API_BASE を新しい URL に更新してください。",
-    ].join("\n");
-  }
-  if (detail.includes("Invalid admin token")) {
-    return "研修コードの保存に失敗しました。管理者コードが無効です。一度ログアウトして、正しい管理者コードで再入室してください。";
-  }
-  if (detail.includes("Invalid room")) {
-    return "研修コードの保存に失敗しました。研修回 ID がシートと一致しません（例: demo-room-001）。設定の再読込後にもう一度お試しください。";
-  }
-  if (detail) {
-    return `研修コードの保存に失敗しました。\n\n（${detail}）`;
-  }
-  return "研修コードの保存に失敗しました。管理者コードを確認して再度お試しください。";
-}
-
 function formatClearResponsesError(err: unknown): string {
   const detail = sheetApiErrorDetail(err);
   if (detail.includes("Unknown route") && detail.includes("responses/clear")) {
@@ -258,7 +227,6 @@ export function AdminPage() {
   const {
     settings,
     setSettings,
-    applySettings,
     responses,
     replaceResponses,
     refresh,
@@ -273,14 +241,7 @@ export function AdminPage() {
   const [trainingCodeLoginInput, setTrainingCodeLoginInput] = useState("");
   const [adminLoginError, setAdminLoginError] = useState<string | null>(null);
   const trainingCodeScopedAdmin = isTrainingCodeScopedAdmin(settings);
-  const allowAccessCodeChanges = canChangeAccessCodes(settings);
-  const allowTourUrlEdit = canEditTourUrl(settings);
-  const [trainingCodeDraft, setTrainingCodeDraft] = useState("");
-  const [adminCurrentForChange, setAdminCurrentForChange] = useState("");
-  const [adminNewCode, setAdminNewCode] = useState("");
-  const [adminChangeMsg, setAdminChangeMsg] = useState<string | null>(null);
-  const [tab, setTab] = useState<"base" | "scenes" | "responses">("base");
-  const [tourUrl, setTourUrl] = useState(settings.tourUrl);
+  const [tab, setTab] = useState<"base" | "scenes" | "responses">("responses");
   const [activeSceneId, setActiveSceneId] = useState(settings.scenes[0]?.id ?? "");
   const [draft, setDraft] = useState<SceneEditorDraft | null>(null);
   const [expandedQuestion, setExpandedQuestion] = useState(0);
@@ -293,19 +254,6 @@ export function AdminPage() {
 
   const participantScene = settings.scenes[PARTICIPANT_SCENE_INDEX] ?? null;
   const activeSceneIndex = settings.scenes.findIndex((s) => s.id === activeSceneId);
-
-  useEffect(() => {
-    setTourUrl(settings.tourUrl);
-  }, [settings.tourUrl]);
-
-  useEffect(() => {
-    if (isSheetStorageBackend()) {
-      // 本番（Sheet）: 平文はシートに保存されない。変更時のみ入力欄に打つ。
-      setTrainingCodeDraft("");
-      return;
-    }
-    setTrainingCodeDraft(resolveAdminScopeRoom(settings).accessCode);
-  }, [settings.rooms, settings, adminAuthed]);
 
   const returnToAdminCodeEntry = () => {
     setAdminSessionActive(false);
@@ -405,96 +353,6 @@ export function AdminPage() {
       setAdminLoginError("管理者コードが正しくありません");
     });
 
-  const saveTrainingCode = () =>
-    void runPending(ADMIN_ACTION.saveTrainingCode, async () => {
-      const code = trainingCodeDraft.trim();
-      if (!code) {
-        alert("研修コードを入力してください");
-        return;
-      }
-      const room = resolveAdminScopeRoom(settings);
-      if (isSheetStorageBackend()) {
-        try {
-          await changeTrainingCodeAsync({
-            adminToken,
-            roomId: room.roomId,
-            nextAccessCode: code,
-          });
-          const nextRooms =
-            settings.rooms.length > 0
-              ? settings.rooms.map((r) =>
-                  r.roomId === room.roomId ? { ...r, accessCode: code } : r,
-                )
-              : [{ ...room, accessCode: code }];
-          applySettings({ ...settings, rooms: nextRooms });
-          alert("研修コードを保存しました。受講者に新しいコードを案内してください。");
-        } catch (err) {
-          alert(formatTrainingCodeSaveError(err));
-        }
-        return;
-      }
-      const nextRooms =
-        settings.rooms.length > 0
-          ? settings.rooms.map((r) =>
-              r.roomId === room.roomId ? { ...r, accessCode: code } : r,
-            )
-          : [{ ...room, accessCode: code }];
-      await setSettings({ ...settings, rooms: nextRooms });
-      alert("研修コードを保存しました。受講者に新しいコードを案内してください。");
-    });
-
-  const saveAdminCodeChange = () =>
-    void runPending(ADMIN_ACTION.saveAdminCode, async () => {
-      if (isSheetStorageBackend()) {
-        const result = validateSheetAdminCodeChange(
-          adminCurrentForChange,
-          adminNewCode,
-          adminToken,
-        );
-        if (!result.ok) {
-          setAdminChangeMsg(result.error);
-          return;
-        }
-        const next = adminNewCode.trim();
-        try {
-          await changeAdminTokenAsync({ adminToken, nextAdminToken: next });
-          setAdminSessionToken(next);
-          setAdminTokenState(next);
-          setAdminCurrentForChange("");
-          setAdminNewCode("");
-          setAdminChangeMsg("管理者コードを変更しました。次回から新しいコードで入室してください。");
-        } catch {
-          setAdminChangeMsg("現在の管理者コードが正しくありません");
-        }
-        return;
-      }
-
-      const scopeRoom = resolveAdminScopeRoom(settings);
-      const expectedAdminCode =
-        scopeRoom.adminAccessCode?.trim() || settings.adminAccessCode;
-      const result = changeAdminAccessCode(
-        adminCurrentForChange,
-        adminNewCode,
-        expectedAdminCode,
-      );
-      if (!result.ok) {
-        setAdminChangeMsg(result.error);
-        return;
-      }
-      const next = adminNewCode.trim();
-      const nextRooms = settings.rooms.map((r) =>
-        r.roomId === scopeRoom.roomId ? { ...r, adminAccessCode: next } : r,
-      );
-      await setSettings({
-        ...settings,
-        rooms: nextRooms.length > 0 ? nextRooms : settings.rooms,
-        adminAccessCode: settings.rooms.length <= 1 ? next : settings.adminAccessCode,
-      });
-      setAdminCurrentForChange("");
-      setAdminNewCode("");
-      setAdminChangeMsg("管理者コードを変更しました。次回から新しいコードで入室してください。");
-    });
-
   useEffect(() => {
     if (!activeScene) {
       setDraft(null);
@@ -515,11 +373,6 @@ export function AdminPage() {
       return { ...d, questions };
     });
   };
-
-  const saveTourUrl = () =>
-    void runPending(ADMIN_ACTION.saveTourUrl, async () => {
-      await setSettings({ ...settings, tourUrl: tourUrl.trim() });
-    });
 
   const saveSceneDraft = () =>
     void runPending(ADMIN_ACTION.saveScene, async () => {
@@ -721,125 +574,18 @@ export function AdminPage() {
               className={`a-tab${tab === t ? " a-tab--on" : ""}`}
               onClick={() => setTab(t)}
             >
-              {t === "base"
-                ? allowTourUrlEdit
-                  ? "ツアーURL"
-                  : "基本"
-                : t === "scenes"
-                  ? "シーン・カード"
-                  : "回答"}
+              {t === "base" ? "基本" : t === "scenes" ? "シーン・カード" : "回答"}
             </button>
           ))}
         </nav>
 
         {tab === "base" && (
           <section className="a-panel">
-            <h2>入室・研修回</h2>
-            {allowAccessCodeChanges ? (
-              <>
-                <p className="a-hint">
-                  受講者には<strong>研修コード</strong>を案内します。管理者の入室には<strong>管理者コード</strong>を使います（別物）。
-                  {isSheetStorageBackend() && (
-                    <>
-                      {" "}
-                      本番（Sheet）では研修コードの<strong>平文はシートに保存されません</strong>（hash のみ）。
-                      変更時のみ下欄に<strong>新しいコード</strong>を入力して保存してください。初期デモは{" "}
-                      <code>{SHEET_DEMO_TRAINING_CODE}</code>（GAS の <code>resetDemoTrainingCode()</code> で復元）。
-                    </>
-                  )}
-                </p>
-                <AdminLabel label={`研修コード（${resolveAdminScopeRoom(settings).displayName}）`}>
-                  <ImeInput
-                    className="a-input"
-                    value={trainingCodeDraft}
-                    onChange={setTrainingCodeDraft}
-                    placeholder={
-                      isSheetStorageBackend()
-                        ? "新しい研修コード（変更時のみ入力）"
-                        : "受講者が入力するコード"
-                    }
-                  />
-                </AdminLabel>
-                <div className="a-actions">
-                  <ActionButton
-                    className="a-btn a-btn--primary"
-                    busy={isPending(ADMIN_ACTION.saveTrainingCode)}
-                    onClick={saveTrainingCode}
-                  >
-                    研修コードを保存
-                  </ActionButton>
-                </div>
-
-                <hr className="a-entry-divider" />
-
-                <h3>管理者コードの変更</h3>
-                <p className="a-hint">現在の管理者コードを入力した場合のみ、新しいコードに変更できます。</p>
-                {adminChangeMsg && (
-                  <p
-                    className={adminChangeMsg.includes("変更しました") ? "a-hint" : "a-entry-error"}
-                    role="status"
-                  >
-                    {adminChangeMsg}
-                  </p>
-                )}
-                <AdminLabel label="現在の管理者コード">
-                  <ImeInput
-                    className="a-input"
-                    value={adminCurrentForChange}
-                    onChange={setAdminCurrentForChange}
-                    placeholder="現在のコード"
-                    autoComplete="off"
-                  />
-                </AdminLabel>
-                <AdminLabel label="新しい管理者コード">
-                  <ImeInput
-                    className="a-input"
-                    value={adminNewCode}
-                    onChange={setAdminNewCode}
-                    placeholder="4文字以上"
-                    autoComplete="off"
-                  />
-                </AdminLabel>
-                <div className="a-actions">
-                  <ActionButton
-                    className="a-btn a-btn--primary"
-                    busy={isPending(ADMIN_ACTION.saveAdminCode)}
-                    onClick={saveAdminCodeChange}
-                  >
-                    管理者コードを変更
-                  </ActionButton>
-                </div>
-              </>
-            ) : (
-              <p className="a-hint">
-                デモ配布モード: 操作対象は <strong>{resolveAdminScopeRoom(settings).displayName}</strong>
-                （研修コードでスコープ済み）。設定の変更はできません（回答の確認のみ）。
-              </p>
-            )}
-
-            {allowTourUrlEdit && (
-              <>
-                <hr className="a-entry-divider" />
-
-                <h2>3DVista ツアー URL</h2>
-                <p className="a-hint">受講者 iframe の 3DVista 埋め込み元 URL を登録します。</p>
-                <div className="a-row" style={{ marginTop: "0.65rem" }}>
-                  <ImeInput
-                    className="a-input a-grow"
-                    value={tourUrl}
-                    onChange={setTourUrl}
-                    placeholder="https://..."
-                  />
-                  <ActionButton
-                    className="a-btn a-btn--primary"
-                    busy={isPending(ADMIN_ACTION.saveTourUrl)}
-                    onClick={saveTourUrl}
-                  >
-                    保存
-                  </ActionButton>
-                </div>
-              </>
-            )}
+            <h2>研修回</h2>
+            <p className="a-hint">
+              操作対象: <strong>{resolveAdminScopeRoom(settings).displayName}</strong>
+              {trainingCodeScopedAdmin && "（入室時の研修コードでスコープ済み）"}
+            </p>
           </section>
         )}
 

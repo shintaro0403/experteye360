@@ -89,21 +89,6 @@ async function submitFiveQuestionResponse(page: Page, participantName: string) {
   await expect(page.getByRole("heading", { name: "送信完了" })).toBeVisible();
 }
 
-async function verifyTrainingCodeOnParticipant(page: Page, trainingCode: string) {
-  await clearBrowserStorage(page, PARTICIPANT_URL);
-  await page.getByPlaceholder("例：DEMO-2026").fill(trainingCode);
-  await clickNext(page);
-}
-
-async function setMockAdminScope(mode: "trainingCode" | "adminCode") {
-  const response = await fetch(`${SHEET_MOCK_ADMIN_URL}/scope-mode`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mode }),
-  });
-  expect(response.ok).toBeTruthy();
-}
-
 async function loginAdmin(page: Page, input?: { trainingCode?: string; adminCode?: string }) {
   await clearBrowserStorage(page, ADMIN_URL);
   await page.getByPlaceholder("管理者コード").fill(input?.adminCode ?? "admin-demo");
@@ -112,6 +97,7 @@ async function loginAdmin(page: Page, input?: { trainingCode?: string; adminCode
     await trainingInput.fill(input?.trainingCode ?? "DEMO-2026");
   }
   await page.getByRole("button", { name: "入室する" }).click();
+  await expect(page.getByRole("button", { name: "管理者コード入力に戻る" })).toBeVisible();
 }
 
 test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
@@ -149,53 +135,12 @@ test.describe("Phase 4 E2E: 受講者から管理者まで", () => {
     );
   });
 
-  test("管理者が変更した研修コードだけで受講者が入室できる", async ({ browser }) => {
+  test("管理者画面にコード変更・ツアー URL 編集 UI は出ない", async ({ page }) => {
     await resetSheetMock();
-    await setMockAdminScope("adminCode");
-
-    const admin = await browser.newPage();
-    await loginAdmin(admin, { adminCode: "admin-demo" });
-    await admin.getByPlaceholder("新しい研修コード（変更時のみ入力）").fill("NEXT-2026");
-    const saved = admin.waitForEvent("dialog");
-    await admin.getByRole("button", { name: "研修コードを保存" }).click();
-    const savedDialog = await saved;
-    expect(savedDialog.message()).toContain("研修コードを保存しました");
-    await savedDialog.accept();
-    await admin.close();
-
-    const oldCodeParticipant = await browser.newPage();
-    await verifyTrainingCodeOnParticipant(oldCodeParticipant, "DEMO-2026");
-    await expect(oldCodeParticipant.getByRole("alert")).toContainText("正しい研修コードを入力してください");
-    await expect(oldCodeParticipant.getByPlaceholder("例：山田 太郎")).toBeHidden();
-    await oldCodeParticipant.close();
-
-    const newCodeParticipant = await browser.newPage();
-    await verifyTrainingCodeOnParticipant(newCodeParticipant, "NEXT-2026");
-    await expect(newCodeParticipant.getByPlaceholder("例：山田 太郎")).toBeVisible();
-    await newCodeParticipant.close();
-  });
-
-  test("管理者が変更した管理者コードだけで再入室できる", async ({ page }) => {
-    await resetSheetMock();
-    await setMockAdminScope("adminCode");
-    await loginAdmin(page, { adminCode: "admin-demo" });
-
-    await page.getByPlaceholder("現在のコード").fill("admin-demo");
-    await page.getByPlaceholder("4文字以上").fill("admin-next");
-    await page.getByRole("button", { name: "管理者コードを変更" }).click();
-    await expect(page.getByRole("status")).toContainText("管理者コードを変更しました");
-
-    await page.getByRole("button", { name: "管理者コード入力に戻る" }).click();
-    await page.getByPlaceholder("管理者コード").fill("admin-demo");
-    await page.getByRole("button", { name: "入室する" }).click();
-    await expect(page.getByRole("alert")).toContainText("管理者コードが正しくありません");
-
-    await page.getByPlaceholder("管理者コード").fill("admin-next");
-    const trainingAfterChange = page.getByPlaceholder("研修コード");
-    if (await trainingAfterChange.isVisible()) {
-      await trainingAfterChange.fill("DEMO-2026");
-    }
-    await page.getByRole("button", { name: "入室する" }).click();
-    await expect(page.getByRole("button", { name: "管理者コード入力に戻る" })).toBeVisible();
+    await loginAdmin(page);
+    await expect(page.getByRole("button", { name: "研修コードを保存" })).toBeHidden();
+    await expect(page.getByRole("button", { name: "管理者コードを変更" })).toBeHidden();
+    await expect(page.getByText("3DVista ツアー URL")).toBeHidden();
+    await expect(page.getByRole("button", { name: "ツアーURL" })).toBeHidden();
   });
 });

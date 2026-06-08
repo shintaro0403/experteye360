@@ -151,7 +151,7 @@ test.describe("ISOLATE-4 / DEMO-SCOPE-1: コードによるクロス閲覧拒否
     await adminB.close();
   });
 
-  test("デモスコープではコード変更・ツアー URL 編集 UI が表示されない", async ({ page }) => {
+  test("管理者画面にコード変更・ツアー URL 編集 UI は出ない", async ({ page }) => {
     await resetSheetMock();
     await loginAdmin(page, "admin-demo", "DEMO-2026");
     await expect(page.getByRole("button", { name: "研修コードを保存" })).toBeHidden();
