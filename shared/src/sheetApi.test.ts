@@ -143,6 +143,29 @@ describe("sheetApi 契約", () => {
     expect(() => JSON.parse(String(init?.body))).not.toThrow();
   });
 
+  it("POST rooms/provision は token と accessCode を送り、新規 roomId を返す", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ roomId: "room-new-code", created: true }));
+
+    const { provisionRoomViaApi } = await import("./storage/sheet");
+    const result = await provisionRoomViaApi({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      adminToken: "admin-demo",
+      accessCode: "NEW-CODE",
+      displayName: "NEW-CODE",
+    });
+
+    expect(result).toEqual({ roomId: "room-new-code", created: true });
+    const [url, init] = lastFetchCall();
+    expectUrlHasParams(String(url), { path: "rooms/provision", client: TEST_CLIENT });
+    expect(JSON.parse(String(init?.body))).toEqual({
+      token: "admin-demo",
+      accessCode: "NEW-CODE",
+      displayName: "NEW-CODE",
+    });
+    expect(String(url)).not.toContain("token=");
+  });
+
   it("POST rooms/verify は accessCode を送り、成功時に roomId を返す", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ roomId: TEST_ROOM }));
 

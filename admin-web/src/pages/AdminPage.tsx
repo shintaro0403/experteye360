@@ -18,7 +18,6 @@ import {
 import {
   canProceedToSharedAdminApiVerify,
   isTrainingCodeScopedAdmin,
-  resolveAdminRoomByTrainingCode,
   verifySharedAdminAccessCode,
 } from "@shared/adminScopedLogin";
 import { getConfidenceLabel } from "@shared/confidence";
@@ -26,11 +25,10 @@ import { getSubmissionRounds, JUDGMENT_ROUND_COUNT } from "@shared/judgmentFlow"
 import { generateParticipantPdf } from "@shared/pdfExport";
 import {
   isSheetStorageBackend,
+  provisionAdminRoomAsync,
   sheetApiErrorDetail,
   verifyAdminTokenAsync,
-  verifyTrainingCodeAsync,
 } from "@shared/storage";
-import { TRAINING_CODE_MISMATCH_MESSAGE } from "@shared/roomEntry";
 import type { ParticipantSubmission, Scene } from "@shared/types";
 import { ActionButton } from "../components/ActionButton";
 import { CardSlotsField, cardsToSlots, slotsToCards } from "../components/CardSlotsField";
@@ -345,28 +343,27 @@ export function AdminPage() {
         setAdminLoginError("管理者コード入力からやり直してください");
         return;
       }
-      let roomId: string;
-      if (isSheetStorageBackend()) {
-        const verified = await verifyTrainingCodeAsync(trainingCode, settings.rooms);
-        if (!verified.ok) {
-          setAdminLoginError(verified.message);
-          return;
-        }
-        roomId = verified.roomId;
-        try {
-          await verifyAdminTokenAsync(token, roomId);
-          completeWorkspaceLogin(token, roomId);
-        } catch {
-          setAdminLoginError("管理者コードが正しくありません");
-        }
+      const provisioned = await provisionAdminRoomAsync({
+        trainingCode,
+        settings,
+        adminToken: token,
+      });
+      if (!provisioned.ok) {
+        setAdminLoginError(provisioned.message);
         return;
       }
-      const room = resolveAdminRoomByTrainingCode(settings, trainingCode);
-      if (!room) {
-        setAdminLoginError(TRAINING_CODE_MISMATCH_MESSAGE);
-        return;
+      if (provisioned.created) {
+        await setSettings(provisioned.settings);
       }
-      completeWorkspaceLogin(token, room.roomId);
+      try {
+        await verifyAdminTokenAsync(token, provisioned.room.roomId);
+        completeWorkspaceLogin(token, provisioned.room.roomId);
+        if (provisioned.created) {
+          await refresh();
+        }
+      } catch {
+        setAdminLoginError("管理者コードが正しくありません");
+      }
     });
 
   useEffect(() => {
@@ -555,7 +552,10 @@ export function AdminPage() {
         <div className="a-page a-entry-gate">
           <div className="a-entry-card">
             <h1>研修コード</h1>
-            <p>操作・閲覧する研修回の研修コードを入力してください。1 つの研修コードが 1 つの管理画面に対応します。</p>
+            <p>
+              操作・閲覧する研修回の研修コードを入力してください。未登録のコードを入力すると、その研修回（room）が新規作成されます。1
+              つの研修コードが 1 つの管理画面に対応します。
+            </p>
             {adminLoginError && (
               <p className="a-entry-error" role="alert">
                 {adminLoginError}

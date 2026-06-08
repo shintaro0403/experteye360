@@ -220,6 +220,47 @@ async function handleSheetApi(req, res, url) {
     return;
   }
 
+  if (req.method === "POST" && path === "rooms/provision") {
+    if (!isAuthorizedForSettings(settings, url, body)) {
+      sendJson(res, 403, { ok: false, error: "invalid_admin_token" });
+      return;
+    }
+    const accessCode = typeof body.accessCode === "string" ? body.accessCode.trim() : "";
+    if (!accessCode) {
+      sendJson(res, 400, { ok: false, error: "access_code_required" });
+      return;
+    }
+    const existing = settings.rooms.find((r) => r.enabled !== false && r.accessCode === accessCode);
+    if (existing) {
+      sendJson(res, 200, { roomId: existing.roomId, created: false });
+      return;
+    }
+    const slug =
+      accessCode
+        .replace(/[^\w\u3040-\u30ff\u3400-\u9fff-]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 40) || "room";
+    let roomId = `room-${slug}`;
+    const ids = new Set(settings.rooms.map((r) => r.roomId));
+    let suffix = 2;
+    while (ids.has(roomId)) {
+      roomId = `room-${slug}-${suffix}`;
+      suffix += 1;
+    }
+    const displayName =
+      typeof body.displayName === "string" && body.displayName.trim()
+        ? body.displayName.trim()
+        : accessCode;
+    settings.rooms.push({
+      roomId,
+      displayName,
+      accessCode,
+      enabled: true,
+    });
+    sendJson(res, 200, { roomId, created: true });
+    return;
+  }
+
   if (req.method === "POST" && path === "rooms/access-code") {
     const roomId = typeof body.roomId === "string" ? body.roomId.trim() : "";
     if (!isAuthorizedForRoom(settings, roomId, url, body)) {

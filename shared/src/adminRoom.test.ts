@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { makeSettings } from "./test/fixtures";
 import {
+  ADMIN_TRAINING_CODE_REQUIRED_MESSAGE,
+  allocateRoomIdForAccessCode,
+  provisionAdminRoomByTrainingCode,
   resolveAdminRoomByCode,
   resolveAdminRoomForSheetLogin,
   resolveAdminScopeRoom,
@@ -114,6 +117,55 @@ describe("resolveAdminRoomByCode（ISOLATE-1）", () => {
 
   it("resolveAdminRoomForSheetLogin: 複数 room で平文なしは null", () => {
     expect(resolveAdminRoomForSheetLogin(twoRoomSettings, "admin-demo-2026")).toBeNull();
+  });
+
+  it("provisionAdminRoomByTrainingCode: 未登録コードで新規 room を作る", () => {
+    const settings = makeSettings({
+      adminRoomScope: "trainingCode",
+      rooms: [
+        {
+          roomId: "room-demo-1",
+          displayName: "既存",
+          accessCode: "DEMO-2026",
+          enabled: true,
+        },
+      ],
+    });
+    const result = provisionAdminRoomByTrainingCode(settings, "NEW-CODE-2026");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.created).toBe(true);
+    expect(result.room.accessCode).toBe("NEW-CODE-2026");
+    expect(result.settings.rooms).toHaveLength(2);
+    expect(result.settings.rooms[1]?.roomId).toBe(
+      allocateRoomIdForAccessCode("NEW-CODE-2026", settings.rooms),
+    );
+  });
+
+  it("provisionAdminRoomByTrainingCode: 既存コードは作成せず既存 room を返す", () => {
+    const settings = makeSettings({
+      rooms: [
+        {
+          roomId: "room-0403",
+          displayName: "4月3日",
+          accessCode: "0403",
+          enabled: true,
+        },
+      ],
+    });
+    const result = provisionAdminRoomByTrainingCode(settings, "0403");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.created).toBe(false);
+    expect(result.room.roomId).toBe("room-0403");
+    expect(result.settings.rooms).toHaveLength(1);
+  });
+
+  it("provisionAdminRoomByTrainingCode: 空入力は必須メッセージ", () => {
+    const result = provisionAdminRoomByTrainingCode(makeSettings(), "   ");
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toBe(ADMIN_TRAINING_CODE_REQUIRED_MESSAGE);
   });
 
   it("resolveAdminScopeRoom はセッションの roomId を優先する", () => {

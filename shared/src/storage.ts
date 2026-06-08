@@ -1,6 +1,10 @@
 import { normalizeAppSettings } from "./appSettings";
 import { dedupeResponsesById, filterResponsesByRoomId, omitResponsesForRoomId } from "./responseScope";
 import { resolveClientId } from "./clientId";
+import {
+  provisionAdminRoomByTrainingCode,
+  type ProvisionAdminRoomResult,
+} from "./adminRoom";
 import { TRAINING_CODE_MISMATCH_MESSAGE, type VerifyTrainingCodeResult, verifyTrainingCode } from "./roomEntry";
 import { DEFAULT_SETTINGS } from "./seed";
 import {
@@ -10,6 +14,7 @@ import {
   clearSheetResponses,
   loadSheetResponses,
   loadSheetSettings,
+  provisionRoomViaApi,
   saveSheetSettings,
   verifyTrainingCodeViaApi,
   sheetApiErrorDetail,
@@ -300,6 +305,53 @@ export async function saveResponsesAsync(
     adminToken,
   });
   window.dispatchEvent(new Event("expertEye360-storage"));
+}
+
+export type ProvisionAdminRoomAsyncInput = {
+  trainingCode: string;
+  settings: AppSettings;
+  adminToken: string;
+};
+
+/** 管理者ゲート②: 研修コードで room を確定（local は settings 更新、Sheet は API で provision） */
+export async function provisionAdminRoomAsync(
+  input: ProvisionAdminRoomAsyncInput,
+): Promise<ProvisionAdminRoomResult> {
+  const local = provisionAdminRoomByTrainingCode(input.settings, input.trainingCode);
+  if (!local.ok) return local;
+
+  if (!isSheetStorageBackend()) {
+    if (local.created) saveSettings(local.settings);
+    return local;
+  }
+
+  const adminToken = input.adminToken.trim();
+  if (!adminToken) {
+    return { ok: false, message: "管理者コード入力からやり直してください" };
+  }
+
+  try {
+    const api = await provisionRoomViaApi({
+      ...sheetApiConfig(),
+      adminToken,
+      accessCode: input.trainingCode.trim(),
+      displayName: local.room.displayName,
+    });
+    const room =
+      input.settings.rooms.find((item) => item.roomId === api.roomId) ?? local.room;
+    const settings =
+      api.created && !input.settings.rooms.some((item) => item.roomId === api.roomId)
+        ? { ...input.settings, rooms: [...input.settings.rooms, { ...room, roomId: api.roomId }] }
+        : input.settings;
+    return {
+      ok: true,
+      room: { ...room, roomId: api.roomId },
+      created: api.created,
+      settings,
+    };
+  } catch {
+    return { ok: false, message: "研修回の準備に失敗しました。しばらくしてから再度お試しください。" };
+  }
 }
 
 export async function verifyTrainingCodeAsync(

@@ -156,6 +156,7 @@ function handleRequest_(e, method) {
     if (method === "POST" && route === "responses/clear") return json_(handleClearResponses_(e));
     if (method === "POST" && route === "rooms/verify") return json_(handleVerifyRoom_(e));
     if (method === "POST" && route === "rooms/access-code") return json_(handleChangeRoomAccessCode_(e));
+    if (method === "POST" && route === "rooms/provision") return json_(handleProvisionRoom_(e));
     if (method === "POST" && route === "admin/token") return json_(handleChangeAdminToken_(e));
     throw apiError_(404, `Unknown route: ${method} ${route}`);
   } catch (error) {
@@ -291,6 +292,63 @@ function handleChangeRoomAccessCode_(e) {
   });
 
   return { ok: true };
+}
+
+/** 管理者ゲート: 研修コードで room を確定（未登録なら新規作成） */
+function handleProvisionRoom_(e) {
+  const context = resolveClient_(requiredParam_(e, "client"));
+  const body = readJsonBody_(e);
+  const accessCode = normalizeSecret_(body.accessCode);
+  if (!accessCode) throw apiError_(400, "accessCode is required");
+
+  verifyAdminTokenForSettings_(context.clientRecord, context.clientBook, tokenFromRequest_(e, body));
+
+  const roomsSheet = getSheet_(context.clientBook, "rooms");
+  const accessCodeHash = hashSecret_(accessCode);
+  const existing = readObjects_(roomsSheet).find(function (row) {
+    return row.accessCodeHash === accessCodeHash && asBoolean_(row.enabled);
+  });
+  if (existing) {
+    return { roomId: existing.roomId, created: false };
+  }
+
+  const roomId = allocateRoomIdForAccessCode_(accessCode, readObjects_(roomsSheet));
+  const displayName = normalizeSecret_(body.displayName) || accessCode;
+  appendObject_(roomsSheet, {
+    roomId: roomId,
+    displayName: displayName,
+    enabled: true,
+    accessCodeHash: accessCodeHash,
+    adminTokenHash: "",
+    startsAt: "",
+    endsAt: "",
+  });
+
+  const settingsSheet = getSheet_(context.clientBook, "settings");
+  const settingsRow = readObjects_(settingsSheet).find(function (item) {
+    return item.key === "default";
+  });
+  if (!settingsRow) throw apiError_(500, "Settings row is missing");
+  const settings = JSON.parse(settingsRow.settings_json);
+  settings.rooms = settings.rooms || [];
+  settings.rooms.push({
+    roomId: roomId,
+    displayName: displayName,
+    accessCode: "",
+    enabled: true,
+  });
+  const now = nowIso_();
+  upsertRowByKey_(settingsSheet, "key", "default", {
+    key: "default",
+    settings_json: JSON.stringify(settings),
+    updated_at: now,
+  });
+  appendAuditLog_(context.clientBook, "admin", "room.provision", `room:${roomId}`, {
+    accessCode: accessCode,
+    createdAt: now,
+  });
+
+  return { roomId: roomId, created: true };
 }
 
 function handleChangeAdminToken_(e) {
@@ -693,6 +751,23 @@ function sanitizeCell_(value) {
     return `'${value}`;
   }
   return value;
+}
+
+function allocateRoomIdForAccessCode_(accessCode, roomRows) {
+  const slug = String(accessCode || "")
+    .trim()
+    .replace(/[^\w\u3040-\u30ff\u3400-\u9fff-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40) || "room";
+  const base = `room-${slug}`;
+  const ids = {};
+  roomRows.forEach(function (row) {
+    ids[row.roomId] = true;
+  });
+  if (!ids[base]) return base;
+  let suffix = 2;
+  while (ids[`${base}-${suffix}`]) suffix += 1;
+  return `${base}-${suffix}`;
 }
 
 function normalizeSecret_(value) {

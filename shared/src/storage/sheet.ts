@@ -51,6 +51,16 @@ export type ChangeTrainingCodeViaApiInput = AdminSheetApiBase & {
   nextAccessCode: string;
 };
 
+export type ProvisionRoomViaApiInput = AdminSheetApiBase & {
+  accessCode: string;
+  displayName?: string;
+};
+
+export type ProvisionRoomViaApiResult = {
+  roomId: string;
+  created: boolean;
+};
+
 export async function loadSheetSettings(input: LoadSheetSettingsInput): Promise<AppSettings> {
   return requestJson<AppSettings>(buildUrl(input.apiBaseUrl, "settings", {
     client: input.clientId,
@@ -129,6 +139,22 @@ export async function changeTrainingCodeViaApi(
       token: input.adminToken,
       roomId: input.roomId,
       nextAccessCode: input.nextAccessCode,
+    }),
+  );
+}
+
+/** 管理者ゲート: 研修コードで room を確定（未登録なら新規作成） */
+export async function provisionRoomViaApi(
+  input: ProvisionRoomViaApiInput,
+): Promise<ProvisionRoomViaApiResult> {
+  return requestJson<ProvisionRoomViaApiResult>(
+    buildUrl(input.apiBaseUrl, "rooms/provision", {
+      client: input.clientId,
+    }),
+    postJson({
+      token: input.adminToken,
+      accessCode: input.accessCode,
+      displayName: input.displayName,
     }),
   );
 }

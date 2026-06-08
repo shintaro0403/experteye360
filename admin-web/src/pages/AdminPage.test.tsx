@@ -11,10 +11,14 @@ import { AdminPage } from "./AdminPage";
 
 vi.mock("@shared/storage", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@shared/storage")>();
+  const { provisionAdminRoomByTrainingCode } = await import("@shared/adminRoom");
   return {
     ...actual,
     isSheetStorageBackend: vi.fn(() => true),
     verifyAdminTokenAsync: vi.fn().mockResolvedValue(undefined),
+    provisionAdminRoomAsync: vi.fn(async (input) =>
+      provisionAdminRoomByTrainingCode(input.settings, input.trainingCode),
+    ),
   };
 });
 
@@ -299,6 +303,48 @@ describe("AdminPage", () => {
     expect(container.querySelector('[data-admin-phase="workspace"]')).not.toBeNull();
     expect(container.textContent).toContain("基本");
     expect(container.textContent).not.toContain("研修コードを保存");
+  });
+
+  it("ADMIN-GATE: 未登録の研修コードで新規 room を作成して入室する", async () => {
+    sessionStorage.clear();
+    const setSettings = vi.fn().mockResolvedValue(undefined);
+    const demoScopedSettings = makeSettings({
+      adminRoomScope: "trainingCode",
+      adminAccessCode: "admin-demo",
+      rooms: [
+        {
+          roomId: "room-demo-1",
+          displayName: "A社デモ",
+          accessCode: "DEMO-2026",
+          enabled: true,
+        },
+      ],
+    });
+    mockUseAppData({ settings: demoScopedSettings, setSettings });
+    await render();
+    await act(async () => {
+      setInputValue(
+        container.querySelector<HTMLInputElement>('input[placeholder="管理者コード"]')!,
+        "admin-demo",
+      );
+      getButton("続ける").click();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      setInputValue(
+        container.querySelector<HTMLInputElement>('input[placeholder="研修コード"]')!,
+        "BRAND-NEW-2026",
+      );
+      getButton("入室する").click();
+      await Promise.resolve();
+    });
+    expect(setSettings).toHaveBeenCalled();
+    expect(verifyAdminTokenAsync).toHaveBeenCalledWith(
+      "admin-demo",
+      expect.stringMatching(/^room-/),
+    );
+    expect(sessionStorage.getItem(SESSION_ADMIN_ROOM_KEY)).toMatch(/^room-/);
+    expect(container.textContent).not.toContain("正しい研修コードを入力してください");
   });
 
   it("DEMO-SCOPE-1 / ADMIN-2STEP-1: 2 段階で room を特定する", async () => {
