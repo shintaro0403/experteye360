@@ -14,12 +14,12 @@
 
 ### 無効（本仕様の実装根拠にしてはならない）
 
-以下は **古い仕様・AI が誤って混ぜた記述** を含む。矛盾するときは **常に本ファイルを優先**し、古い記述に従って実装してはならない。
+以下は **過去に古い仕様・AI が誤って混ぜた記述** があった箇所。**2026-06-16 時点で DOC-ALIGNMENT 整合済み**だが、古いクローン・過去コミット・AI-history を根拠に **③へ研修コード保存 UI を復活させてはならない**。
 
-- `docs/REMAINING-IMPLEMENTATION.md` §6.6 の「同一画面 2 入力」「基本タブで研修コード保存」
-- `docs/REMAINING-IMPLEMENTATION.md` §6.7 の「基本タブの研修コードを保存は残す」
-- `README.md` の「管理画面『基本』タブで研修コードを保存」
-- `docs/TEST-DESIGN.md` の管理画面「研修コードを保存」ボタン前提の記述
+- 過去の `docs/REMAINING-IMPLEMENTATION.md` §6.6 の「同一画面 2 入力」「基本タブで研修コード保存」（**現行 §6.6 は本ファイル準拠**）
+- 過去の `docs/REMAINING-IMPLEMENTATION.md` §6.7 の「基本タブの研修コードを保存は残す」（**現行 §6.7 は本ファイル準拠**）
+- 過去の `README.md` の「管理画面『基本』タブで研修コードを保存」（**現行 README は本ファイル準拠**）
+- 過去の `docs/TEST-DESIGN.md` の管理画面「研修コードを保存」ボタン前提（**現行 §1.5 は本ファイル準拠**）
 - 過去コミットの「研修コード変更 UI 復活」を **③に載せる** 解釈
 
 ### ユーザー確定日
@@ -168,9 +168,11 @@
 | 領域 | 期待 |
 |---|---|
 | `adminEntry.ts` | `enterAdminTrainingGate`, `isAdminWorkspaceActive`（ゲート中 false） |
-| `AdminPage.tsx` | 3 つの early return。③の base パネルに研修コード保存ブロック **無し** |
-| `storage.ts` | local でも `filterResponsesByRoomId` |
+| `appSettings.ts` | `resolveAdminRoomScope()` — `lipronext-demo` かつ未設定時 `trainingCode` |
+| `AdminPage.tsx` | 3 つの early return + loading。③の base パネルに研修コード保存ブロック **無し** |
+| `storage.ts` | local でも `filterResponsesByRoomId`。`loadSettingsAsync` で clientId 正規化 |
 | `useAppData.ts` | `adminToken` 無しで responses `[]`。refresh 世代で room 切替の取り違え防止 |
+| `gas/Code.gs` | GET settings 補正（`normalizeDemoDistributionSettings_`）、`syncDemoAdminRoomScope()` |
 
 ---
 
@@ -180,8 +182,9 @@
 |---|---|
 | ①② ゲート分離 | 実装済み |
 | ③ 基本タブの研修コード UI | 実装済み（研修回の表示のみ。保存 UI なし） |
+| `adminRoomScope` 正規化（デモ） | 実装済み（フロント + GAS。古い `settings_json` でも 3 画面ゲート） |
 | room 回答分離（local） | 実装済み |
-| 本ファイルと旧ドキュメントの整合 | 実装済み（`README.md` / `REMAINING-IMPLEMENTATION.md` / `TEST-DESIGN.md` を本ファイルに合わせて更新） |
+| 本ファイルと他ドキュメントの整合 | 実装済み（2026-06-16 [DOC-ALIGNMENT.md](./DOC-ALIGNMENT.md) 更新） |
 
 ---
 
@@ -197,3 +200,5 @@
 ## 改訂履歴
 
 **1.0**（2026-06-08）— ユーザー口頭仕様に基づき初版。旧ドキュメントの「基本タブで研修コード保存」との混同を禁止。
+
+**1.1**（2026-06-16）— `adminRoomScope` 正規化（`appSettings.ts` / GAS）を §10・§11 に追記。他ドキュメント整合済みのため §0 の無効リストを「過去記述」に改訂。[DOC-ALIGNMENT.md](./DOC-ALIGNMENT.md) を参照。

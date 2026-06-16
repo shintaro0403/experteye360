@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  PARTICIPANT_SETTINGS_POLL_MS,
   STORAGE_REFRESH_DEBOUNCE_MS,
   createDebounced,
   prependResponse,
   resolveRefreshMode,
   resolveResponsesRoomId,
+  shouldEnableParticipantSettingsSync,
   shouldShowBlockingLoader,
   type RefreshScope,
 } from "./appDataLoad";
@@ -95,6 +97,25 @@ export function useAppData(options: UseAppDataOptions = {}) {
       window.removeEventListener("storage", onStorage);
     };
   }, [refresh]);
+
+  useEffect(() => {
+    if (!shouldEnableParticipantSettingsSync(options.adminToken)) return;
+
+    const pollSettings = () => {
+      void refresh({ scope: "settings" });
+    };
+    const intervalId = window.setInterval(pollSettings, PARTICIPANT_SETTINGS_POLL_MS);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") pollSettings();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [options.adminToken, refresh]);
 
   const applySettings = useCallback((next: AppSettings) => {
     setSettingsState(next);

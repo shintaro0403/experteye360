@@ -45,7 +45,7 @@
 
 **管理者画面 UI** — 初回読込のみブロッキング loader、再読込・回答一覧はスピナー。入室・保存・削除など **主要ボタンは押下後にボタン内スピナー**（`ActionButton`）。入室後は「管理者コード入力に戻る」でログアウト可能
 
-**自動テスト** — 詳細は [自動テストと CI](#自動テストと-ci)。Vitest **19 files / 135 tests** Green。mock E2E（Playwright）は `workers: 1` で直列実行。実 GAS 到達性は `npm run smoke:phase1-sheet`（`settings` / `responses/clear` / `rooms/access-code` 等）
+**自動テスト** — 詳細は [自動テストと CI](#自動テストと-ci)。Vitest **26 files / 195 tests** Green。mock E2E（Playwright）は **15 tests**・`workers: 1` で直列実行。実 GAS 到達性は `npm run smoke:phase1-sheet`（`settings` / `responses/clear` / `rooms/access-code` 等）
 
 **未完了（本番寄せ）** — 複数 `client` / 複数 `room` の実環境分離確認（手動 A・**デモのためステイ**）、OJT 管理者 UI、実 PDF 目視、フェーズ 2 チェック 4〜6 の未記録項目
 
@@ -118,7 +118,7 @@ http://localhost:5174/admin/embed-preview.html
 - **`admin-web`** — `AdminPage` の代表 UI、`useAppData` の結合
 - **`participant-web`** — `ParticipantPage` の研修コードと名前欄
 
-現状 **19 files / 135 tests** Green。
+現状 **26 files / 195 tests** Green。
 
 ```bash
 npm run install:all   # 初回・CI と同様（ルート + 両 Web）

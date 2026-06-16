@@ -351,6 +351,7 @@ README の機能章（§1〜§8）に対応する実装単位の整理。機能 
 ### 4.1 管理者画面のスコープ
 
 - README に定義するとおり、管理者 API／UI は **ツアーURL登録・シーン識別子登録・カード設定・回答の確認**に限定する（OJT は将来・F8）。
+- デモ配布の入室フロー（3 画面ゲート）は [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md) を正とする。
 - 360°画像差替え、ホットスポット編集、シーン遷移変更、Live Guide 設定、注釈・演出の変更など **3DVista 固有操作は提供しない**（バックエンドにそのためのエンドポイントも持たない設計とする）。
 
 ### 4.3 受講者回答フロー（5問 × 4画面サイクル）
@@ -743,7 +744,7 @@ README の機能説明（§1 気づき、§2 共有・行動、§3 判断基準�
 1. **Sheet API + スプレッドシート** — 共有の正本（必須）
 2. **`clientId`** — 複数クライアント分離（URL `?client=`）
 3. **`roomId`（研修コードで確定・必須）** — 同一 `clientId` 内の研修回分離。受講者は **名前・所属の前**に研修コードを入力し検証（不一致時は「正しい研修コードを入力してください」）。URL に `room` を載せない。検証後に `roomId` を保持し API では `room` 必須
-4. **管理者コード（`adminToken`）** — 管理者の入室は **管理者コード必須**。研修コードは **不要**（設定側）。管理者コードの変更は現行コードを知る者のみ（[TEST-DESIGN.md §1.5](./TEST-DESIGN.md#15-入室マルチテナント)、[README.md §入室とマルチテナント](../README.md#入室とマルチテナント)）
+4. **管理者コード（`adminToken`）** — 管理者の入室は **管理者コード必須**。デモ配布（`adminRoomScope: trainingCode`）では **3 画面ゲート**（管理者コード → 研修コード → 管理画面）。詳細は [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md)。契約運用（`adminCode` / 未指定）では研修コードでの入室は不要（[TEST-DESIGN.md §1.5](./TEST-DESIGN.md#15-入室マルチテナント)、[README.md §入室とマルチテナント](../README.md#入室とマルチテナント)）
 5. **storage 抽象化** — 将来 PostgreSQL 等へ API 差し替え（[SPREADSHEET-DATA.md §7](./SPREADSHEET-DATA.md#7-将来-postgresql-等への移行)）
 6. **ローカル開発** — 入室フローを省略しない **本番近似**（§1.5）
 
@@ -831,7 +832,7 @@ sequenceDiagram
 
 #### 5.1.3 管理者 — 設定読取・保存と回答参照
 
-管理者は **`client` 配下**のデータを扱う。**管理者コード**（API `token`）必須。**研修コードでの入室は不要**。回答参照時の `room` 絞り込みは UI の研修回選択等（[TEST-DESIGN.md §1.5](./TEST-DESIGN.md#15-入室マルチテナント)・**D-21**）。
+管理者は **`client` 配下**のデータを扱う。**管理者コード**（API `token`）必須。デモ配布（`adminRoomScope: trainingCode`）では **研修コードゲート（②）** で room を確定してから③へ進む（[SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md)）。契約運用（`adminCode` / 未指定）では研修コードでの入室は不要。回答参照時の `room` 絞り込みは、デモでは②で確定した room、契約運用では UI の研修回選択等（[TEST-DESIGN.md §1.5](./TEST-DESIGN.md#15-入室マルチテナント)・**D-21**）。
 
 ```mermaid
 sequenceDiagram
@@ -1041,6 +1042,11 @@ flowchart LR
 ---
 
 ## 9. 改訂履歴
+
+#### 1.4
+
+**日付** — 2026-06-16
+**内容** — §5.0・§5.1.3 の管理者入室を `adminRoomScope` 分岐に改訂。デモ 3 画面ゲートは [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md) を正とする
 
 #### 1.3
 

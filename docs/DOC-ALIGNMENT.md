@@ -2,7 +2,7 @@
 
 README・各 `docs/*.md`・コードの食い違いをなくすための **参照順** と **現状の一言** をまとめる。更新したら本ファイルの **最終確認日** も直す。
 
-**最終確認日**: 2026-06-08（ISOLATE-1: コードベース分離方針を [REMAINING-IMPLEMENTATION.md §6](./REMAINING-IMPLEMENTATION.md#6-コードベース分離url-固定方針) に正本化。`adminRoom.test.ts` Green）
+**最終確認日**: 2026-06-16（管理者 3 画面ゲート・`adminRoomScope` 正規化を [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md) に整合。Vitest **26 files / 195 tests** Green）
 
 ---
 
@@ -44,9 +44,13 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 
 - **役割**: **プロダクト要件**（ユーザー向け機能・フロー）
 
+**1b — [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md)**
+
+- **役割**: **管理者入室（3 画面ゲート）の製品仕様**（デモ配布 `adminRoomScope: trainingCode`）。①②③ の画面分離・研修コードの置き場所・③の禁止 UI は **本ファイルのみ** が正
+
 **2 — [TECHNICAL-SPEC.md](./TECHNICAL-SPEC.md)**
 
-- **役割**: **技術・画面・step・機能 ID（F3〜F8）**
+- **役割**: **技術・画面・step・機能 ID（F3〜F8）**。管理者入室の詳細は **1b を優先**
 
 **3 — [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)**
 
@@ -110,13 +114,14 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 
 **管理者コード入室**
 
-- **実装** — あり（local / Sheet API token）
-- **自動テスト** — `sheetApi.test` で token 契約、`adminEntry.test` で管理者コード照合・変更、`AdminPage.test.tsx` で Sheet backend 管理操作・再読込 UI を確認
+- **実装** — あり（local / Sheet API token）。`adminRoomScope` に応じて **1 段階入室**（`adminCode` / 未指定）または **3 画面ゲート**（`trainingCode`・デモ配布）。正本: [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md)
+- **自動テスト** — `sheetApi.test`（token 契約）、`adminEntry.test`（管理者コード・ゲート）、`adminScopedLogin.test`（共有 admin + 研修コード）、`adminPhase.test`、`AdminPage.test.tsx`（3 画面ゲート・loading・③に保存 UI なし）
+- **備考** — `lipronext-demo` で `adminRoomScope` 未設定時は `resolveAdminRoomScope()` が `trainingCode` に正規化（フロント + GAS `normalizeDemoDistributionSettings_`）
 
 **本番 Sheet API**
 
 - **実装** — 最小実装あり（GAS、`shared/src/storage/sheet.ts`、`VITE_STORAGE_BACKEND=sheet`、受講者・管理者画面配線）
-- **自動テスト** — `sheetApi.test` あり（client / room / token / `rooms/verify` / `admin/token` / `rooms/access-code` 契約）。`storage.test` と `AdminPage.test.tsx` で Sheet backend 研修コード変更の UI 配線まで Green。ライブ GAS 手動疎通は `settings`、`rooms/verify`、`responses` 追加・取得まで確認済み
+- **自動テスト** — `sheetApi.test` あり（client / room / token / `rooms/verify` / `admin/token` / `rooms/access-code` 契約）。`storage.test` で API 層の研修コード変更を Green。**管理画面③からの保存 UI は無し**（API 層 `changeTrainingCodeAsync` の Vitest は維持）。ライブ GAS 手動疎通は `settings`、`rooms/verify`、`responses` 追加・取得まで確認済み
 - **備考** — Sheet API mock 経由の Playwright は Green。複数 `client` / 複数 `room` の実環境分離確認、本番運用 hardening は未
 
 **講師・管理者 一覧・詳細（F7）**
@@ -145,7 +150,8 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 - **ISOLATE-4** — E2E クロス閲覧（`isolate-code-separation.spec.ts`）Green
 
 ```bash
-npm test          # ルート Vitest（shared + admin-web + participant-web）。現状 21 files / 147 tests Green
+npm test          # ルート Vitest（shared + admin-web + participant-web）。現状 26 files / 195 tests Green
+npm run test:e2e  # Playwright mock。現状 15 tests / 4 files Green（workers: 1）
 npm run test:watch
 ```
 
@@ -198,8 +204,13 @@ npm run test:watch
 
 **Vitest**
 
-- **誤りやすい** — D-16 未決
-- **正しい現状** — **ルート 1 本**（`vitest.config.ts`）
+- **誤りやすい** — D-16 未決、件数が README と不一致
+- **正しい現状** — **ルート 1 本**（`vitest.config.ts`）。現状 **26 files / 195 tests** Green（件数の正本は本節 §2）
+
+**管理者入室**
+
+- **誤りやすい** — 「管理者の入室に研修コードは常に不要」
+- **正しい現状** — **`adminRoomScope` で分岐**。デモ（`trainingCode`）は 3 画面ゲートで②に研修コード必須。契約運用（`adminCode` / 未指定）は 1 段階入室で研修コード不要。正本: [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md)
 
 ---
 
@@ -224,3 +235,5 @@ npm run test:watch
 **0.4**（2026-06-05）— フェーズ 2 別端末疎通記録。テスト件数 127 に更新
 
 **0.5**（2026-06-05）— セキュリティ実装（[SECURITY.md](./SECURITY.md)）を反映。管理者 token のボディ送信（SEC-SECRET-01）・`responses/query`・HTTPS 必須（SEC-NET-01）・数式インジェクション対策（SEC-INPUT-01）。ハッシュは単純 SHA-256 を維持（SEC-SECRET-02 見送り）。テスト件数 19 files / 135 tests に更新。mock E2E を `workers: 1`（直列）化
+
+**0.6**（2026-06-16）— [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md) を優先順 **1b** に追加。3 画面ゲート・③の研修コード保存 UI 廃止・`adminRoomScope` 正規化（`appSettings.ts` / GAS）を §2 に反映。Vitest **26 files / 195 tests**、mock E2E **15 tests** に更新。README / REMAINING / TEST-DESIGN / TECHNICAL-SPEC / HUMAN-TEST-SPEC の管理者入室記述を本ファイル・SPEC に整合

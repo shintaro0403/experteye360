@@ -504,8 +504,8 @@ npm run test:e2e:real-sheet
 
 **「速い回帰」が残っている**
 
-- `npm test`（19 files / 135 tests）Green
-- `npm run test:e2e`（mock。`playwright.config.ts` は `workers: 1` で直列実行）Green
+- `npm test`（**26 files / 195 tests**）Green
+- `npm run test:e2e`（mock **15 tests**。`playwright.config.ts` は `workers: 1` で直列実行）Green
 
 **完了していなくてもよいもの（別タスク）**
 
@@ -595,3 +595,5 @@ npm run test:e2e:real-sheet
 **0.5**（2026-06-05）— フェーズ 4: `ci.yml` に mock E2E（Playwright/chromium）を搭載し GitHub Actions で Green を確認。`participant-admin-flow.spec.ts` を現 UI に追従（名前・所属 10 文字制限、研修コード欄プレースホルダー、「管理者コード入力に戻る」へのリネーム）
 
 **0.6**（2026-06-05）— セキュリティ実装（[SECURITY.md](./SECURITY.md)）を反映。新 API 契約（管理者 `token` は POST ボディ、回答取得は `POST responses/query`）に合わせて mock サーバー・E2E を更新。CI の flaky 解消のため `playwright.config.ts` を `workers: 1`（直列実行）に。Vitest を 19 files / 135 tests に更新。なお `preflight:real-sheet` は後方互換の旧 `GET responses`（token クエリ）を到達確認に使用
+
+**0.7**（2026-06-16）— §9 の現行テスト件数を **26 files / 195 tests**（Vitest）・**15 tests**（mock E2E）に更新。[DOC-ALIGNMENT.md](./DOC-ALIGNMENT.md) と整合

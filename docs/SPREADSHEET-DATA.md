@@ -378,9 +378,11 @@ https://{host}/admin/?client=client-a
 
 **管理者 UI**
 
-- 利用開始時に **管理者コード**（`adminToken`）入力を **必須**。**研修コードは不要**（受講者向けコードは `rooms` で **設定**する）
-- **管理者コードの変更**は、現行の管理者コードを知っている者のみ（変更 API で旧 `token` 再入力を必須）
-- 回答一覧の `room` 絞り込みは UI の研修回選択（研修コードの再入力は不要）。詳細は [TEST-DESIGN.md §1.5](./TEST-DESIGN.md#15-入室マルチテナント)・**D-21**
+- **共通** — 利用開始時に **管理者コード**（`adminToken`）入力を **必須**（API 呼び出し時に `token` として送る）
+- **デモ配布（`adminRoomScope: trainingCode`）** — 3 画面ゲート（①管理者コード → ②研修コード → ③管理画面）。③の基本タブに研修コード保存 UI は **出さない**。正本: [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md)
+- **契約運用（`adminCode` / 未指定）** — 1 段階入室。管理者の入室に研修コードは **不要**（room は管理者コードで特定）
+- **管理者コードの変更**は、現行の管理者コードを知っている者のみ（変更 API で旧 `token` 再入力を必須）。デモ配布では変更 UI は **出さない**
+- 回答一覧の `room` 絞り込み — デモでは②で確定した room。契約運用では UI の研修回選択。詳細は [TEST-DESIGN.md §1.5](./TEST-DESIGN.md#15-入室マルチテナント)・**D-21**
 
 **API**
 
@@ -811,3 +813,5 @@ POST ボディは JSON（`Content-Type: text/plain;charset=utf-8`）。GAS は�
 **0.8**（2026-05-21）— 受講者: 研修コードは名前前・失敗時の固定文言。管理者: **管理者コード**必須・研修コード不要・コード変更は現行コード必須。ローカル本番近似
 
 **0.9**（2026-06-05）— セキュリティ要件を反映。管理者 `token` を **POST ボディ**送信（SEC-SECRET-01）、回答取得を **`POST responses/query`** に変更（旧 `GET responses` は後方互換）。`admin/token` エンドポイントを §4.1 に追記。HTTPS 必須（SEC-NET-01）・数式インジェクション対策（SEC-INPUT-01）・ハッシュ方針（単純 SHA-256）を §6 に明記。詳細は [SECURITY.md](./SECURITY.md)
+
+**1.0**（2026-06-16）— §2.3 管理者 UI を `adminRoomScope` 分岐に改訂（デモ 3 画面ゲート / 契約 1 段階）。[SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md) を参照

@@ -151,7 +151,7 @@
 
 **1.4**（2026-05-21）— **§1.4 F7 ダッシュボード・PDF** を追加。回答済み定義・jsPDF 項目を確定（D-05 決定）
 
-**1.5**（2026-05-21）— **§1.5 入室・マルチテナント** を追加。研修コード（受講者・名前前）・管理者コード（管理者・研修コード不要）・ローカル本番近似（D-06 / D-07 / D-08 決定）
+**1.5**（2026-05-21）— **§1.5 入室・マルチテナント** を追加。研修コード（受講者・名前前）・管理者コード必須・ローカル本番近似（D-06 / D-07 / D-08 決定）。**2026-06-16 改訂**: デモ配布の 3 画面ゲートを [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md) に委譲し、`adminRoomScope` 分岐を明記
 
 **1.6**（2026-05-21）— **§2.0.5 テストの粒度（大→中→小）** を追加。Phase 0 作業順を中粒度優先に更新
 
@@ -165,11 +165,13 @@
 
 **2.1**（2026-05-26）— Sheet API 契約 TC-005〜013、`rooms/access-code`、PDF ダウンロード UI 代表テスト、開ける最小 PDF 構造・日本語対応・`pdf.html` デザイン参照テスト・目視フィードバック反映テスト・長文折り返しテスト、14 files / 86 tests Green を反映
 
-**2.2**（2026-06-08）— [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md) に合わせ、管理画面③の研修コード保存 UI テストを廃止。③に UI が無いことを `AdminPage.test.tsx` / E2E で固定。API 層（`changeTrainingCodeAsync`）の Vitest は維持
-
 **2.2**（2026-05-26）— 名前・所属 10 文字、一言メモ 30 文字の上限制御と `validateStep.test.ts` 境界値テスト、14 files / 88 tests Green を反映
 
 **2.3**（2026-05-26）— PDF のコンテンツ量に応じた複数ページ化と `pdfExport.test.ts` のページ数・ページ番号テスト、14 files / 89 tests Green を反映
+
+**2.4**（2026-06-08）— [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md) に合わせ、管理画面③の研修コード保存 UI テストを廃止。③に UI が無いことを `AdminPage.test.tsx` / E2E で固定。API 層（`changeTrainingCodeAsync`）の Vitest は維持
+
+**2.5**（2026-06-16）— §1.5 管理者入室を `adminRoomScope` 分岐に改訂（デモ 3 画面ゲート / 契約 1 段階）。[DOC-ALIGNMENT.md](./DOC-ALIGNMENT.md) と整合。Vitest **26 files / 195 tests**、mock E2E **15 tests**
 
 ### 1.2 テストスコープとマイルストーン
 
@@ -179,6 +181,10 @@
 
 **役割** — プロダクト要件の正
 
+#### [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md)
+
+**役割** — デモ配布の管理者 3 画面ゲートの正（入室 UI の詳細）
+
 #### [SPREADSHEET-DATA.md](./SPREADSHEET-DATA.md)
 
 **役割** — 本番永続化・API 契約の正
@@ -187,7 +193,7 @@
 
 **役割** — 振る舞い ID（C-01、V-04 等）とファイル対応の辞書。**Phase は書かない**
 
-**現在のマイルストーン**: **Phase 2.5 継続 + Phase 3 入口 Green**（本番永続化は Sheet API 契約・GAS・画面配線・研修コード変更 UI・Sheet API mock Playwright まで Green。実環境分離確認は継続。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口まで Green）
+**現在のマイルストーン**: **Phase 2.5 継続 + Phase 3 入口 Green**（本番永続化は Sheet API 契約・GAS・画面配線・3 画面ゲート・研修コード変更 API（UI は③に無し）・Sheet API mock Playwright まで Green。実環境分離確認は継続。Phase 3 は `pdfExport` / `ojtExport` の共有ロジック入口まで Green）
 
 **2 つの優先軸**（混同しない）
 
@@ -598,19 +604,29 @@
 
 #### 管理者の入室フロー（UI）
 
-#### **必須入力**
+**正本（デモ配布）** — [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md)。`adminRoomScope` で分岐する。
 
-**仕様** — **管理者コード**（初回表示時。未検証では設定・回答一覧等の本体 UI を出さない）
+#### デモ配布（`adminRoomScope: trainingCode`）
 
-#### **不要**
+**① 管理者コード** — 共有管理者コードを入力。「続ける」で②へ。タブ・研修コード欄は出さない（`data-admin-phase="admin-code"`）
 
-**仕様** — **研修コード** — 管理者は研修コードを **設定する側**であり、自分の入室に研修コードは **不要**
+**② 研修コードゲート** — 操作対象 room を確定する研修コードのみ。「入室する」で③へ。タブは出さない（`data-admin-phase="training-gate"`）
+
+**③ 管理画面** — 基本 / シーン・カード / 回答。基本タブは **研修回の表示のみ**（研修コード入力・保存 UI は **出さない**）
+
+**補足** — `lipronext-demo` で `adminRoomScope` 未設定時は `resolveAdminRoomScope()` が `trainingCode` に正規化。Sheet backend 読込中は loading フェーズを表示
+
+#### 契約運用（`adminRoomScope: adminCode` または未指定）
+
+**必須入力** — **管理者コード**（1 段階入室。未検証では設定・回答一覧等の本体 UI を出さない）
+
+**研修コード** — 管理者の入室には **不要**（room は管理者コードで特定。ISOLATE-1〜2）
 
 #### **URL**
 
 **仕様** — `?client={clientId}` は従来どおり（`room` を URL に載せない方針は受講者側と同様）
 
-#### **研修回の操作**
+#### **研修回の操作（契約運用 `adminCode` のみ）**
 
 **仕様** — `rooms` の追加・`accessCode`（研修コード）の設定・有効化は、**管理者コード検証済み**のセッションでのみ。回答閲覧は `client` 配下。`room` 単位の絞り込みは UI の研修回選択（一覧）で行い、**研修コードの再入力は不要**（§1.3 **D-21** で詳細を詰めても可）
 
@@ -1465,7 +1481,7 @@ it("選択肢が5件以下のとき、件数と内容はそのまま返る", () 
 #### [pages/AdminPage.tsx](../admin-web/src/pages/AdminPage.tsx)
 
 - **テスト**: `pages/AdminPage.test.tsx`
-- **状態**: Green（Sheet backend の研修コード変更 UI、回答詳細からの PDF ダウンロード UI）。OJT UI のスモークは未
+- **状態**: Green（3 画面ゲート・③に研修コード保存 UI なし、回答詳細からの PDF ダウンロード UI）。OJT UI のスモークは未
 - **重要度**: **B**
 - **備考**: 保存正規化は `sceneQuestions.test.ts`
 
@@ -2129,7 +2145,7 @@ admin-web/src/
 - [x] **B** — 管理者画面から回答済み 1 件の PDF ダウンロード（代表 UI テスト Green）
 - [ ] **A** — 代表 1 件の PDF を目視し ①〜⑤ が含まれること
 - [ ] `useAppData.test.ts`（両 Web）
-- [ ] `ParticipantPage.test.tsx` スモーク、`AdminPage.test.tsx` の回答一覧・OJT スモーク（研修コード変更 UI と PDF ダウンロード UI の `AdminPage.test.tsx` は Green）
+- [ ] `ParticipantPage.test.tsx` スモーク、`AdminPage.test.tsx` の回答一覧・OJT スモーク（3 画面ゲート・PDF ダウンロード UI の `AdminPage.test.tsx` は Green。③の研修コード保存 UI は **無し**）
 - [x] `ojtExport.test.ts`（F8・共有ロジック入口）
 
 ---

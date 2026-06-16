@@ -97,7 +97,7 @@
 
 **1.5**（2026-05-21）— §0.2b 記載ルール（横並び表禁止・縦ブロック）。DOC-ALIGNMENT §0 と整合
 
----
+**1.6**（2026-06-16）— ADM-ENTRY-04/05 追加。SH-13 を `adminRoomScope` 分岐に改訂。[SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md) を参照
 
 ## 0.2 実装状態の記号（README / コードと揃える）
 
@@ -425,7 +425,7 @@
 
 **SH-12** — `rooms.accessCodeHash` で研修コード検証（平文をシートに保存しない）。失敗時 UI: **正しい研修コードを入力してください**（GAS hash 照合と画面配線は最小実装済み）
 
-**SH-13** — 管理者操作で **管理者コード**（`adminTokenHash`）照合。管理者の入室に研修コードは不要
+**SH-13** — 管理者操作で **管理者コード**（`adminTokenHash`）照合。デモ（`adminRoomScope: trainingCode`）では②で研修コードにより room を確定。契約運用（`adminCode`）では管理者の入室に研修コードは不要
 
 **SH-14** — 管理者コード変更は現行コード必須（`sheetApi` TC-013）
 
@@ -455,7 +455,11 @@
 
 **ADM-ENTRY-03** — 管理者コード変更は旧コード不一致で拒否
 
-正本: [TEST-DESIGN.md §1.5](./TEST-DESIGN.md#15-入室マルチテナント)
+**ADM-ENTRY-04** — デモ（`adminRoomScope: trainingCode`）では 3 画面ゲート（①管理者コード → ②研修コード → ③workspace）。②通過前にタブを出さない
+
+**ADM-ENTRY-05** — ③の基本タブに研修コード保存 UI を出さない（SPEC §3）
+
+正本: [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md)（デモ）、[TEST-DESIGN.md §1.5](./TEST-DESIGN.md#15-入室マルチテナント)（契約運用）
 
 #### 2.2b `audit_logs` シート 【未実装】
 
@@ -536,6 +540,8 @@
 **H-02** — `addResponse` 後 `responses` 更新
 
 **H-03** — `expertEye360-storage` で refresh
+
+**H-04** — 受講者モード（`adminToken` 無し）で settings を定期再取得（SETTINGS-SYNC-1）。管理者保存後も別タブのカード文言が追従する
 
 ---
 

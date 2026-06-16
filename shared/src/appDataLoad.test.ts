@@ -3,9 +3,11 @@ import {
   UI_RESPONSE_BUDGET_MS,
   createDebounced,
   loadAppDataBundle,
+  PARTICIPANT_SETTINGS_POLL_MS,
   prependResponse,
   resolveRefreshMode,
   resolveResponsesRoomId,
+  shouldEnableParticipantSettingsSync,
   shouldShowBlockingLoader,
 } from "./appDataLoad";
 import { makeSettings, makeSubmission } from "./test/fixtures";
@@ -56,6 +58,18 @@ describe("appDataLoad（UI 応答性）", () => {
   it("2回目以降の refresh は background モードになる", () => {
     expect(resolveRefreshMode(false)).toBe("initial");
     expect(resolveRefreshMode(true)).toBe("background");
+  });
+
+  it("SETTINGS-SYNC-1: adminToken 無しのときだけ受講者 settings 同期を有効にする", () => {
+    expect(shouldEnableParticipantSettingsSync(null)).toBe(true);
+    expect(shouldEnableParticipantSettingsSync(undefined)).toBe(true);
+    expect(shouldEnableParticipantSettingsSync("")).toBe(true);
+    expect(shouldEnableParticipantSettingsSync("  ")).toBe(true);
+    expect(shouldEnableParticipantSettingsSync("admin-demo-2026")).toBe(false);
+  });
+
+  it("SETTINGS-SYNC-1: 受講者 settings ポーリング間隔は 5 秒", () => {
+    expect(PARTICIPANT_SETTINGS_POLL_MS).toBe(5000);
   });
 
   it("settings と responses を並列取得する（直列より短い）", async () => {

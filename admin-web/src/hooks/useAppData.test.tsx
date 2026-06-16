@@ -141,6 +141,49 @@ describe("useAppData", () => {
     expect(text("loading")).toBe("0");
   });
 
+  it("SETTINGS-SYNC-1: 受講者モードでは settings を定期再取得する", async () => {
+    vi.useFakeTimers();
+    try {
+      await renderProbe({ adminToken: null });
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(loadSettingsAsync).toHaveBeenCalledTimes(1);
+      expect(loadResponsesAsync).not.toHaveBeenCalled();
+
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(loadSettingsAsync).toHaveBeenCalledTimes(2);
+      expect(loadResponsesAsync).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("SETTINGS-SYNC-1: 管理者モードでは settings ポーリングしない", async () => {
+    vi.useFakeTimers();
+    try {
+      await renderProbe({ adminToken: "admin-demo-2026" });
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(loadSettingsAsync).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        vi.advanceTimersByTime(15000);
+        await Promise.resolve();
+      });
+      expect(loadSettingsAsync).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   async function renderProbe(options: UseAppDataOptions) {
     root = createRoot(container);
     await act(async () => {

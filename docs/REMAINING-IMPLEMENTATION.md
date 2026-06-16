@@ -19,6 +19,7 @@
   - [F. PDF](#f-pdf)
   - [G. OJT](#g-ojt)
   - [H. UI / Hook テスト](#h-ui--hook-テスト)
+  - [I. 受講者 settings 同期（SETTINGS-SYNC-1）](#i-受講者-settings-同期管理者カード保存--受講者-ui-反映settings-sync-1)
 - [4. 再設計方針](#4-再設計方針)
 - [6. コードベース分離（URL 固定方針）](#6-コードベース分離url-固定方針)
 - [5. 次に着手するなら](#5-次に着手するなら)
@@ -43,9 +44,8 @@
 
 **実装** — あり
 
-- 管理者コード入室（local）
-- 研修コード設定（local）
-- 研修コード設定（Sheet backend）
+- 管理者入室（local / Sheet）：`adminRoomScope` に応じ **1 段階入室** または **3 画面ゲート**（デモ配布。正本: [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md)）
+- 研修コード変更 API（Sheet backend・`rooms/access-code`）。**管理画面③からの保存 UI は無し**
 - シーン・カード編集
 - 回答一覧・詳細
 
@@ -70,7 +70,7 @@
 - `pdfExport`（生成 payload と `Uint8Array` の入口）
 - `ojtExport`（確認項目テキスト生成の入口）
 
-**テスト** — `npm test` は 14 files / 89 tests Green
+**テスト** — `npm test` は **26 files / 195 tests** Green（件数の正本: [DOC-ALIGNMENT.md §2](./DOC-ALIGNMENT.md#2-現状サマリー)）
 
 ### Playwright
 
@@ -81,7 +81,7 @@
 - `e2e/embed-layout.spec.ts`
 - `npm run test:e2e`
 
-**状態** — mock E2E 6 tests Green + 実 GAS / 実シート 1 test Green
+**状態** — mock E2E **15 tests** Green + 実 GAS / 実シート 1 test Green（opt-in）
 
 **注意** — 受講者 → 管理者共有の本番同等確認は、ライブ GAS の手動疎通・Sheet API mock の Playwright・**別端末 GitHub Pages（2026-06-05）** で Green。複数 `client` / 複数 `room` の実環境分離確認はデモのためステイ（[MOCK-TO-PRODUCTION.md §6.1](./MOCK-TO-PRODUCTION.md#61-フェーズ-2-実施記録2026-06-05)）。
 
@@ -722,6 +722,43 @@
 
 ---
 
+### I. 受講者 settings 同期（管理者カード保存 → 受講者 UI 反映）— SETTINGS-SYNC-1
+
+**状態** — **実装済み**（SETTINGS-SYNC-1。Vitest Green）
+
+**目的** — 管理者がシーン・カード（`settings.scenes` / `questionCards`）を保存したあと、**別タブ・別 iframe・別端末**の受講者画面でも、次回表示時に **同じ Sheet API の settings** を参照し、気づき・判断・共有カードの文言が更新されること。回答の `room` 分離（既存）は維持する。
+
+**背景** — 受講者 `useAppData()` は初回マウント時のみ `loadSettingsAsync()` する。管理者の `saveSettingsAsync` が発火する `expertEye360-storage` は **同一ウィンドウ内**の CustomEvent のみで、GitHub Pages の受講者 iframe / 別ブラウザタブには届かない。Sheet backend では localStorage の `storage` イベントも共有されない。
+
+**受け入れ条件**
+
+- 管理者が「このシーンを保存」でカード文言を更新し Sheet に保存したあと、**受講者画面をリロードしなくても**（最大ポーリング間隔以内に）更新後のカードラベルが表示される。
+- 受講者モード（`useAppData` に `adminToken` 無し）での settings 再取得は **`loadSettingsAsync` のみ**（`loadResponsesAsync` は呼ばない）。`responses` state は変更しない。
+- 管理者モード（`adminToken` あり）では **settings ポーリングを行わない**（既存の手動再読込・storage イベントに任せる）。
+- `local` backend でも同様に、別オリジン（5173 / 5174）では storage イベントが共有されないため、受講者側ポーリングでカバーする。
+
+**成功条件**
+
+- `appDataLoad.test.ts` と `admin-web/src/hooks/useAppData.test.tsx`（SETTINGS-SYNC-1）が Green。
+- 既存 Vitest・mock E2E を壊さない。
+- 手動: Pages または手元 sheet dev で、管理者が設問 1 の気づきカードを変更 → 受講者 iframe で同じ設問の選択肢文言が変わる（リロード不要・数秒以内）。
+
+**どのようにテストするか**
+
+1. **Vitest（中）** — `shouldEnableParticipantSettingsSync()` が `adminToken` 無しで true、有りで false。
+2. **Vitest（中）** — `useAppData({ adminToken: null })` マウント後、`PARTICIPANT_SETTINGS_POLL_MS` 経過で `loadSettingsAsync` が **2 回目**呼ばれる。`refresh` の `scope` は `"settings"`。
+3. **Vitest（中）** — `useAppData({ adminToken: "…" })` ではポーリング間隔を進めても `loadSettingsAsync` は初回のみ。
+4. **手動（A）** — 上記成功条件の目視。
+
+**コード上の期待値**
+
+- `shared/src/appDataLoad.ts` — `PARTICIPANT_SETTINGS_POLL_MS`（例: 5000）、`shouldEnableParticipantSettingsSync(adminToken?)`
+- `shared/src/useAppData.ts` — 受講者モード時 `setInterval` + `visibilitychange`（visible 時）で `refresh({ scope: "settings" })`。アンマウントで clear。
+- `ParticipantPage` — 変更なし（`settings` が更新されれば `getSceneQuestionCards` が新ラベルを返す）。
+- Sheet API — 変更なし（`GET settings` は既存）。管理者保存は `POST settings` のまま。
+
+---
+
 ## 4. 再設計方針
 
 ### 4.1 最初に決めること
@@ -831,7 +868,7 @@ flowchart TD
 
 **正本**: 本節。プロダクト要件の入口は [README.md §入室とマルチテナント](../README.md#入室とマルチテナント)。API 契約は [SPREADSHEET-DATA.md §2](./SPREADSHEET-DATA.md)。
 
-**最終確認日**: 2026-06-08
+**最終確認日**: 2026-06-16
 
 ### 6.0 プロダクト方針（ブレ禁止）
 
@@ -1016,11 +1053,10 @@ flowchart TD
 - `AppSettings.adminRoomScope?: 'adminCode' | 'trainingCode'`
 - `isTrainingCodeScopedAdmin(settings)` / `verifySharedAdminAccessCode` / `resolveAdminRoomByTrainingCode` / `canChangeAccessCodes`
 - `AdminPage`: ②に研修コード欄のみ。③の base タブに研修コード保存ブロックなし
+- `lipronext-demo` で `adminRoomScope` 未設定時は `resolveAdminRoomScope()`（フロント）と GAS `normalizeDemoDistributionSettings_()` が `trainingCode` に正規化。Sheet backend 初回読込中は `data-admin-phase="loading"`（旧 UI の一瞬表示を防止）
 - E2E mock: `adminRoomScope: 'trainingCode'`、room ごとの `adminAccessCode` を外す
 
 **状態** — TDD 実装済み（Vitest + mock E2E Green）。3 画面ゲートは §6.7 / [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md) に準拠。
-
----
 
 ### 6.7 ADMIN-2STEP-1 — 管理者 3 画面ゲート（研修コードゲート）
 

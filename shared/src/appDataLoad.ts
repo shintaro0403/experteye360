@@ -7,6 +7,9 @@ export const UI_RESPONSE_BUDGET_MS = 2000;
 /** storage イベント連鎖による再読込の debounce（ミリ秒） */
 export const STORAGE_REFRESH_DEBOUNCE_MS = 150;
 
+/** 受講者画面が管理者保存後の settings を追従するポーリング間隔（ミリ秒） */
+export const PARTICIPANT_SETTINGS_POLL_MS = 5000;
+
 export type RefreshMode = "initial" | "background";
 
 export type RefreshScope = "all" | "settings";
@@ -17,6 +20,11 @@ export function shouldShowBlockingLoader(mode: RefreshMode): boolean {
 
 export function resolveRefreshMode(hasLoadedOnce: boolean): RefreshMode {
   return hasLoadedOnce ? "background" : "initial";
+}
+
+/** 受講者（adminToken 無し）のみ settings を定期再取得する */
+export function shouldEnableParticipantSettingsSync(adminToken?: string | null): boolean {
+  return !adminToken?.trim();
 }
 
 /** Sheet API の GET responses に渡す roomId。adminRoomId があればそれを優先。 */
