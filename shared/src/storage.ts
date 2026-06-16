@@ -16,6 +16,7 @@ import {
   loadSheetSettings,
   provisionRoomViaApi,
   saveSheetSettings,
+  verifyAdminTokenViaApi,
   verifyTrainingCodeViaApi,
   sheetApiErrorDetail,
 } from "./storage/sheet";
@@ -391,7 +392,19 @@ export async function verifyTrainingCodeAsync(
 }
 
 export async function verifyAdminTokenAsync(adminToken: string, roomId: string): Promise<void> {
-  await loadResponsesAsync({ adminToken, roomId });
+  const token = adminToken.trim();
+  const scopedRoomId = roomId.trim();
+  if (!token) throw new Error("Admin token is required");
+  if (!scopedRoomId) throw new Error("roomId is required");
+  if (!isSheetStorageBackend()) {
+    await loadResponsesAsync({ adminToken: token, roomId: scopedRoomId });
+    return;
+  }
+  await verifyAdminTokenViaApi({
+    ...sheetApiConfig(),
+    adminToken: token,
+    roomId: scopedRoomId,
+  });
 }
 
 export async function changeAdminTokenAsync(input: ChangeAdminTokenAsyncInput): Promise<void> {

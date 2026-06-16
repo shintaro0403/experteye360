@@ -11,6 +11,7 @@ import {
   saveResponses,
   saveResponsesAsync,
   saveSettings,
+  verifyAdminTokenAsync,
 } from "./storage";
 import { DEFAULT_SETTINGS } from "./seed";
 import { makeSettings, makeSubmission } from "./test/fixtures";
@@ -295,6 +296,24 @@ describe("storage（local）", () => {
       nextAccessCode: "DEMO-2027",
     });
     expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("PERF-ADMIN-VERIFY-1: Sheet backend の verifyAdminTokenAsync は admin/token/verify を呼ぶ", async () => {
+    vi.stubEnv("VITE_STORAGE_BACKEND", "sheet");
+    vi.stubEnv("VITE_SHEET_API_BASE", "https://script.google.com/macros/s/dev/exec");
+    vi.stubEnv("VITE_CLIENT_ID", "client-a");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(jsonResponse({ ok: true })));
+
+    await verifyAdminTokenAsync(" admin-token ", " room-a ");
+
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    const parsed = new URL(String(url));
+    expect(parsed.searchParams.get("path")).toBe("admin/token/verify");
+    expect(parsed.searchParams.get("client")).toBe("client-a");
+    expect(parsed.searchParams.get("room")).toBe("room-a");
+    expect(parsed.searchParams.get("token")).toBeNull();
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(String(init?.body))).toEqual({ token: "admin-token" });
   });
 });
 

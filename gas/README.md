@@ -180,6 +180,22 @@ POST {VITE_SHEET_API_BASE}?path=rooms/access-code&client=lipronext-demo
 
 平文の研修コードは保存せず、`rooms.accessCodeHash` だけを更新します。
 
+### POST admin/token/verify
+
+```text
+POST {VITE_SHEET_API_BASE}?path=admin/token/verify&client=lipronext-demo&room=demo-room-001
+```
+
+**body**:
+
+```json
+{ "token": "admin-demo-2026" }
+```
+
+**成功** — `{ "ok": true }`
+
+管理者コード入力時の token 照合専用（responses シートは読まない）。PERF-ADMIN-VERIFY-1。
+
 ### POST admin/token
 
 ```text

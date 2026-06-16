@@ -157,6 +157,7 @@ function handleRequest_(e, method) {
     if (method === "POST" && route === "rooms/verify") return json_(handleVerifyRoom_(e));
     if (method === "POST" && route === "rooms/access-code") return json_(handleChangeRoomAccessCode_(e));
     if (method === "POST" && route === "rooms/provision") return json_(handleProvisionRoom_(e));
+    if (method === "POST" && route === "admin/token/verify") return json_(handleVerifyAdminToken_(e));
     if (method === "POST" && route === "admin/token") return json_(handleChangeAdminToken_(e));
     throw apiError_(404, `Unknown route: ${method} ${route}`);
   } catch (error) {
@@ -291,6 +292,16 @@ function handleChangeRoomAccessCode_(e) {
     changedAt: nowIso_(),
   });
 
+  return { ok: true };
+}
+
+/** PERF-ADMIN-VERIFY-1: token 照合のみ（responses 読み取りなし） */
+function handleVerifyAdminToken_(e) {
+  const context = resolveClient_(requiredParam_(e, "client"));
+  const body = readJsonBody_(e);
+  const roomId = normalizeSecret_(e.parameter.room);
+  if (!roomId) throw apiError_(400, "room is required");
+  verifyAdminTokenForRoom_(context.clientRecord, context.clientBook, roomId, tokenFromRequest_(e, body));
   return { ok: true };
 }
 

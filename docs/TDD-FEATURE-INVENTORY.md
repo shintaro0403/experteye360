@@ -543,6 +543,10 @@
 
 **H-04** — 受講者モード（`adminToken` 無し）で settings を定期再取得（SETTINGS-SYNC-1）。管理者保存後も別タブのカード文言が追従する
 
+**H-05** — 管理者 token 軽量検証（PERF-ADMIN-VERIFY-1）【実装済み】。`verifyAdminTokenAsync` は Sheet で `POST admin/token/verify` のみ（`responses/query` 禁止）
+
+**H-06** — 管理者初回 loader 非ブロッキング（PERF-ADMIN-LOADER-1）【実装済み】。Sheet backend で settings 読込中も `data-admin-phase="admin-code"` を表示
+
 ---
 
 ## 5. 管理者アプリ（`admin-web`）
@@ -624,6 +628,9 @@
 
 **X-05** — セキュリティ実装（[SECURITY.md](./SECURITY.md)）: 管理者 token のボディ送信（SEC-SECRET-01）、HTTPS 必須（SEC-NET-01）、数式インジェクション対策（SEC-INPUT-01）。ハッシュは単純 SHA-256（SEC-SECRET-02 は本番開始時に再導入予定）  
 テスト化: `sheetApi.test.ts`・`security/sanitizeCell.test.ts`
+
+**X-06** — 管理者入室体感速度（PERF-ADMIN-VERIFY-1 / PERF-ADMIN-LOADER-1）: token 照合の軽量 API、初回 settings 読込とログイン UI の並行表示  
+テスト化: `sheetApi.test.ts`・`storage.test.ts`・`AdminPage.test.tsx`
 
 ---
 

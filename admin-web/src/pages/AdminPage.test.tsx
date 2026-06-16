@@ -89,13 +89,20 @@ describe("AdminPage", () => {
     sessionStorage.clear();
   });
 
-  it("Sheet backend: settings 読込中は入室画面を出さない", async () => {
+  it("PERF-ADMIN-LOADER-1: Sheet backend で settings 読込中も管理者コード画面を表示する", async () => {
     sessionStorage.clear();
     mockUseAppData({ loading: true });
     await render();
-    expect(container.querySelector('[data-admin-phase="loading"]')).not.toBeNull();
-    expect(container.textContent).toContain("設定を読み込み中");
-    expect(container.querySelector('[data-admin-phase="admin-code"]')).toBeNull();
+    expect(container.querySelector('[data-admin-phase="admin-code"]')).not.toBeNull();
+    expect(container.querySelector('[data-admin-phase="loading"]')).toBeNull();
+    expect(container.querySelector('input[placeholder="管理者コード"]')).not.toBeNull();
+  });
+
+  it("Sheet backend: settings 読込中でも workspace セッションがあれば workspace を表示する", async () => {
+    mockUseAppData({ loading: true });
+    await render();
+    expect(container.querySelector('[data-admin-phase="workspace"]')).not.toBeNull();
+    expect(container.querySelector('[data-admin-phase="loading"]')).toBeNull();
   });
 
   it("SPEC-ADMIN-THREE-GATE-2026 §7: ③で管理者コード変更・ツアー URL・研修コード保存 UI を出さない", async () => {

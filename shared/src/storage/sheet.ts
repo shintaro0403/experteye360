@@ -42,6 +42,10 @@ export type VerifyTrainingCodeViaApiResult = {
   roomId: string;
 };
 
+export type VerifyAdminTokenViaApiInput = AdminSheetApiBase & {
+  roomId: string;
+};
+
 export type ChangeAdminTokenViaApiInput = AdminSheetApiBase & {
   nextAdminToken: string;
 };
@@ -116,6 +120,17 @@ export async function verifyTrainingCodeViaApi(
       client: input.clientId,
     }),
     postJson({ accessCode: input.accessCode }),
+  );
+}
+
+/** PERF-ADMIN-VERIFY-1: token 照合のみ（responses 読み取りなし） */
+export async function verifyAdminTokenViaApi(input: VerifyAdminTokenViaApiInput): Promise<void> {
+  await requestJson<{ ok: true }>(
+    buildUrl(input.apiBaseUrl, "admin/token/verify", {
+      client: input.clientId,
+      room: input.roomId.trim(),
+    }),
+    postJson({ token: input.adminToken }),
   );
 }
 

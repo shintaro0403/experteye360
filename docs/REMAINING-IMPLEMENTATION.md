@@ -20,6 +20,8 @@
   - [G. OJT](#g-ojt)
   - [H. UI / Hook テスト](#h-ui--hook-テスト)
   - [I. 受講者 settings 同期（SETTINGS-SYNC-1）](#i-受講者-settings-同期管理者カード保存--受講者-ui-反映settings-sync-1)
+  - [J. 管理者 token 軽量検証（PERF-ADMIN-VERIFY-1）](#j-管理者-token-軽量検証perf-admin-verify-1)
+  - [K. 管理者初回 loader 非ブロッキング（PERF-ADMIN-LOADER-1）](#k-管理者初回-loader-非ブロッキングperf-admin-loader-1)
 - [4. 再設計方針](#4-再設計方針)
 - [6. コードベース分離（URL 固定方針）](#6-コードベース分離url-固定方針)
 - [5. 次に着手するなら](#5-次に着手するなら)
@@ -756,6 +758,80 @@
 - `shared/src/useAppData.ts` — 受講者モード時 `setInterval` + `visibilitychange`（visible 時）で `refresh({ scope: "settings" })`。アンマウントで clear。
 - `ParticipantPage` — 変更なし（`settings` が更新されれば `getSceneQuestionCards` が新ラベルを返す）。
 - Sheet API — 変更なし（`GET settings` は既存）。管理者保存は `POST settings` のまま。
+
+---
+
+### J. 管理者 token 軽量検証（PERF-ADMIN-VERIFY-1）
+
+**状態** — **実装済み**（PERF-ADMIN-VERIFY-1。Vitest Green）
+
+**目的** — 管理者コード入力（ゲート①「続ける」・1 段階入室・③入室前確認）で **token 照合だけ** 行いたいのに、現状 `verifyAdminTokenAsync` が `POST responses/query`（回答シート全読み）を使っており GAS 往復が重い。専用の軽量 API に置き換え、**管理者コード入力の体感速度**を改善する。
+
+**背景** — `shared/src/storage.ts` の `verifyAdminTokenAsync` は Sheet backend で `loadResponsesAsync` を呼ぶ。GAS は token 検証後も responses を返すため、①の「続ける」1 クリックで不要な I/O が発生する。
+
+**受け入れ条件**
+
+- Sheet backend で `verifyAdminTokenAsync(adminToken, roomId)` は **`POST admin/token/verify`** のみ呼ぶ（`responses/query` は呼ばない）。
+- リクエスト: `?path=admin/token/verify&client={clientId}&room={roomId}`、body `{ token }`（SEC-SECRET-01: token はクエリに出さない）。
+- 成功: `{ ok: true }`。不正 token: **401**。不正 room: **403**。
+- GAS は `verifyAdminTokenForRoom_`（room 指定時）で照合。`local` backend の挙動は変更しない。
+- ゲート①②③の入室フロー・エラーメッセージ（「管理者コードが正しくありません」）は既存のまま。
+
+**成功条件**
+
+- `sheetApi.test.ts`（PERF-ADMIN-VERIFY-1）と `storage.test.ts`（PERF-ADMIN-VERIFY-1）が Green。
+- 既存 Vitest・mock E2E を壊さない。
+- 手動: Pages で管理者コード「続ける」が、回答件数に依存せず体感 1 GAS 往復程度になる（responses 未登録でも速い）。
+
+**どのようにテストするか**
+
+1. **Vitest（中）** — `verifyAdminTokenViaApi` が `path=admin/token/verify`・`room` クエリ・body `{ token }` で fetch する。
+2. **Vitest（中）** — 401 応答で reject する。
+3. **Vitest（中）** — `verifyAdminTokenAsync`（Sheet backend）の fetch 先 path が `admin/token/verify` で、`responses/query` ではない。
+4. **手動（A）** — デモ GAS でゲート①→②が従来どおり進む。
+
+**コード上の期待値**
+
+- `gas/Code.gs` — `POST admin/token/verify` → `handleVerifyAdminToken_`（`verifyAdminTokenForRoom_`）
+- `shared/src/storage/sheet.ts` — `verifyAdminTokenViaApi`
+- `shared/src/storage.ts` — Sheet 時 `verifyAdminTokenViaApi`、local 時は従来どおり
+- `scripts/e2e-sheet-api-server.mjs` — 同上ルート（mock 契約）
+- `AdminPage.tsx` — 変更なし（`verifyAdminTokenAsync` 呼び出しは維持）
+
+---
+
+### K. 管理者初回 loader 非ブロッキング（PERF-ADMIN-LOADER-1）
+
+**状態** — **実装済み**（PERF-ADMIN-LOADER-1。Vitest Green）
+
+**目的** — Sheet backend の管理者画面で、初回 `GET settings` 完了まで **ログイン UI 全体をブロック** しているため「立ち上げが遅い」と感じる。settings 読込と **並行して** 管理者コード入力画面を表示し、初回体感を改善する。
+
+**背景** — `AdminPage.tsx` は `isSheetStorageBackend() && loading` の間 `data-admin-phase="loading"` のみ表示。ユーザーは GAS 1 往復が終わるまでコードを打てない。
+
+**受け入れ条件**
+
+- Sheet backend で `useAppData.loading === true` かつ未入室（`admin-code` フェーズ）のとき、**`data-admin-phase="admin-code"`** を表示する（`data-admin-phase="loading"` の全画面ブロックは使わない）。
+- 管理者コード入力欄・「続ける」/「入室する」ボタンは **loading 中も操作可能**。
+- loading 中はゲート内に **非ブロッキング** の「設定を読み込み中…」等の補助表示をしてよい（任意・小さく）。
+- ③ workspace や② training-gate の既存挙動は変えない。受講者画面は変更しない。
+
+**成功条件**
+
+- `AdminPage.test.tsx`（PERF-ADMIN-LOADER-1）が Green。
+- 既存の 3 画面ゲート・workspace テストを壊さない。
+- 手動: Pages 管理者 URL を開くと、settings 取得完了を待たずに管理者コード欄がすぐ見える。
+
+**どのようにテストするか**
+
+1. **Vitest（UI）** — Sheet backend・`loading: true`・session 未入室で render → `[data-admin-phase="admin-code"]` が存在、`[data-admin-phase="loading"]` は null。管理者コード input が存在。
+2. **Vitest（UI）** — `loading: false` の workspace テスト等は従来どおり Green。
+3. **手動（A）** — ネットワーク遅延時もコード入力開始が settings 完了より先にできる。
+
+**コード上の期待値**
+
+- `admin-web/src/pages/AdminPage.tsx` — `loading` による early return（全画面 loader）を **admin-code 未入室時は削除**。`admin-code` カード内で `loading` 時のみ補助文言。
+- `shared/src/useAppData.ts` — 変更なし（`loading` state は維持）。
+- `appDataLoad.ts` — 変更なし。
 
 ---
 

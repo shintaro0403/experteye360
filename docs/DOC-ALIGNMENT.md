@@ -2,7 +2,7 @@
 
 README・各 `docs/*.md`・コードの食い違いをなくすための **参照順** と **現状の一言** をまとめる。更新したら本ファイルの **最終確認日** も直す。
 
-**最終確認日**: 2026-06-16（管理者 3 画面ゲート・`adminRoomScope` 正規化を [SPEC-ADMIN-THREE-GATE-2026.md](./SPEC-ADMIN-THREE-GATE-2026.md) に整合。Vitest **26 files / 195 tests** Green）
+**最終確認日**: 2026-06-16（PERF-ADMIN-VERIFY-1 / PERF-ADMIN-LOADER-1 実装。Vitest **26 files / 203 tests** Green）
 
 ---
 
@@ -150,7 +150,7 @@ README・各 `docs/*.md`・コードの食い違いをなくすための **参�
 - **ISOLATE-4** — E2E クロス閲覧（`isolate-code-separation.spec.ts`）Green
 
 ```bash
-npm test          # ルート Vitest（shared + admin-web + participant-web）。現状 26 files / 195 tests Green
+npm test          # ルート Vitest（shared + admin-web + participant-web）。現状 26 files / 203 tests Green
 npm run test:e2e  # Playwright mock。現状 15 tests / 4 files Green（workers: 1）
 npm run test:watch
 ```
@@ -205,7 +205,7 @@ npm run test:watch
 **Vitest**
 
 - **誤りやすい** — D-16 未決、件数が README と不一致
-- **正しい現状** — **ルート 1 本**（`vitest.config.ts`）。現状 **26 files / 195 tests** Green（件数の正本は本節 §2）
+- **正しい現状** — **ルート 1 本**（`vitest.config.ts`）。現状 **26 files / 203 tests** Green（件数の正本は本節 §2）
 
 **管理者入室**
 

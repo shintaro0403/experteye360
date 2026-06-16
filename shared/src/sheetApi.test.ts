@@ -7,6 +7,7 @@ import {
   loadSheetResponses,
   loadSheetSettings,
   saveSheetSettings,
+  verifyAdminTokenViaApi,
   verifyTrainingCodeViaApi,
 } from "./storage/sheet";
 import { makeSettings, makeSubmission } from "./test/fixtures";
@@ -479,6 +480,38 @@ describe("sheetApi 契約", () => {
       clientId: TEST_CLIENT,
       adminToken: "wrong-admin-token",
       nextAdminToken: "admin-next",
+    })).rejects.toThrow("Sheet API request failed: 401");
+  });
+
+  it("PERF-ADMIN-VERIFY-1: admin/token/verify は token をボディ・room をクエリで送る", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ ok: true }));
+
+    await verifyAdminTokenViaApi({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      adminToken: TEST_ADMIN_TOKEN,
+      roomId: TEST_ROOM,
+    });
+
+    const [url, init] = lastFetchCall();
+    expectUrlHasParams(String(url), {
+      path: "admin/token/verify",
+      client: TEST_CLIENT,
+      room: TEST_ROOM,
+    });
+    expectUrlMissingParams(String(url), ["token"]);
+    expect(init?.method).toBe("POST");
+    expect(JSON.parse(String(init?.body))).toEqual({ token: TEST_ADMIN_TOKEN });
+  });
+
+  it("PERF-ADMIN-VERIFY-1: admin/token/verify の不正 token は 401 エラーになる", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ error: "bad token" }, 401));
+
+    await expect(verifyAdminTokenViaApi({
+      apiBaseUrl: API_BASE_URL,
+      clientId: TEST_CLIENT,
+      adminToken: "wrong-admin-token",
+      roomId: TEST_ROOM,
     })).rejects.toThrow("Sheet API request failed: 401");
   });
 });

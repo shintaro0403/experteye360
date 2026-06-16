@@ -278,6 +278,20 @@ async function handleSheetApi(req, res, url) {
     return;
   }
 
+  if (req.method === "POST" && path === "admin/token/verify") {
+    const room = url.searchParams.get("room")?.trim() ?? "";
+    if (!room) {
+      sendJson(res, 400, { ok: false, error: "room_required" });
+      return;
+    }
+    if (!isAuthorizedForRoom(settings, room, url, body)) {
+      sendJson(res, 403, { ok: false, error: "invalid_admin_token" });
+      return;
+    }
+    sendJson(res, 200, { ok: true });
+    return;
+  }
+
   if (req.method === "POST" && path === "admin/token") {
     if (!isAuthorizedForSettings(settings, url, body)) {
       sendJson(res, 403, { ok: false, error: "invalid_admin_token" });

@@ -490,24 +490,17 @@ export function AdminPage() {
       URL.revokeObjectURL(url);
     });
 
-  if (isSheetStorageBackend() && loading) {
-    return (
-      <div className="a-shell" data-admin-phase="loading">
-        <div className="a-page a-entry-gate">
-          <div className="a-entry-card">
-            <p>設定を読み込み中…</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (!adminGateActive && !adminWorkspaceActive) {
     return (
       <div className="a-shell" data-admin-phase="admin-code">
         <div className="a-page a-entry-gate">
           <div className="a-entry-card">
             <h1>管理者コード</h1>
+            {loading && (
+              <p className="a-hint" role="status">
+                設定を読み込み中…
+              </p>
+            )}
             <p>
               {trainingCodeScopedAdmin
                 ? "共有の管理者コードを入力してください。次の画面で操作する研修回の研修コードを入力します。"
